@@ -13,7 +13,7 @@ export default async function PipelinePage() {
 
   return (
     <div className="mx-auto max-w-7xl">
-      <PageHeader title="pipeline" sub="ventas" />
+      <PageHeader title="Pipeline" sub="Ventas" />
       <Kanban deals={(data ?? []) as Deal[]} />
     </div>
   );

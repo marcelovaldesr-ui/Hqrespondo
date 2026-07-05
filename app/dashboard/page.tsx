@@ -15,8 +15,8 @@ const DOT: Record<string, string> = {
 
 function eventoTexto(tipo: string, detalle: string | null): string {
   if (tipo === "error") return detalle ? detalle.slice(0, 48) : "error";
-  if (tipo === "heartbeat") return "heartbeat ok";
-  return "conversación atendida";
+  if (tipo === "heartbeat") return "Heartbeat OK";
+  return "Conversación atendida";
 }
 
 export default async function Dashboard() {
@@ -98,17 +98,17 @@ export default async function Dashboard() {
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader
-        title="centro de operaciones"
+        title="Centro de operaciones"
         sub={fechaHoy()}
         right={
           <span className="flex items-center gap-4 font-mono text-[11px] text-ink-dim">
             <span
-              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 ${errores > 0 ? "border-danger/35 bg-danger/10 text-danger" : "border-brand/30 bg-brand/10 text-brand"}`}
+              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 ${errores > 0 ? "border-danger/35 bg-danger/10 text-danger" : "border-ok/30 bg-ok/10 text-ok"}`}
             >
               <span
-                className={`led led-pulse ${errores > 0 ? "bg-danger led-glow-red" : "bg-brand led-glow-green"}`}
+                className={`led ${errores > 0 ? "bg-danger" : "bg-ok"}`}
               />
-              {errores > 0 ? `${errores} errores` : "operativo"}
+              {errores > 0 ? `${errores} errores` : "Operativo"}
             </span>
             {hora(new Date().toISOString())}
           </span>
@@ -118,8 +118,8 @@ export default async function Dashboard() {
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <div className="metric-card">
           <div className="relative">
-            <div className="lbl">mrr actual</div>
-            <div className="mt-3 font-mono text-4xl font-medium leading-none text-brand">
+            <div className="lbl">MRR actual</div>
+            <div className="mt-3 font-mono text-4xl font-medium leading-none text-ok">
               {clp(mrrActual)}
             </div>
           </div>
@@ -132,7 +132,7 @@ export default async function Dashboard() {
               {spark.map((n, i) => (
                 <span
                   key={i}
-                  className={n > 0 ? "bg-brand shadow-glow" : "bg-brand/20"}
+                  className={n > 0 ? "bg-brand" : "bg-brand/20"}
                   style={{
                     width: 6,
                     height: 7 + Math.round((n / sparkMax) * 20),
@@ -145,7 +145,7 @@ export default async function Dashboard() {
         </div>
         <div className="metric-card">
           <div className="relative">
-            <div className="lbl">mrr en pipeline</div>
+            <div className="lbl">MRR en pipeline</div>
             <div className="mt-3 font-mono text-4xl font-medium leading-none">
               {clp(mrrProyectado)}
             </div>
@@ -157,7 +157,7 @@ export default async function Dashboard() {
         </div>
         <div className="metric-card">
           <div className="relative">
-            <div className="lbl">calientes sin contactar</div>
+            <div className="lbl">Calientes sin contactar</div>
             <div className="mt-3 font-mono text-4xl font-medium leading-none text-accent">
               {hot.length}
             </div>
@@ -169,29 +169,29 @@ export default async function Dashboard() {
       <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
         <Link href="/clientes" className="panel flex items-center gap-4 p-4 transition hover:border-danger/30 hover:bg-danger/[0.035]">
           <span
-            className={`led h-2.5 w-2.5 ${errores > 0 ? "bg-danger led-glow-red" : "bg-brand"}`}
+            className={`led h-2.5 w-2.5 ${errores > 0 ? "bg-danger" : "bg-ok"}`}
           />
           <div>
             <div className={`font-mono text-xl ${errores > 0 ? "text-danger" : ""}`}>
               {errores}
             </div>
-            <div className="lbl">errores bots 24h</div>
+            <div className="lbl">Errores bots 24h</div>
           </div>
         </Link>
         <Link href="/clientes" className="panel flex items-center gap-4 p-4 transition hover:border-accent/30 hover:bg-accent/[0.035]">
-          <span className="led h-2.5 w-2.5 bg-accent led-glow-cyan" />
+          <span className="led h-2.5 w-2.5 bg-accent" />
           <div>
             <div className="font-mono text-xl">{msgRes.count ?? 0}</div>
-            <div className="lbl">conversaciones hoy</div>
+            <div className="lbl">Conversaciones hoy</div>
           </div>
         </Link>
         <Link href="/prospeccion" className="panel flex items-center gap-4 p-4 transition hover:border-warn/30 hover:bg-warn/[0.035]">
-          <span className={`led h-2.5 w-2.5 ${(segRes.count ?? 0) > 0 ? "bg-warn led-glow-amber" : "bg-ink-faint"}`} />
+          <span className={`led h-2.5 w-2.5 ${(segRes.count ?? 0) > 0 ? "bg-warn" : "bg-ink-faint"}`} />
           <div>
             <div className={`font-mono text-xl ${(segRes.count ?? 0) > 0 ? "text-warn" : ""}`}>
               {segRes.count ?? 0}
             </div>
-            <div className="lbl">seguimientos hoy</div>
+            <div className="lbl">Seguimientos hoy</div>
           </div>
         </Link>
       </div>
@@ -199,8 +199,8 @@ export default async function Dashboard() {
       <div className="mt-3 grid gap-3 lg:grid-cols-[1.15fr_1fr]">
         <section className="panel-hot scanline p-5">
           <div className="mb-3 flex items-center justify-between">
-            <span className="lbl">actividad en vivo</span>
-            <span className="led led-pulse bg-accent led-glow-cyan" />
+            <span className="lbl">Actividad en vivo</span>
+            <span className="led bg-accent" />
           </div>
           {feed.length === 0 ? (
             <p className="text-xs text-ink-dim">
@@ -227,7 +227,7 @@ export default async function Dashboard() {
         </section>
 
         <section className="panel-hot p-5">
-          <div className="lbl mb-3">contactar primero</div>
+          <div className="lbl mb-3">Contactar primero</div>
           {hot.length === 0 ? (
             <p className="text-xs text-ink-dim">
               Sin prospectos calientes. Anda a{" "}
@@ -241,7 +241,7 @@ export default async function Dashboard() {
               {hot.slice(0, 6).map((p) => (
                 <div key={p.id} className="flex items-center gap-2.5">
                   <span
-                    className={`w-9 font-mono text-base ${p.score >= 70 ? "text-brand" : "text-warn"}`}
+                    className={`w-9 font-mono text-base ${p.score >= 70 ? "text-ok" : "text-warn"}`}
                   >
                     {p.score}
                   </span>
@@ -251,7 +251,7 @@ export default async function Dashboard() {
                   </span>
                   <span className="h-[5px] w-16 overflow-hidden rounded-full bg-surface-3">
                     <span
-                      className={`block h-full ${p.score >= 70 ? "bg-brand" : "bg-warn"}`}
+                      className={`block h-full ${p.score >= 70 ? "bg-ok" : "bg-warn"}`}
                       style={{ width: `${p.score}%` }}
                     />
                   </span>

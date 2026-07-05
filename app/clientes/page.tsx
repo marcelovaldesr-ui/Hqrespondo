@@ -90,7 +90,7 @@ export default async function ClientesPage() {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <PageHeader title="clientes & bots" sub="operación" />
+      <PageHeader title="Clientes & Bots" sub="Operación" />
 
       {alertas.length > 0 && (
         <div className="mb-4 flex flex-col gap-2">
@@ -102,7 +102,7 @@ export default async function ClientesPage() {
               <span className="led led-glow-red bg-danger" />
               <span className="truncate">
                 <span className="font-medium text-danger">{a.cliente}</span>:{" "}
-                {a.detalle ?? "error"} · alerta enviada a tu whatsapp{" "}
+                {a.detalle ?? "error"} · alerta enviada a tu WhatsApp{" "}
                 <span className="font-mono text-danger">{a.hora}</span>
               </span>
             </div>

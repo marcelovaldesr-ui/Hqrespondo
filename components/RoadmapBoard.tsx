@@ -8,23 +8,23 @@ const COL_HEAD: Record<string, string> = {
   "Esta semana": "text-warn",
   "En curso": "text-accent",
   Backlog: "text-ink-dim",
-  Hecho: "text-brand",
+  Hecho: "text-ok",
 };
 
 const COL_CARD: Record<string, string> = {
   "Esta semana": "border-warn/25",
   "En curso": "border-accent/25",
   Backlog: "border-line",
-  Hecho: "border-brand/30 opacity-70",
+  Hecho: "border-ok/30 opacity-70",
 };
 
 const AREA_COLOR: Record<string, string> = {
-  marca: "border-brand/30 text-brand",
+  marca: "border-violet/30 text-violet",
   instagram: "border-accent/30 text-accent",
   comercial: "border-warn/30 text-warn",
   ventas: "border-warn/30 text-warn",
   web: "border-line2 text-ink-mut",
-  producto: "border-brand/30 text-brand",
+  producto: "border-violet/30 text-violet",
   decisión: "border-danger/30 text-danger",
 };
 
@@ -234,22 +234,22 @@ export default function RoadmapBoard({
     <div>
       <div className="mb-5 flex flex-wrap items-center gap-3">
         <div className="metric-card px-5 py-3.5">
-          <span className="lbl">pendientes </span>
+          <span className="lbl">Pendientes </span>
           <span className="ml-3 font-mono text-2xl text-warn">{pendientes}</span>
         </div>
         <div className="metric-card px-5 py-3.5">
-          <span className="lbl">hechas </span>
-          <span className="ml-3 font-mono text-2xl text-brand">
+          <span className="lbl">Hechas </span>
+          <span className="ml-3 font-mono text-2xl text-ok">
             {items.length - pendientes}
           </span>
         </div>
         <span className="ml-auto flex items-center gap-2">
           {error && <span className="text-xs text-danger">{error}</span>}
           <button onClick={recargar} disabled={loading} className="btn-ghost px-3 py-1.5">
-            {loading ? "actualizando…" : "↻ refrescar"}
+            {loading ? "Actualizando…" : "↻ Refrescar"}
           </button>
           <button onClick={() => setShowForm(!showForm)} className="btn-primary text-xs">
-            + tarea
+            + Tarea
           </button>
         </span>
       </div>
@@ -269,14 +269,14 @@ export default function RoadmapBoard({
               onClick={() => setShowForm(false)}
               className="btn-ghost px-3 py-1.5"
             >
-              cancelar
+              Cancelar
             </button>
             <button
               type="submit"
               disabled={!draft.tarea.trim() || busy}
               className="btn-primary text-xs"
             >
-              crear tarea
+              Crear tarea
             </button>
           </div>
         </form>
@@ -295,7 +295,7 @@ export default function RoadmapBoard({
             <div key={estado}>
               <div className="mb-2 flex items-baseline justify-between rounded-lg border border-line bg-surface-3/45 px-3 py-2">
                 <span className={`lbl ${COL_HEAD[estado] ?? "text-ink-mut"}`}>
-                  {estado.toLowerCase()}
+                  {estado}
                 </span>
                 <span className="font-mono text-[10px] text-ink-faint">
                   {cards.length}
@@ -320,14 +320,14 @@ export default function RoadmapBoard({
                         />
                         <div className="mt-2.5 flex justify-end gap-2">
                           <button onClick={() => setEditId(null)} className="btn-ghost px-2.5 py-1">
-                            cancelar
+                            Cancelar
                           </button>
                           <button
                             onClick={() => guardarEdicion(it.id)}
                             disabled={busy || !editDraft.tarea.trim()}
                             className="btn-primary px-3 py-1 text-xs"
                           >
-                            guardar
+                            Guardar
                           </button>
                         </div>
                       </div>
@@ -351,7 +351,7 @@ export default function RoadmapBoard({
                       <div className="mt-2 flex flex-wrap items-center gap-1.5">
                         {it.area && (
                           <span className={`chip px-2 py-0 text-[10px] ${areaCls}`}>
-                            {it.area.toLowerCase()}
+                            {it.area}
                           </span>
                         )}
                         {it.fecha_limite && (
@@ -389,7 +389,7 @@ export default function RoadmapBoard({
                           className="btn-ghost px-2 py-1"
                           aria-label={`editar ${it.tarea}`}
                         >
-                          editar
+                          Editar
                         </button>
                         <button
                           onClick={() => eliminar(it)}
@@ -416,7 +416,7 @@ export default function RoadmapBoard({
 
       <p className="mt-5 text-xs text-ink-dim">
         Roadmap compartido del equipo — los cambios quedan en Supabase al
-        instante; usa <span className="text-brand">↻ refrescar</span> para ver
+        instante; usa <span className="text-brand">↻ Refrescar</span> para ver
         lo que editó el otro. Estado y Área son texto libre: escribe uno nuevo
         y se crea la columna sola.
       </p>

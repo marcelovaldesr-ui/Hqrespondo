@@ -38,8 +38,8 @@ export default async function BriefPage() {
   return (
     <div className="mx-auto max-w-4xl">
       <PageHeader
-        title="brief del día"
-        sub="operaciones"
+        title="Brief del día"
+        sub="Operaciones"
         right={<BriefActions clients={clientes} />}
       />
 
@@ -52,7 +52,7 @@ export default async function BriefPage() {
         <article className="panel-hot scanline mx-auto max-w-3xl p-6">
           <div className="relative flex items-center justify-between border-b border-line pb-4">
             <div>
-              <div className="lbl">brief operativo</div>
+              <div className="lbl">Brief operativo</div>
               <div className="mt-2 font-mono text-xl font-semibold">
                 {fechaCorta(ultimo.created_at)} · {hora(ultimo.created_at)}
               </div>
@@ -69,7 +69,7 @@ export default async function BriefPage() {
 
       {anteriores.length > 0 && (
         <section className="mt-6">
-          <div className="lbl mb-3">anteriores</div>
+          <div className="lbl mb-3">Anteriores</div>
           <div className="grid gap-2 sm:grid-cols-2">
             {anteriores.map((b) => (
               <details key={b.id} className="panel px-4 py-3">
@@ -88,8 +88,8 @@ export default async function BriefPage() {
       {mensuales.length > 0 && (
         <section className="mt-8">
           <div className="mb-3 flex items-center gap-3">
-            <span className="lbl">reportes mensuales de cliente</span>
-            <span className="chip text-[10px]">uso interno — no se envían aún</span>
+            <span className="lbl">Reportes mensuales de cliente</span>
+            <span className="chip text-[10px]">Uso interno — no se envían aún</span>
           </div>
           <div className="grid gap-2">
             {mensuales.map((b) => (

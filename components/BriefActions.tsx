@@ -62,7 +62,7 @@ export default function BriefActions({ clients }: { clients: ClienteOption[] }) 
             className="input w-auto py-1.5 text-xs"
             aria-label="cliente para reporte mensual"
           >
-            <option value="">reporte mensual: elegir cliente…</option>
+            <option value="">Reporte mensual: elegir cliente…</option>
             {clients.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.nombre}
@@ -74,7 +74,7 @@ export default function BriefActions({ clients }: { clients: ClienteOption[] }) 
             disabled={!clientId || loading !== null}
             className="btn-ghost px-3 py-1.5"
           >
-            {loading === "mensual" ? "generando…" : "generar mensual"}
+            {loading === "mensual" ? "Generando…" : "Generar mensual"}
           </button>
         </span>
       )}
@@ -84,7 +84,7 @@ export default function BriefActions({ clients }: { clients: ClienteOption[] }) 
         disabled={loading !== null}
         className="btn-primary px-6 text-sm"
       >
-        {loading === "diario" ? "generando…" : "generar ahora"}
+        {loading === "diario" ? "Generando…" : "Generar ahora"}
       </button>
     </div>
   );

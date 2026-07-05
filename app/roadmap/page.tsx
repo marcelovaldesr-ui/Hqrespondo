@@ -20,7 +20,7 @@ export default async function RoadmapPage() {
 
   return (
     <div className="mx-auto max-w-7xl">
-      <PageHeader title="roadmap" sub="operación interna" />
+      <PageHeader title="Roadmap" sub="Operación interna" />
       <RoadmapBoard initialItems={(data ?? []) as RoadmapItem[]} />
     </div>
   );
