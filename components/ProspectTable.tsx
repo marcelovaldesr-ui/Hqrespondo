@@ -1,16 +1,17 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ESTADO_CONFIG,
+  ESTADO_LABEL,
   ESTADO_OPTIONS,
   type Estado,
   type Prospect,
 } from "@/lib/types";
 
 function scoreCls(score: number) {
-  if (score >= 70) return { text: "text-brand", bar: "bg-brand" };
+  if (score >= 70) return { text: "text-ok", bar: "bg-ok" };
   if (score >= 40) return { text: "text-warn", bar: "bg-warn" };
   return { text: "text-ink-dim", bar: "bg-ink-faint" };
 }
@@ -18,11 +19,56 @@ function scoreCls(score: number) {
 const ESTADO_PILL: Record<Estado, string> = {
   nuevo: "border-accent/40 text-accent",
   contactado: "border-warn/40 text-warn",
-  respondio: "border-brand/40 text-brand",
-  reunion: "border-brand/40 text-brand",
+  respondio: "border-ok/40 text-ok",
+  reunion: "border-ok/40 text-ok",
   en_pipeline: "border-line2 text-ink-mut",
   descartado: "border-line text-ink-faint",
 };
+
+type Orden = "score" | "nombre" | "rubro" | "comuna" | "recientes";
+
+const ORDEN_OPTIONS: { value: Orden; label: string }[] = [
+  { value: "score", label: "Mayor score" },
+  { value: "recientes", label: "Más recientes" },
+  { value: "nombre", label: "Nombre A-Z" },
+  { value: "rubro", label: "Rubro A-Z" },
+  { value: "comuna", label: "Comuna A-Z" },
+];
+
+/** Genera un CSV compatible con Excel es-CL (BOM UTF-8 + separador ;) */
+function descargarCSV(rows: Prospect[]) {
+  const esc = (v: unknown) => {
+    const s = v == null ? "" : String(v);
+    return `"${s.replace(/"/g, '""')}"`;
+  };
+  const cab = [
+    "Nombre", "Rubro", "Comuna", "Teléfono", "Web", "Dirección",
+    "Rating", "Reviews", "Score", "Estado", "Próxima acción", "Mensaje", "Notas",
+  ];
+  const lineas = rows.map((p) =>
+    [
+      p.nombre, p.rubro, p.comuna, p.telefono, p.web, p.direccion,
+      p.rating, p.reviews, p.score, ESTADO_LABEL[p.estado],
+      p.proxima_accion, p.mensaje, p.notas,
+    ].map(esc).join(";"),
+  );
+  const csv = "﻿" + [cab.map(esc).join(";"), ...lineas].join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `prospectos-respondo-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/** Link wa.me con el mensaje pre-cargado (envío manual, 1 clic) */
+function linkWhatsApp(p: Prospect): string | null {
+  if (!p.telefono) return null;
+  let digits = p.telefono.replace(/\D/g, "");
+  if (digits.length === 9 && digits.startsWith("9")) digits = "56" + digits;
+  return `https://wa.me/${digits}${p.mensaje ? `?text=${encodeURIComponent(p.mensaje)}` : ""}`;
+}
 
 export default function ProspectTable({
   prospects,
@@ -32,6 +78,8 @@ export default function ProspectTable({
   const router = useRouter();
   const [items, setItems] = useState<Prospect[]>(prospects);
   const [filtro, setFiltro] = useState<Estado | "todos">("todos");
+  const [rubro, setRubro] = useState<string>("todos");
+  const [orden, setOrden] = useState<Orden>("score");
   const [q, setQ] = useState("");
   const [copiado, setCopiado] = useState<string | null>(null);
   const [abierto, setAbierto] = useState<string | null>(null);
@@ -41,14 +89,41 @@ export default function ProspectTable({
     setItems(prospects);
   }, [prospects]);
 
-  const filtrados = items.filter(
-    (p) =>
-      (filtro === "todos" || p.estado === filtro) &&
-      (q === "" ||
-        `${p.nombre} ${p.rubro} ${p.comuna}`
-          .toLowerCase()
-          .includes(q.toLowerCase())),
+  const rubros = useMemo(
+    () => Array.from(new Set(items.map((p) => p.rubro).filter(Boolean))).sort(),
+    [items],
   );
+
+  const filtrados = useMemo(() => {
+    const base = items.filter(
+      (p) =>
+        (filtro === "todos" || p.estado === filtro) &&
+        (rubro === "todos" || p.rubro === rubro) &&
+        (q === "" ||
+          `${p.nombre} ${p.rubro} ${p.comuna}`
+            .toLowerCase()
+            .includes(q.toLowerCase())),
+    );
+    const s = [...base];
+    switch (orden) {
+      case "score":
+        s.sort((a, b) => b.score - a.score);
+        break;
+      case "recientes":
+        s.sort((a, b) => b.created_at.localeCompare(a.created_at));
+        break;
+      case "nombre":
+        s.sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+        break;
+      case "rubro":
+        s.sort((a, b) => a.rubro.localeCompare(b.rubro, "es") || b.score - a.score);
+        break;
+      case "comuna":
+        s.sort((a, b) => a.comuna.localeCompare(b.comuna, "es") || b.score - a.score);
+        break;
+    }
+    return s;
+  }, [items, filtro, rubro, q, orden]);
 
   async function cambiarEstado(id: string, estado: Estado) {
     const anterior = items.find((p) => p.id === id);
@@ -82,6 +157,23 @@ export default function ProspectTable({
     }
   }
 
+  async function eliminar(p: Prospect) {
+    if (!confirm(`¿Eliminar el prospecto "${p.nombre}"? Esto no se puede deshacer.`)) return;
+    setEstadoError(null);
+    const previos = items;
+    setItems((actuales) => actuales.filter((x) => x.id !== p.id));
+    try {
+      const res = await fetch(`/api/prospects/${p.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "No se pudo eliminar");
+      }
+    } catch (err: any) {
+      setItems(previos);
+      setEstadoError(err.message);
+    }
+  }
+
   async function copiarMensaje(p: Prospect) {
     if (!p.mensaje) return;
     await navigator.clipboard.writeText(p.mensaje);
@@ -105,9 +197,30 @@ export default function ProspectTable({
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Filtrar…"
-          className="input w-56 py-2 text-xs"
+          placeholder="Buscar…"
+          className="input w-48 py-2 text-xs"
         />
+        <select
+          value={rubro}
+          onChange={(e) => setRubro(e.target.value)}
+          className="input w-auto py-2 text-xs"
+          aria-label="Filtrar por rubro"
+        >
+          <option value="todos">Todos los rubros</option>
+          {rubros.map((r) => (
+            <option key={r} value={r}>{r}</option>
+          ))}
+        </select>
+        <select
+          value={orden}
+          onChange={(e) => setOrden(e.target.value as Orden)}
+          className="input w-auto py-2 text-xs"
+          aria-label="Ordenar por"
+        >
+          {ORDEN_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>Ordenar: {o.label}</option>
+          ))}
+        </select>
         <div className="flex flex-wrap gap-1">
           {[{ value: "todos" as const, label: "Todos" }, ...ESTADO_OPTIONS].map(
             (estado) => (
@@ -125,8 +238,18 @@ export default function ProspectTable({
             ),
           )}
         </div>
-        <span className="ml-auto font-mono text-[11px] text-ink-dim">
-          {filtrados.length} Prospectos
+        <span className="ml-auto flex items-center gap-2.5">
+          <span className="font-mono text-[11px] text-ink-dim">
+            {filtrados.length} prospectos
+          </span>
+          <button
+            onClick={() => descargarCSV(filtrados)}
+            disabled={filtrados.length === 0}
+            className="btn-ghost px-3 py-1.5"
+            title="Descarga lo filtrado como CSV (se abre en Excel)"
+          >
+            ⬇ Exportar a Excel
+          </button>
         </span>
       </div>
       {estadoError && (
@@ -149,6 +272,7 @@ export default function ProspectTable({
           <tbody className="divide-y divide-line">
             {filtrados.map((p) => {
               const sc = scoreCls(p.score);
+              const wa = linkWhatsApp(p);
               return (
                 <Fragment key={p.id}>
                   <tr className="data-row">
@@ -178,7 +302,7 @@ export default function ProspectTable({
                       <div className="flex flex-wrap gap-1">
                         {!p.web && (
                           <span className="chip border-warn/30 px-1.5 py-0 text-[10px] text-warn">
-                            Sin Web
+                            Sin web
                           </span>
                         )}
                         {p.rating != null && (
@@ -221,12 +345,23 @@ export default function ProspectTable({
                     </td>
                     <td className="px-5 py-4 align-top">
                       <div className="flex flex-wrap gap-1.5">
+                        {wa && (
+                          <a
+                            href={wa}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="rounded-lg border border-ok/40 bg-ok/10 px-2.5 py-1 text-xs font-medium text-ok transition hover:bg-ok/20"
+                            title="Abre WhatsApp con el mensaje listo (envío manual)"
+                          >
+                            WhatsApp
+                          </a>
+                        )}
                         <button
                           onClick={() => copiarMensaje(p)}
                           disabled={!p.mensaje}
                           className="btn-ghost"
                         >
-                          {copiado === p.id ? "Copiado" : "Copiar Mensaje"}
+                          {copiado === p.id ? "Copiado ✓" : "Copiar"}
                         </button>
                         <button
                           onClick={() => setAbierto(abierto === p.id ? null : p.id)}
@@ -238,18 +373,26 @@ export default function ProspectTable({
                         {p.estado !== ESTADO_CONFIG.en_pipeline.value && (
                           <button
                             onClick={() => aPipeline(p)}
-                            className="rounded-lg border border-brand/40 bg-brand/10 px-2.5 py-1 text-xs font-medium text-brand transition hover:bg-brand/20"
+                            className="btn-ghost"
                           >
                             → Pipeline
                           </button>
                         )}
+                        <button
+                          onClick={() => eliminar(p)}
+                          className="btn-ghost hover:border-danger/40 hover:bg-danger/10 hover:text-danger"
+                          aria-label={`Eliminar ${p.nombre}`}
+                          title="Eliminar prospecto"
+                        >
+                          ×
+                        </button>
                       </div>
                     </td>
                   </tr>
                   {abierto === p.id && p.mensaje && (
                     <tr>
                       <td colSpan={5} className="px-3 pb-3 pt-0">
-                        <div className="ml-12 max-w-2xl border-l-2 border-brand bg-surface-3/80 px-5 py-4 text-sm leading-relaxed text-ink-soft shadow-glow">
+                        <div className="ml-12 max-w-2xl rounded-lg border-l-2 border-ok bg-surface-3/70 px-5 py-4 text-sm leading-relaxed text-ink-soft">
                           <p className="whitespace-pre-wrap">{p.mensaje}</p>
                           <p className="mt-2 text-[10.5px] text-warn">
                             Envío manual desde tu WhatsApp Business — nunca por
