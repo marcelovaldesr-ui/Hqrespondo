@@ -1,0 +1,49 @@
+{
+  "name": "Respondo HQ — Nodo de registro de mensajes (copiar dentro de cada bot)",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://TU-DOMINIO.vercel.app/api/hooks/bot-events",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-hq-token",
+              "value": "REEMPLAZA_CON_TU_HQ_API_TOKEN"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "tipo",
+              "value": "mensaje"
+            },
+            {
+              "name": "workflow_id",
+              "value": "={{ $workflow.id }}"
+            },
+            {
+              "name": "costo_clp",
+              "value": "15"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "c1b2c3d4-0001-4000-8000-000000000001",
+      "name": "Registrar mensaje en HQ",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [0, 0],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {},
+  "settings": {},
+  "pinData": {}
+}
