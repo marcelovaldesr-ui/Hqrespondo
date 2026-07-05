@@ -6,19 +6,42 @@ import BriefActions from "@/components/BriefActions";
 
 export const dynamic = "force-dynamic";
 
-export default async function BriefPage() {
-  const { data } = await db()
-    .from("briefs")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(14);
+interface BriefRow extends Brief {
+  tipo: string;
+  client_id: string | null;
+}
 
-  const briefs = (data ?? []) as Brief[];
+export default async function BriefPage() {
+  const s = db();
+  const [diariosRes, mensualesRes, clientesRes] = await Promise.all([
+    s
+      .from("briefs")
+      .select("*")
+      .eq("tipo", "diario")
+      .order("created_at", { ascending: false })
+      .limit(14),
+    s
+      .from("briefs")
+      .select("*")
+      .eq("tipo", "mensual_cliente")
+      .order("created_at", { ascending: false })
+      .limit(6),
+    s.from("clients").select("id,nombre").eq("activo", true).order("nombre"),
+  ]);
+
+  const briefs = (diariosRes.data ?? []) as BriefRow[];
+  const mensuales = (mensualesRes.data ?? []) as BriefRow[];
+  const clientes = (clientesRes.data ?? []) as { id: string; nombre: string }[];
+  const nombreCliente = new Map(clientes.map((c) => [c.id, c.nombre]));
   const [ultimo, ...anteriores] = briefs;
 
   return (
     <div className="mx-auto max-w-4xl">
-      <PageHeader title="brief del día" sub="operaciones" right={<BriefActions />} />
+      <PageHeader
+        title="brief del día"
+        sub="operaciones"
+        right={<BriefActions clients={clientes} />}
+      />
 
       {!ultimo ? (
         <div className="panel rounded-xl border-dashed border-line2 p-10 text-center text-sm text-ink-dim">
@@ -52,6 +75,32 @@ export default async function BriefPage() {
               <details key={b.id} className="panel px-4 py-3">
                 <summary className="cursor-pointer font-mono text-xs text-ink-mut transition hover:text-brand">
                   {fechaCorta(b.created_at)} · {hora(b.created_at)}
+                </summary>
+                <pre className="mt-3 whitespace-pre-wrap border-t border-line pt-3 font-sans text-[12.5px] leading-relaxed text-ink-soft">
+                  {b.contenido}
+                </pre>
+              </details>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {mensuales.length > 0 && (
+        <section className="mt-8">
+          <div className="mb-3 flex items-center gap-3">
+            <span className="lbl">reportes mensuales de cliente</span>
+            <span className="chip text-[10px]">uso interno — no se envían aún</span>
+          </div>
+          <div className="grid gap-2">
+            {mensuales.map((b) => (
+              <details key={b.id} className="panel border-accent/20 px-4 py-3">
+                <summary className="cursor-pointer font-mono text-xs text-ink-mut transition hover:text-accent">
+                  <span className="text-accent">
+                    {b.client_id
+                      ? nombreCliente.get(b.client_id) ?? "cliente eliminado"
+                      : "sin cliente"}
+                  </span>{" "}
+                  · {fechaCorta(b.created_at)} · {hora(b.created_at)}
                 </summary>
                 <pre className="mt-3 whitespace-pre-wrap border-t border-line pt-3 font-sans text-[12.5px] leading-relaxed text-ink-soft">
                   {b.contenido}
