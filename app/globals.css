@@ -7,128 +7,60 @@
 body {
   @apply bg-bg text-ink antialiased;
   min-height: 100vh;
-  background-image:
-    radial-gradient(circle at 18% 0%, rgba(48, 234, 136, 0.14), transparent 31rem),
-    radial-gradient(circle at 82% 18%, rgba(85, 214, 255, 0.12), transparent 29rem),
-    linear-gradient(rgba(148, 163, 184, 0.028) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.028) 1px, transparent 1px),
-    linear-gradient(180deg, #070A0F 0%, #05080B 100%);
-  background-attachment: fixed;
-  background-size: auto, auto, 38px 38px, 38px 38px, auto;
-}
-
-body::before {
-  pointer-events: none;
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  content: "";
-  background:
-    linear-gradient(90deg, rgba(255,255,255,0.03), transparent 18%, transparent 82%, rgba(255,255,255,0.03)),
-    radial-gradient(circle at 50% -20%, rgba(255,255,255,0.10), transparent 38rem);
-  mask-image: linear-gradient(to bottom, black, transparent 76%);
 }
 
 @layer components {
   .app-frame {
-    @apply relative z-10 min-h-screen overflow-hidden border border-line text-ink shadow-card;
-    background-color: rgba(6, 9, 13, 0.72);
-    backdrop-filter: blur(18px);
+    @apply relative z-10 min-h-screen text-ink;
   }
   .panel {
-    @apply rounded-xl border border-line shadow-card;
-    backdrop-filter: blur(18px);
-    background-image:
-      linear-gradient(145deg, rgba(255,255,255,0.052), transparent 42%),
-      linear-gradient(180deg, rgba(16, 22, 29, 0.90), rgba(9, 13, 18, 0.88));
+    @apply rounded-xl border border-line bg-surface-2 shadow-card;
   }
   .panel-hot {
-    @apply panel relative overflow-hidden;
-  }
-  .panel-hot::before {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    content: "";
-    background:
-      radial-gradient(circle at 15% 0%, rgba(48,234,136,0.12), transparent 18rem),
-      radial-gradient(circle at 100% 20%, rgba(85,214,255,0.10), transparent 14rem);
+    @apply panel relative;
   }
   .metric-card {
-    @apply panel-hot p-5 transition duration-300 hover:border-brand/30 hover:shadow-glow;
+    @apply panel p-5 transition duration-200 hover:border-line2;
   }
   .subpanel {
-    @apply rounded-lg border border-line bg-surface-3/70;
-    backdrop-filter: blur(12px);
+    @apply rounded-lg border border-line bg-surface-3;
   }
   .lbl {
-    @apply text-[11px] uppercase tracking-[0.16em] text-ink-dim;
+    @apply text-[11px] uppercase tracking-[0.14em] text-ink-dim;
   }
   .chip {
-    @apply inline-flex items-center gap-1 rounded-full border border-line2 bg-white/[0.025] px-2.5 py-0.5 text-[11px] text-ink-mut shadow-sm;
-    backdrop-filter: blur(12px);
+    @apply inline-flex items-center gap-1 rounded-full border border-line2 bg-surface-3 px-2.5 py-0.5 text-[11px] text-ink-mut;
   }
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-brand/40 bg-brand px-4 py-2 text-sm font-semibold text-brand-dark shadow-glow transition hover:-translate-y-0.5 hover:bg-[#45F19A] disabled:translate-y-0 disabled:opacity-40;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#15803D] disabled:opacity-40;
   }
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-line2 bg-white/[0.025] px-2.5 py-1 text-xs text-ink-mut transition hover:border-accent/40 hover:bg-accent/10 hover:text-ink disabled:opacity-30;
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-line2 bg-surface-2 px-2.5 py-1 text-xs text-ink-mut transition hover:bg-surface-3 hover:text-ink disabled:opacity-30;
   }
   .input {
-    @apply w-full rounded-lg border border-line2 bg-surface-3/80 px-3 py-2 text-sm text-ink outline-none transition placeholder:text-ink-faint focus:border-brand/70 focus:bg-surface-2 focus:shadow-glow;
+    @apply w-full rounded-lg border border-line2 bg-surface-2 px-3 py-2 text-sm text-ink outline-none transition placeholder:text-ink-faint focus:border-brand;
   }
   .led {
     @apply inline-block h-[7px] w-[7px] shrink-0 rounded-full;
   }
   .scanline {
-    @apply relative overflow-hidden;
-  }
-  .scanline::after {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    content: "";
-    background: linear-gradient(180deg, transparent, rgba(255,255,255,0.035), transparent);
-    transform: translateY(-100%);
-    animation: scan 6.5s ease-in-out infinite;
+    @apply relative;
   }
   .data-row {
-    @apply transition duration-200 hover:bg-white/[0.035];
+    @apply transition duration-150 hover:bg-surface-3/60;
   }
 }
 
-.led-glow-green {
-  box-shadow: 0 0 7px 1px rgba(46, 229, 131, 0.55);
-}
-.led-glow-cyan {
-  box-shadow: 0 0 7px 1px rgba(83, 201, 242, 0.55);
-}
-.led-glow-red {
-  box-shadow: 0 0 7px 1px rgba(242, 92, 84, 0.55);
-}
+/* Efectos heredados del tema oscuro — neutralizados a propósito.
+   Se mantienen las clases para no tocar cada componente. */
+.led-glow-green,
+.led-glow-cyan,
+.led-glow-red,
 .led-glow-amber {
-  box-shadow: 0 0 7px 1px rgba(242, 181, 68, 0.55);
+  box-shadow: none;
 }
 .led-pulse {
-  animation: ledpulse 2.2s ease-in-out infinite;
-}
-@keyframes ledpulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.4;
-  }
-}
-@keyframes scan {
-  0%,
-  72% {
-    transform: translateY(-100%);
-  }
-  100% {
-    transform: translateY(100%);
-  }
+  animation: none;
 }
 
 ::-webkit-scrollbar {
@@ -139,6 +71,6 @@ body::before {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #232a32;
+  background: #d3d9df;
   border-radius: 4px;
 }

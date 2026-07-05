@@ -80,8 +80,7 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="relative flex w-[4.75rem] shrink-0 flex-col border-r border-line bg-surface-1/72 px-2 py-5 shadow-card sm:w-[15.5rem] sm:px-3">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-brand/10 to-transparent" />
+    <aside className="relative flex w-[4.75rem] shrink-0 flex-col border-r border-line bg-surface-1 px-2 py-5 sm:w-[15.5rem] sm:px-3">
       <div className="relative mb-8 flex items-center gap-2.5 px-3">
         <span className="led led-glow-green bg-brand" />
         <span className="hidden text-[15px] font-semibold tracking-tight sm:inline">
@@ -98,8 +97,8 @@ export default function Sidebar() {
               href={l.href}
               className={`group flex items-center gap-3 rounded-lg border px-3 py-2.5 text-[13px] transition ${
                 active
-                  ? "border-brand/30 bg-brand/[0.105] text-brand shadow-glow"
-                  : "border-transparent text-ink-mut hover:border-line hover:bg-white/[0.035] hover:text-ink"
+                  ? "border-brand/25 bg-brand/[0.07] text-brand"
+                  : "border-transparent text-ink-mut hover:bg-surface-3 hover:text-ink"
               }`}
             >
               <span

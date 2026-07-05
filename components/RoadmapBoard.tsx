@@ -310,7 +310,7 @@ export default function RoadmapBoard({
 
                   if (editId === it.id) {
                     return (
-                      <div key={it.id} className="rounded-xl border border-accent/40 bg-surface-3/75 p-3 shadow-card">
+                      <div key={it.id} className="rounded-xl border border-accent/40 bg-surface-2 p-3 shadow-card">
                         <CampoTarea
                           draft={editDraft}
                           setDraft={setEditDraft}
@@ -337,7 +337,12 @@ export default function RoadmapBoard({
                   return (
                     <div
                       key={it.id}
-                      className={`group rounded-xl border bg-surface-3/75 p-3.5 shadow-card transition hover:-translate-y-0.5 hover:border-accent/35 ${COL_CARD[estado] ?? "border-line"}`}
+                      title={
+                        it.actualizado_por || it.creado_por
+                          ? `creado por ${it.creado_por ?? "?"} · últ. cambio ${it.actualizado_por ?? it.creado_por}`
+                          : undefined
+                      }
+                      className={`group rounded-xl border bg-surface-2 p-3.5 shadow-card transition hover:border-line2 ${COL_CARD[estado] ?? "border-line"}`}
                     >
                       <div className="text-[13.5px] font-medium leading-snug text-ink">
                         {it.tarea}
@@ -360,12 +365,12 @@ export default function RoadmapBoard({
                       </div>
 
                       {it.notas && (
-                        <div className="mt-2 rounded-lg border border-line bg-surface-2/80 px-2 py-1.5 text-[11px] leading-relaxed text-ink-mut">
+                        <div className="mt-2 rounded-lg bg-surface-3/70 px-2 py-1.5 text-[11px] leading-relaxed text-ink-mut">
                           {it.notas}
                         </div>
                       )}
 
-                      <div className="mt-3 flex items-center gap-1.5 opacity-70 transition group-hover:opacity-100">
+                      <div className="mt-3 hidden items-center gap-1.5 group-hover:flex">
                         <select
                           value={it.estado}
                           onChange={(e) => moverEstado(it, e.target.value)}
@@ -395,12 +400,6 @@ export default function RoadmapBoard({
                           ×
                         </button>
                       </div>
-
-                      {(it.actualizado_por || it.creado_por) && (
-                        <div className="mt-2 text-right font-mono text-[9px] text-ink-faint">
-                          {it.actualizado_por ?? it.creado_por}
-                        </div>
-                      )}
                     </div>
                   );
                 })}

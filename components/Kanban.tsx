@@ -31,7 +31,7 @@ const COL_CARD: Record<Etapa, string> = {
 };
 
 const SEGMENTOS: { etapa: Etapa; cls: string }[] = [
-  { etapa: "contactado", cls: "bg-[#2C3540]" },
+  { etapa: "contactado", cls: "bg-ink-faint" },
   { etapa: "demo", cls: "bg-accent" },
   { etapa: "propuesta", cls: "bg-warn" },
   { etapa: "cliente", cls: "bg-brand" },
@@ -167,7 +167,7 @@ export default function Kanban({ deals }: { deals: Deal[] }) {
                 {cards.map((d) => (
                   <div
                     key={d.id}
-                    className={`group rounded-xl border bg-surface-3/75 p-3.5 shadow-card transition hover:-translate-y-0.5 hover:border-accent/35 ${COL_CARD[etapa]}`}
+                    className={`group rounded-xl border bg-surface-2 p-3.5 shadow-card transition hover:border-line2 ${COL_CARD[etapa]}`}
                   >
                     <div className="truncate text-[14px] font-semibold leading-tight text-ink">
                       {d.nombre_negocio}

@@ -332,7 +332,7 @@ export default function Clients({ clients }: { clients: ClientStats[] }) {
               ? Math.max(0, Math.round((1 - c.costo_mes / c.mensualidad) * 100))
               : null;
           return (
-            <div key={c.id} className={`panel-hot border p-4 transition hover:-translate-y-0.5 ${st.borde}`}>
+            <div key={c.id} className={`panel-hot border p-4 transition ${st.borde}`}>
               <div className="flex items-center gap-2">
                 <span className={`led ${st.led} ${st.glow}`} />
                 <span className="flex-1 truncate text-[15px] font-semibold">

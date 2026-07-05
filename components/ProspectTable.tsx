@@ -138,7 +138,7 @@ export default function ProspectTable({
       <div className="panel overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-line bg-white/[0.025]">
+            <tr className="border-b border-line bg-surface-3/60">
               <th className="lbl px-5 py-3 font-normal">Score</th>
               <th className="lbl px-5 py-3 font-normal">Negocio</th>
               <th className="lbl px-5 py-3 font-normal">Señales</th>

@@ -97,7 +97,7 @@ export default async function ClientesPage() {
           {alertas.map((a, i) => (
             <div
               key={i}
-              className="panel flex items-center gap-3 border-danger/30 bg-danger/[0.07] px-4 py-3 text-[12px] text-[#F2A09B]"
+              className="panel flex items-center gap-3 border-danger/30 bg-danger/[0.06] px-4 py-3 text-[12px] text-ink-soft"
             >
               <span className="led led-glow-red bg-danger" />
               <span className="truncate">
