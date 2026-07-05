@@ -144,3 +144,48 @@ export interface ClientStats extends Client {
   costo_mes: number;
   uptime: UptimeBucket[];
 }
+
+/** Horarios de atención del bot (texto libre por tramo, null = cerrado) */
+export interface HorarioAtencion {
+  lun_vie?: string | null;
+  sab?: string | null;
+  dom?: string | null;
+}
+
+/** Configuración operativa del bot de un cliente (tabla bot_configs) */
+export interface BotConfig {
+  id: string;
+  client_id: string;
+  tono: string | null;
+  horario_atencion: HorarioAtencion;
+  derivacion_reglas: string | null;
+  derivacion_contacto: string | null;
+  extra: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export const TIPOS_BRIEF = ["diario", "mensual_cliente"] as const;
+export type TipoBrief = (typeof TIPOS_BRIEF)[number];
+
+/** Ítem del roadmap interno compartido (tabla roadmap_items) */
+export interface RoadmapItem {
+  id: string;
+  tarea: string;
+  estado: string;
+  area: string | null;
+  fecha_limite: string | null;
+  notas: string | null;
+  creado_por: string | null;
+  actualizado_por: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Orden sugerido de columnas del roadmap (los demás estados van al final) */
+export const ROADMAP_ESTADOS_BASE = [
+  "Esta semana",
+  "En curso",
+  "Backlog",
+  "Hecho",
+] as const;

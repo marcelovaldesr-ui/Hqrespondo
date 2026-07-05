@@ -60,6 +60,154 @@ function salud(c: ClientStats): {
   };
 }
 
+/**
+ * Configuración operativa del bot (tabla bot_configs): tono, horarios
+ * y reglas de derivación a humano. Se carga al expandir y se guarda
+ * con upsert — n8n la lee vía GET /api/hooks/bot-config.
+ */
+function BotConfigPanel({ clientId }: { clientId: string }) {
+  const [open, setOpen] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [tono, setTono] = useState("");
+  const [lunVie, setLunVie] = useState("");
+  const [sab, setSab] = useState("");
+  const [dom, setDom] = useState("");
+  const [reglas, setReglas] = useState("");
+  const [contacto, setContacto] = useState("");
+
+  async function toggle() {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    setOpen(true);
+    if (loaded) return;
+    try {
+      const res = await fetch(`/api/clients/${clientId}/config`);
+      const data = await res.json();
+      const c = data.config;
+      if (c) {
+        setTono(c.tono ?? "");
+        setLunVie(c.horario_atencion?.lun_vie ?? "");
+        setSab(c.horario_atencion?.sab ?? "");
+        setDom(c.horario_atencion?.dom ?? "");
+        setReglas(c.derivacion_reglas ?? "");
+        setContacto(c.derivacion_contacto ?? "");
+      }
+    } catch {
+      setMsg("No se pudo cargar la config");
+    } finally {
+      setLoaded(true);
+    }
+  }
+
+  async function guardar() {
+    if (saving) return;
+    setSaving(true);
+    setMsg(null);
+    try {
+      const res = await fetch(`/api/clients/${clientId}/config`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tono: tono || null,
+          horario_atencion: {
+            lun_vie: lunVie || null,
+            sab: sab || null,
+            dom: dom || null,
+          },
+          derivacion_reglas: reglas || null,
+          derivacion_contacto: contacto || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Error al guardar");
+      setMsg("guardado ✓");
+      setTimeout(() => setMsg(null), 2500);
+    } catch (e: any) {
+      setMsg(e.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="relative mt-3 border-t border-line pt-3">
+      <button onClick={toggle} className="btn-ghost w-full justify-between px-2 py-1">
+        <span>config bot · tono / horarios / derivación</span>
+        <span className="font-mono">{open ? "−" : "+"}</span>
+      </button>
+
+      {open && (
+        <div className="mt-3 flex flex-col gap-2.5">
+          <div>
+            <label className="lbl mb-1 block">tono del bot</label>
+            <input
+              value={tono}
+              onChange={(e) => setTono(e.target.value)}
+              placeholder="cercano y profesional, trato de tú, sin emojis"
+              className="input text-xs"
+            />
+          </div>
+          <div>
+            <label className="lbl mb-1 block">horarios de atención (vacío = cerrado)</label>
+            <div className="grid grid-cols-3 gap-2">
+              <input
+                value={lunVie}
+                onChange={(e) => setLunVie(e.target.value)}
+                placeholder="L-V 09:00-19:00"
+                className="input px-2 text-xs"
+                aria-label="horario lunes a viernes"
+              />
+              <input
+                value={sab}
+                onChange={(e) => setSab(e.target.value)}
+                placeholder="Sáb 10:00-14:00"
+                className="input px-2 text-xs"
+                aria-label="horario sábado"
+              />
+              <input
+                value={dom}
+                onChange={(e) => setDom(e.target.value)}
+                placeholder="Dom"
+                className="input px-2 text-xs"
+                aria-label="horario domingo"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="lbl mb-1 block">cuándo derivar a humano</label>
+            <textarea
+              value={reglas}
+              onChange={(e) => setReglas(e.target.value)}
+              placeholder="Si piden hablar con una persona, si hay un reclamo, si preguntan por un pedido ya pagado…"
+              rows={3}
+              className="input resize-y text-xs"
+            />
+          </div>
+          <div>
+            <label className="lbl mb-1 block">derivar a (nombre / whatsapp)</label>
+            <input
+              value={contacto}
+              onChange={(e) => setContacto(e.target.value)}
+              placeholder="Marcelo · +569XXXXXXXX"
+              className="input text-xs"
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[10.5px] text-ink-dim">{msg}</span>
+            <button onClick={guardar} disabled={saving} className="btn-primary px-4 py-1 text-xs">
+              {saving ? "guardando…" : "guardar config"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Clients({ clients }: { clients: ClientStats[] }) {
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
@@ -254,6 +402,8 @@ export default function Clients({ clients }: { clients: ClientStats[] }) {
                   </button>
                 </span>
               </div>
+
+              <BotConfigPanel clientId={c.id} />
             </div>
           );
         })}
