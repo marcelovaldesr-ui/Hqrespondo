@@ -11,15 +11,19 @@ Panel interno de operaciones de Respondo: prospección con IA, pipeline de venta
 | `/dashboard` | KPIs: calientes sin contactar, seguimientos, MRR pipeline, MRR actual, errores de bots, conversaciones |
 | `/prospeccion` | Buscar negocios por rubro+comuna (Places API) → scoring + mensaje con Gemini → tabla con estados |
 | `/pipeline` | Kanban: Contactado → Demo → Propuesta → Cliente / Perdido, con MRR proyectado |
-| `/clientes` | Salud de cada bot (eventos desde n8n), mensajes, costos, mensualidad |
-| `/brief` | Brief diario generado por Gemini (histórico + generar ahora) |
+| `/clientes` | Salud de cada bot (eventos desde n8n), mensajes, costos, mensualidad + config del bot (tono, horarios, derivación a humano) |
+| `/brief` | Brief diario generado por Gemini (histórico + generar ahora) + reporte mensual en lenguaje de cliente (uso interno) |
+| `/roadmap` | Roadmap interno compartido del equipo (reemplaza Notion): kanban por Estado, texto libre en Estado/Área |
 
 ## Setup (30-40 min)
 
 ### 1. Supabase
 1. Crea un proyecto en [supabase.com](https://supabase.com) (free tier).
 2. SQL Editor → pega y ejecuta `supabase/schema.sql` completo.
-3. Settings → API: copia la **URL** y la **service_role key**.
+3. Ejecuta después, en orden, cada archivo de `supabase/migrations/` (002 → 006).
+4. Settings → API: copia la **URL** y la **service_role key**.
+
+⚠️ El free tier **pausa el proyecto tras ~7 días sin uso**. Si el panel deja de cargar, entra al dashboard de Supabase y reanúdalo. Con clientes en producción, evalúa el plan pago.
 
 ### 2. APIs de Google
 - **Places API (New):** en Google Cloud Console, habilita "Places API (New)" y crea una API key. ⚠️ Requiere facturación activa — verifica la cuota gratis mensual vigente antes de buscar masivamente.
@@ -38,6 +42,8 @@ npm run dev
 # http://localhost:3000 (login: HQ_USER / HQ_PASSWORD)
 ```
 
+El panel acepta **dos credenciales** (`HQ_USER`/`HQ_PASSWORD` y `HQ_USER_2`/`HQ_PASSWORD_2`), una por socio. Según cuál se use para entrar, el roadmap registra quién creó/actualizó cada tarea.
+
 ### 5. Deploy en Vercel
 ```bash
 vercel --prod
@@ -51,6 +57,8 @@ Agrega TODAS las variables de `.env.local` en Vercel → Settings → Environmen
 
 En el panel (`/clientes`), crea cada cliente con su **Workflow ID** de n8n (visible en la URL del workflow). Así HQ asocia eventos → cliente.
 
+Además, cada bot puede leer su configuración (tono, horarios, derivación a humano) desde `GET /api/hooks/bot-config?workflow_id=XXX` con el header `x-hq-token`. La config se edita en `/clientes` → "config bot".
+
 ### 7. WhatsApp (alertas y brief hacia TI)
 - `WHATSAPP_PHONE_ID` + `WHATSAPP_TOKEN`: tu app de Meta (la misma de los bots sirve).
 - `MI_WHATSAPP`: tu número personal con código país (569XXXXXXXX).
@@ -59,7 +67,7 @@ En el panel (`/clientes`), crea cada cliente con su **Workflow ID** de n8n (visi
 ## Reglas de uso (importante)
 
 - **El outreach es MANUAL.** El panel genera el mensaje; tú lo copias y lo envías desde tu WhatsApp Business normal (número distinto al de la API). Enviar frío por la Cloud API = riesgo de baneo del número que sostiene los bots de tus clientes.
-- La service_role key de Supabase **nunca** va en código cliente ni en un repo público. Las tablas tienen RLS activado sin policies: solo el servidor puede leerlas.
+- La service_role key de Supabase **nunca** va en código cliente ni en un repo público. Las tablas tienen RLS activado y los roles públicos sin GRANT (migración 002): solo el servidor puede leerlas.
 - Ley 21.719 (vigente dic-2026): los datos de prospectos son datos personales. Mantén registro del origen y elimina a quien lo pida.
 
 ## Arquitectura
@@ -70,8 +78,8 @@ Gemini ──────┤                    ┌── n8n: brief diario (cro
              ▼                    │
         Next.js (Vercel) ◄────────┤── n8n: error workflow ───────────► /api/hooks/bot-events
              │                    │
-             ▼                    └── n8n: bots de clientes (nodo registro) ──► /api/hooks/bot-events
-         Supabase                                      │
-             ▲                                         ▼
+             ▼                    ├── n8n: bots de clientes (nodo registro) ──► /api/hooks/bot-events
+         Supabase                 │                    │
+             ▲                    └── n8n: bots leen su config ◄──── /api/hooks/bot-config
              └────────── WhatsApp Cloud API ──► alertas y brief a TU número
 ```
