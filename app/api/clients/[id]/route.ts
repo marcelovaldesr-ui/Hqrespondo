@@ -34,3 +34,15 @@ export async function PATCH(
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
+
+/** DELETE /api/clients/:id — elimina el cliente (sus eventos quedan sin cliente, su config se borra) */
+export async function DELETE(
+  _req: Request,
+  { params }: { params: { id: string } },
+) {
+  const { error } = await db().from("clients").delete().eq("id", params.id);
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true });
+}

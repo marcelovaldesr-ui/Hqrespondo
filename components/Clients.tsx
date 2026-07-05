@@ -22,7 +22,7 @@ function salud(c: ClientStats): {
     return {
       led: "bg-ink-faint",
       glow: "",
-      texto: "inactivo",
+      texto: "Inactivo",
       textoCls: "text-ink-faint",
       borde: "border-line opacity-70",
     };
@@ -38,7 +38,7 @@ function salud(c: ClientStats): {
     return {
       led: "bg-warn",
       glow: "led-glow-amber",
-      texto: "sin eventos aún",
+      texto: "Sin eventos aún",
       textoCls: "text-warn",
       borde: "border-warn/25",
     };
@@ -47,17 +47,101 @@ function salud(c: ClientStats): {
     return {
       led: "bg-warn",
       glow: "led-glow-amber",
-      texto: `sin actividad ${Math.floor(horas)} h`,
+      texto: `Sin actividad ${Math.floor(horas)} h`,
       textoCls: "text-warn",
       borde: "border-warn/25",
     };
   return {
-    led: "bg-brand",
+    led: "bg-ok",
     glow: "led-glow-green",
-    texto: "operativo",
-    textoCls: "text-brand",
+    texto: "Operativo",
+    textoCls: "text-ok",
     borde: "border-line",
   };
+}
+
+/**
+ * Edición de los datos del cliente + eliminación.
+ */
+function EditClientPanel({ c }: { c: ClientStats }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [nombre, setNombre] = useState(c.nombre);
+  const [rubro, setRubro] = useState(c.rubro ?? "");
+  const [plan, setPlan] = useState<Plan>(c.plan);
+  const [mensualidad, setMensualidad] = useState(String(c.mensualidad));
+  const [telefonoBot, setTelefonoBot] = useState(c.telefono_bot ?? "");
+  const [workflowId, setWorkflowId] = useState(c.workflow_id ?? "");
+
+  async function guardar() {
+    if (saving || !nombre.trim()) return;
+    setSaving(true);
+    await fetch(`/api/clients/${c.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nombre: nombre.trim(),
+        rubro: rubro || null,
+        plan,
+        mensualidad: Number(mensualidad) || 0,
+        telefono_bot: telefonoBot || null,
+        workflow_id: workflowId || null,
+      }),
+    });
+    setSaving(false);
+    setOpen(false);
+    router.refresh();
+  }
+
+  async function eliminar() {
+    if (
+      !confirm(
+        `¿Eliminar el cliente "${c.nombre}"? Su historial de eventos queda sin cliente asociado. Esto no se puede deshacer.`,
+      )
+    )
+      return;
+    await fetch(`/api/clients/${c.id}`, { method: "DELETE" });
+    router.refresh();
+  }
+
+  return (
+    <div className="relative mt-3 border-t border-line pt-3">
+      <button onClick={() => setOpen(!open)} className="btn-ghost w-full justify-between px-2 py-1">
+        <span>Editar cliente</span>
+        <span className="font-mono">{open ? "−" : "+"}</span>
+      </button>
+
+      {open && (
+        <div className="mt-3 flex flex-col gap-2.5">
+          <div className="grid grid-cols-2 gap-2">
+            <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre" className="input text-xs" aria-label="Nombre" />
+            <input value={rubro} onChange={(e) => setRubro(e.target.value)} placeholder="Rubro" className="input text-xs" aria-label="Rubro" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <select value={plan} onChange={(e) => setPlan(e.target.value as Plan)} className="input px-2 text-xs" aria-label="Plan">
+              {PLANES.map((pl) => (
+                <option key={pl} value={pl}>{PLAN_LABEL[pl]}</option>
+              ))}
+            </select>
+            <input type="number" value={mensualidad} onChange={(e) => setMensualidad(e.target.value)} placeholder="Mensualidad CLP" className="input px-2 text-xs" aria-label="Mensualidad" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <input value={telefonoBot} onChange={(e) => setTelefonoBot(e.target.value)} placeholder="Teléfono del bot" className="input px-2 font-mono text-xs" aria-label="Teléfono del bot" />
+            <input value={workflowId} onChange={(e) => setWorkflowId(e.target.value)} placeholder="Workflow ID (n8n)" className="input px-2 font-mono text-xs" aria-label="Workflow ID" />
+          </div>
+          <div className="flex items-center justify-between">
+            <button onClick={eliminar} className="btn-ghost hover:border-danger/40 hover:bg-danger/10 hover:text-danger">
+              Eliminar cliente
+            </button>
+            <button onClick={guardar} disabled={saving || !nombre.trim()} className="btn-primary px-4 py-1 text-xs">
+              {saving ? "Guardando…" : "Guardar"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 /**
@@ -124,7 +208,7 @@ function BotConfigPanel({ clientId }: { clientId: string }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Error al guardar");
-      setMsg("guardado ✓");
+      setMsg("Guardado ✓");
       setTimeout(() => setMsg(null), 2500);
     } catch (e: any) {
       setMsg(e.message);
@@ -136,14 +220,14 @@ function BotConfigPanel({ clientId }: { clientId: string }) {
   return (
     <div className="relative mt-3 border-t border-line pt-3">
       <button onClick={toggle} className="btn-ghost w-full justify-between px-2 py-1">
-        <span>config bot · tono / horarios / derivación</span>
+        <span>Config bot · Tono / Horarios / Derivación</span>
         <span className="font-mono">{open ? "−" : "+"}</span>
       </button>
 
       {open && (
         <div className="mt-3 flex flex-col gap-2.5">
           <div>
-            <label className="lbl mb-1 block">tono del bot</label>
+            <label className="lbl mb-1 block">Tono del bot</label>
             <input
               value={tono}
               onChange={(e) => setTono(e.target.value)}
@@ -152,7 +236,7 @@ function BotConfigPanel({ clientId }: { clientId: string }) {
             />
           </div>
           <div>
-            <label className="lbl mb-1 block">horarios de atención (vacío = cerrado)</label>
+            <label className="lbl mb-1 block">Horarios de atención (vacío = cerrado)</label>
             <div className="grid grid-cols-3 gap-2">
               <input
                 value={lunVie}
@@ -178,7 +262,7 @@ function BotConfigPanel({ clientId }: { clientId: string }) {
             </div>
           </div>
           <div>
-            <label className="lbl mb-1 block">cuándo derivar a humano</label>
+            <label className="lbl mb-1 block">Cuándo derivar a humano</label>
             <textarea
               value={reglas}
               onChange={(e) => setReglas(e.target.value)}
@@ -188,7 +272,7 @@ function BotConfigPanel({ clientId }: { clientId: string }) {
             />
           </div>
           <div>
-            <label className="lbl mb-1 block">derivar a (nombre / whatsapp)</label>
+            <label className="lbl mb-1 block">Derivar a (nombre / WhatsApp)</label>
             <input
               value={contacto}
               onChange={(e) => setContacto(e.target.value)}
@@ -199,7 +283,7 @@ function BotConfigPanel({ clientId }: { clientId: string }) {
           <div className="flex items-center justify-between">
             <span className="text-[10.5px] text-ink-dim">{msg}</span>
             <button onClick={guardar} disabled={saving} className="btn-primary px-4 py-1 text-xs">
-              {saving ? "guardando…" : "guardar config"}
+              {saving ? "Guardando…" : "Guardar config"}
             </button>
           </div>
         </div>
@@ -260,25 +344,25 @@ export default function Clients({ clients }: { clients: ClientStats[] }) {
     <div>
       <div className="mb-5 flex flex-wrap items-center gap-3">
         <div className="metric-card px-5 py-4">
-          <span className="lbl">mrr actual </span>
-          <span className="ml-3 font-mono text-2xl text-brand">{clp(mrr)}</span>
+          <span className="lbl">MRR actual </span>
+          <span className="ml-3 font-mono text-2xl text-ok">{clp(mrr)}</span>
         </div>
         <div className="metric-card px-5 py-4">
-          <span className="lbl">activos </span>
+          <span className="lbl">Activos </span>
           <span className="ml-3 font-mono text-2xl">{activos.length}</span>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
           className="btn-primary ml-auto text-xs"
         >
-          + cliente
+          + Cliente
         </button>
       </div>
 
       {showForm && (
         <form onSubmit={crear} className="panel-hot mb-5 flex flex-wrap items-end gap-3 p-4">
           <div className="min-w-44 flex-1">
-            <label className="lbl mb-1.5 block">nombre</label>
+            <label className="lbl mb-1.5 block">Nombre</label>
             <input
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
@@ -287,7 +371,7 @@ export default function Clients({ clients }: { clients: ClientStats[] }) {
             />
           </div>
           <div className="min-w-36">
-            <label className="lbl mb-1.5 block">rubro</label>
+            <label className="lbl mb-1.5 block">Rubro</label>
             <input
               value={rubro}
               onChange={(e) => setRubro(e.target.value)}
@@ -296,7 +380,7 @@ export default function Clients({ clients }: { clients: ClientStats[] }) {
             />
           </div>
           <div>
-            <label className="lbl mb-1.5 block">plan</label>
+            <label className="lbl mb-1.5 block">Plan</label>
             <select
               value={plan}
               onChange={(e) => setPlan(e.target.value as Plan)}
@@ -310,7 +394,7 @@ export default function Clients({ clients }: { clients: ClientStats[] }) {
             </select>
           </div>
           <div className="min-w-40">
-            <label className="lbl mb-1.5 block">workflow id (n8n)</label>
+            <label className="lbl mb-1.5 block">Workflow ID (n8n)</label>
             <input
               value={workflowId}
               onChange={(e) => setWorkflowId(e.target.value)}
@@ -319,7 +403,7 @@ export default function Clients({ clients }: { clients: ClientStats[] }) {
             />
           </div>
           <button type="submit" disabled={!nombre || saving} className="btn-primary text-xs">
-            crear
+            Crear
           </button>
         </form>
       )}
@@ -338,11 +422,11 @@ export default function Clients({ clients }: { clients: ClientStats[] }) {
                 <span className="flex-1 truncate text-[15px] font-semibold">
                   {c.nombre}
                 </span>
-                <span className="chip px-2 py-0 text-[10px]">{PLAN_LABEL[c.plan].toLowerCase()}</span>
+                <span className="chip px-2 py-0 text-[10px]">{PLAN_LABEL[c.plan]}</span>
               </div>
 
               <div className="relative mb-2 mt-4 flex items-center justify-between">
-                <span className="lbl">actividad 24h</span>
+                <span className="lbl">Actividad 24h</span>
                 <span className={`font-mono text-[10px] ${st.textoCls}`}>
                   {st.texto}
                 </span>
@@ -352,7 +436,7 @@ export default function Clients({ clients }: { clients: ClientStats[] }) {
                   const cls = b.err
                     ? "bg-danger"
                     : b.n > 0
-                      ? "bg-brand"
+                      ? "bg-ok"
                       : "bg-surface-3";
                   const h = b.err
                     ? 20
@@ -372,37 +456,38 @@ export default function Clients({ clients }: { clients: ClientStats[] }) {
               <div className="relative mt-4 grid grid-cols-3 gap-2 text-center">
                 <div className="subpanel px-1 py-2">
                   <div className="font-mono text-sm">{c.mensajes_hoy}</div>
-                  <div className="text-[9.5px] text-ink-dim">msjs hoy</div>
+                  <div className="text-[9.5px] text-ink-dim">Msjs hoy</div>
                 </div>
                 <div className="subpanel px-1 py-2">
-                  <div className={`font-mono text-sm ${st.textoCls === "text-brand" ? "" : st.textoCls}`}>
+                  <div className={`font-mono text-sm ${st.textoCls === "text-ok" ? "" : st.textoCls}`}>
                     {c.ultimo_evento ? timeAgo(c.ultimo_evento) : "—"}
                   </div>
-                  <div className="text-[9.5px] text-ink-dim">últ. evento</div>
+                  <div className="text-[9.5px] text-ink-dim">Últ. evento</div>
                 </div>
                 <div className="subpanel px-1 py-2">
                   <div className="font-mono text-sm">{clp(c.costo_mes)}</div>
-                  <div className="text-[9.5px] text-ink-dim">costo mes</div>
+                  <div className="text-[9.5px] text-ink-dim">Costo mes</div>
                 </div>
               </div>
 
               <div className="relative mt-4 flex items-center justify-between text-[11px]">
                 <span className="text-ink-mut">
-                  mensualidad{" "}
-                  <span className="font-mono text-brand">{clp(c.mensualidad)}</span>
+                  Mensualidad{" "}
+                  <span className="font-mono text-ok">{clp(c.mensualidad)}</span>
                 </span>
                 <span className="flex items-center gap-2">
                   {margen != null && (
                     <span className="font-mono text-[10px] text-ink-dim">
-                      margen {margen}%
+                      Margen {margen}%
                     </span>
                   )}
                   <button onClick={() => toggleActivo(c)} className="btn-ghost px-2 py-0.5">
-                    {c.activo ? "pausar" : "reactivar"}
+                    {c.activo ? "Pausar" : "Reactivar"}
                   </button>
                 </span>
               </div>
 
+              <EditClientPanel c={c} />
               <BotConfigPanel clientId={c.id} />
             </div>
           );
@@ -412,7 +497,7 @@ export default function Clients({ clients }: { clients: ClientStats[] }) {
           onClick={() => setShowForm(true)}
           className="flex min-h-40 items-center justify-center rounded-xl border border-dashed border-line2 bg-surface-3/30 text-xs text-ink-faint transition hover:border-brand/40 hover:bg-brand/10 hover:text-brand"
         >
-          + nuevo cliente
+          + Nuevo cliente
         </button>
       </div>
 
