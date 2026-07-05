@@ -81,10 +81,12 @@ export default function Sidebar() {
 
   return (
     <aside className="relative flex w-[4.75rem] shrink-0 flex-col border-r border-line bg-surface-1 px-2 py-5 sm:w-[15.5rem] sm:px-3">
-      <div className="relative mb-8 flex items-center gap-2.5 px-3">
-        <span className="led led-glow-green bg-brand" />
+      <div className="relative mb-8 flex items-center gap-2.5 px-2.5">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/isotipo.svg" alt="Respondo" className="h-8 w-8 shrink-0" />
         <span className="hidden text-[15px] font-semibold tracking-tight sm:inline">
-          respondo <span className="text-brand">hq</span>
+          Respon<span className="text-brand">do</span>{" "}
+          <span className="font-normal text-ink-dim">HQ</span>
         </span>
       </div>
 
@@ -118,7 +120,7 @@ export default function Sidebar() {
 
       <div className="mt-auto hidden border-t border-line px-3 pt-4 sm:block">
         <div className="flex items-center justify-between font-mono text-[10px] text-ink-faint">
-          <span>panel interno</span>
+          <span>Panel interno</span>
           <span>v0.3</span>
         </div>
       </div>

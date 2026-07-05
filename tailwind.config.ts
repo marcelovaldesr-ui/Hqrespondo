@@ -21,12 +21,16 @@ const config: Config = {
           dim: "#8B95A1",
           faint: "#B7BFC9",
         },
+        // Marca Respondo: violeta → coral (isotipo)
         brand: {
-          DEFAULT: "#16A34A",
+          DEFAULT: "#7B5BF0",
           dark: "#FFFFFF",
         },
+        coral: "#EC6A56",
+        // Verde semántico: salud, éxito, dinero
+        ok: "#16A34A",
         accent: "#2563EB",
-        violet: "#7C6FF0",
+        violet: "#7B5BF0",
         warn: "#D97706",
         danger: "#DC2626",
       },

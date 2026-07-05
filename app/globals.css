@@ -32,7 +32,11 @@ body {
     @apply inline-flex items-center gap-1 rounded-full border border-line2 bg-surface-3 px-2.5 py-0.5 text-[11px] text-ink-mut;
   }
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#15803D] disabled:opacity-40;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white transition disabled:opacity-40;
+    background-image: linear-gradient(135deg, #7b5bf0, #ec6a56);
+  }
+  .btn-primary:hover:not(:disabled) {
+    filter: brightness(0.94);
   }
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-line2 bg-surface-2 px-2.5 py-1 text-xs text-ink-mut transition hover:bg-surface-3 hover:text-ink disabled:opacity-30;
