@@ -32,6 +32,34 @@ function hoyISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** Lunes (ISO) de la semana a la que pertenece una fecha YYYY-MM-DD */
+function lunesISO(fecha: string): string {
+  const [y, m, d] = fecha.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  const dow = (dt.getDay() + 6) % 7; // 0 = lunes
+  dt.setDate(dt.getDate() - dow);
+  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getDate()).padStart(2, "0");
+  return `${dt.getFullYear()}-${mm}-${dd}`;
+}
+
+function labelSemana(lunes: string, hoy: string): string {
+  const [y, m, d] = lunes.split("-").map(Number);
+  const ini = new Date(y, m - 1, d);
+  const fin = new Date(y, m - 1, d + 6);
+  const fmt = (x: Date) =>
+    x.toLocaleDateString("es-CL", { day: "numeric", month: "short" });
+  const esta = lunesISO(hoy) === lunes;
+  return `Semana del ${fmt(ini)} al ${fmt(fin)}${esta ? " · esta semana" : ""}`;
+}
+
+interface GrupoTimeline {
+  key: string;
+  label: string;
+  atrasada?: boolean;
+  items: RoadmapItem[];
+}
+
 interface Draft {
   tarea: string;
   estado: string;
@@ -229,6 +257,44 @@ export default function RoadmapBoard({
 
   const hoy = hoyISO();
   const pendientes = items.filter((i) => i.estado !== "Hecho").length;
+  const [vista, setVista] = useState<"tablero" | "timeline">("tablero");
+  const [mostrarHechas, setMostrarHechas] = useState(false);
+
+  const gruposTimeline = useMemo<GrupoTimeline[]>(() => {
+    const visibles = items.filter((i) => mostrarHechas || i.estado !== "Hecho");
+    const atrasadas = visibles
+      .filter((i) => i.fecha_limite && i.fecha_limite < hoy && i.estado !== "Hecho")
+      .sort((a, b) => a.fecha_limite!.localeCompare(b.fecha_limite!));
+    const sinFecha = visibles.filter((i) => !i.fecha_limite);
+    const resto = visibles.filter(
+      (i) =>
+        i.fecha_limite &&
+        !(i.fecha_limite < hoy && i.estado !== "Hecho"),
+    );
+    const porSemana = new Map<string, RoadmapItem[]>();
+    for (const it of resto) {
+      const wk = lunesISO(it.fecha_limite!);
+      if (!porSemana.has(wk)) porSemana.set(wk, []);
+      porSemana.get(wk)!.push(it);
+    }
+    const grupos: GrupoTimeline[] = [];
+    if (atrasadas.length > 0) {
+      grupos.push({ key: "atrasadas", label: "Atrasadas", atrasada: true, items: atrasadas });
+    }
+    for (const wk of Array.from(porSemana.keys()).sort()) {
+      grupos.push({
+        key: wk,
+        label: labelSemana(wk, hoy),
+        items: porSemana
+          .get(wk)!
+          .sort((a, b) => a.fecha_limite!.localeCompare(b.fecha_limite!)),
+      });
+    }
+    if (sinFecha.length > 0) {
+      grupos.push({ key: "sin-fecha", label: "Sin fecha", items: sinFecha });
+    }
+    return grupos;
+  }, [items, mostrarHechas, hoy]);
 
   return (
     <div>
@@ -245,6 +311,31 @@ export default function RoadmapBoard({
         </div>
         <span className="ml-auto flex items-center gap-2">
           {error && <span className="text-xs text-danger">{error}</span>}
+          <span className="flex overflow-hidden rounded-lg border border-line2">
+            <button
+              onClick={() => setVista("tablero")}
+              className={`px-3 py-1.5 text-xs transition ${vista === "tablero" ? "bg-brand/10 font-medium text-brand" : "bg-surface-2 text-ink-mut hover:bg-surface-3"}`}
+            >
+              Tablero
+            </button>
+            <button
+              onClick={() => setVista("timeline")}
+              className={`px-3 py-1.5 text-xs transition ${vista === "timeline" ? "bg-brand/10 font-medium text-brand" : "bg-surface-2 text-ink-mut hover:bg-surface-3"}`}
+            >
+              Línea de tiempo
+            </button>
+          </span>
+          {vista === "timeline" && (
+            <label className="flex cursor-pointer items-center gap-1.5 text-xs text-ink-mut">
+              <input
+                type="checkbox"
+                checked={mostrarHechas}
+                onChange={(e) => setMostrarHechas(e.target.checked)}
+                className="accent-[#7B5BF0]"
+              />
+              Ver hechas
+            </label>
+          )}
           <button onClick={recargar} disabled={loading} className="btn-ghost px-3 py-1.5">
             {loading ? "Actualizando…" : "↻ Refrescar"}
           </button>
@@ -282,6 +373,106 @@ export default function RoadmapBoard({
         </form>
       )}
 
+      {vista === "timeline" && (
+        <div className="panel p-5">
+          {gruposTimeline.length === 0 && (
+            <p className="text-sm text-ink-dim">No hay tareas que mostrar.</p>
+          )}
+          {gruposTimeline.map((g) => (
+            <div key={g.key} className="mb-6 last:mb-0">
+              <div className={`lbl mb-2.5 ${g.atrasada ? "text-danger" : ""}`}>
+                {g.atrasada ? "⚠ " : ""}{g.label}
+                <span className="ml-2 font-mono text-[10px] text-ink-faint">{g.items.length}</span>
+              </div>
+              <div className={`flex flex-col border-l-2 ${g.atrasada ? "border-danger/40" : "border-line2"}`}>
+                {g.items.map((it) => {
+                  if (editId === it.id) {
+                    return (
+                      <div key={it.id} className="mb-2 ml-4 rounded-xl border border-accent/40 bg-surface-2 p-3 shadow-card">
+                        <CampoTarea
+                          draft={editDraft}
+                          setDraft={setEditDraft}
+                          estados={estados}
+                          areas={areas}
+                          idPrefix={`tl-${it.id}`}
+                        />
+                        <div className="mt-2.5 flex justify-end gap-2">
+                          <button onClick={() => setEditId(null)} className="btn-ghost px-2.5 py-1">
+                            Cancelar
+                          </button>
+                          <button
+                            onClick={() => guardarEdicion(it.id)}
+                            disabled={busy || !editDraft.tarea.trim()}
+                            className="btn-primary px-3 py-1 text-xs"
+                          >
+                            Guardar
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+                  const hecha = it.estado === "Hecho";
+                  const areaCls =
+                    AREA_COLOR[(it.area ?? "").toLowerCase()] ?? "border-line2 text-ink-mut";
+                  return (
+                    <div
+                      key={it.id}
+                      className="group -ml-[2px] flex items-center gap-3 border-l-2 border-transparent py-1.5 pl-4 pr-2 transition hover:border-brand hover:bg-surface-3/50"
+                    >
+                      <span className="w-14 shrink-0 font-mono text-[11px] text-ink-dim">
+                        {it.fecha_limite
+                          ? fechaCorta(`${it.fecha_limite}T12:00:00`)
+                          : "—"}
+                      </span>
+                      <span
+                        className={`truncate text-[13.5px] ${hecha ? "text-ink-faint line-through" : "text-ink-soft"}`}
+                      >
+                        {it.tarea}
+                      </span>
+                      {it.area && (
+                        <span className={`chip shrink-0 px-2 py-0 text-[10px] ${areaCls}`}>
+                          {it.area}
+                        </span>
+                      )}
+                      <span className="ml-auto hidden shrink-0 items-center gap-1.5 group-hover:flex">
+                        <select
+                          value={it.estado}
+                          onChange={(e) => moverEstado(it, e.target.value)}
+                          disabled={busy}
+                          className="input w-auto px-2 py-0.5 text-[11px]"
+                          aria-label={`Estado de ${it.tarea}`}
+                        >
+                          {estados.map((s) => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                        <button onClick={() => empezarEdicion(it)} className="btn-ghost px-2 py-0.5">
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => eliminar(it)}
+                          disabled={busy}
+                          className="btn-ghost px-2 py-0.5 hover:border-danger/40 hover:bg-danger/10 hover:text-danger"
+                          aria-label={`Eliminar ${it.tarea}`}
+                        >
+                          ×
+                        </button>
+                      </span>
+                      {!hecha && it.estado !== "Backlog" && (
+                        <span className="shrink-0 font-mono text-[10px] text-ink-faint group-hover:hidden">
+                          {it.estado}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {vista === "tablero" && (
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {estados.map((estado) => {
           const cards = items.filter((i) => i.estado === estado);
@@ -413,6 +604,7 @@ export default function RoadmapBoard({
           );
         })}
       </div>
+      )}
 
       <p className="mt-5 text-xs text-ink-dim">
         Roadmap compartido del equipo — los cambios quedan en Supabase al
