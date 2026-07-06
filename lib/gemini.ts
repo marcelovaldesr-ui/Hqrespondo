@@ -1,14 +1,14 @@
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+const MODELO_RESPALDO = "gemini-2.5-flash";
 
-export async function gemini(
+async function llamarModelo(
+  model: string,
   prompt: string,
   tools?: unknown[],
-): Promise<string> {
+): Promise<Response> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("Falta GEMINI_API_KEY");
-  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-
-  const res = await fetch(`${BASE}/${model}:generateContent?key=${key}`, {
+  return fetch(`${BASE}/${model}:generateContent?key=${key}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -16,6 +16,25 @@ export async function gemini(
       ...(tools && tools.length > 0 ? { tools } : {}),
     }),
   });
+}
+
+/**
+ * Llama a Gemini con el modelo configurado (GEMINI_MODEL). Si Google
+ * responde 429/500/503 (cuota o alta demanda, frecuente en modelos nuevos
+ * del tier gratis), reintenta con gemini-2.5-flash SIN tools — mejor una
+ * respuesta del modelo estable que caer al fallback sin IA.
+ */
+export async function gemini(
+  prompt: string,
+  tools?: unknown[],
+): Promise<string> {
+  const principal = process.env.GEMINI_MODEL || MODELO_RESPALDO;
+
+  let res = await llamarModelo(principal, prompt, tools);
+
+  if (!res.ok && [429, 500, 503].includes(res.status) && principal !== MODELO_RESPALDO) {
+    res = await llamarModelo(MODELO_RESPALDO, prompt, undefined);
+  }
 
   if (!res.ok) {
     throw new Error(`Gemini ${res.status}: ${await res.text()}`);
