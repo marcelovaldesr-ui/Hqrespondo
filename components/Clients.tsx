@@ -8,6 +8,7 @@ import {
   PLAN_LABEL,
   PLAN_PRECIOS,
   type ClientStats,
+  type OnboardingTask,
   type Plan,
 } from "@/lib/types";
 
@@ -58,6 +59,139 @@ function salud(c: ClientStats): {
     textoCls: "text-ok",
     borde: "border-line",
   };
+}
+
+/**
+ * Checklist de instalación del cliente (tabla onboarding_tasks).
+ * Se crea sola con cada cliente nuevo; para clientes antiguos hay
+ * un botón que genera el checklist estándar.
+ */
+function OnboardingPanel({ clientId }: { clientId: string }) {
+  const [open, setOpen] = useState(false);
+  const [tasks, setTasks] = useState<OnboardingTask[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [nuevoPaso, setNuevoPaso] = useState("");
+
+  async function cargar() {
+    const res = await fetch(`/api/clients/${clientId}/onboarding`);
+    const data = await res.json().catch(() => ({}));
+    setTasks(data.tasks ?? []);
+  }
+
+  async function toggle() {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    setOpen(true);
+    if (tasks === null) await cargar();
+  }
+
+  async function crearEstandar() {
+    setBusy(true);
+    await fetch(`/api/clients/${clientId}/onboarding`, { method: "POST" });
+    await cargar();
+    setBusy(false);
+  }
+
+  async function marcar(t: OnboardingTask) {
+    setTasks((ts) =>
+      (ts ?? []).map((x) => (x.id === t.id ? { ...x, hecho: !t.hecho } : x)),
+    );
+    const res = await fetch(`/api/clients/${clientId}/onboarding`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ task_id: t.id, hecho: !t.hecho }),
+    });
+    if (!res.ok) {
+      alert("No se pudo actualizar el paso");
+    }
+    await cargar();
+  }
+
+  async function agregarPaso(e: React.FormEvent) {
+    e.preventDefault();
+    if (!nuevoPaso.trim() || busy) return;
+    setBusy(true);
+    await fetch(`/api/clients/${clientId}/onboarding`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paso: nuevoPaso }),
+    });
+    setNuevoPaso("");
+    await cargar();
+    setBusy(false);
+  }
+
+  const hechos = (tasks ?? []).filter((t) => t.hecho).length;
+  const total = (tasks ?? []).length;
+
+  return (
+    <div className="relative mt-3 border-t border-line pt-3">
+      <button onClick={toggle} className="btn-ghost w-full justify-between px-2 py-1">
+        <span>
+          Onboarding
+          {tasks !== null && total > 0 && (
+            <span className={`ml-2 font-mono text-[10px] ${hechos === total ? "text-ok" : "text-ink-dim"}`}>
+              {hechos}/{total}
+            </span>
+          )}
+        </span>
+        <span className="font-mono">{open ? "−" : "+"}</span>
+      </button>
+
+      {open && tasks !== null && (
+        <div className="mt-3 flex flex-col gap-1">
+          {total === 0 ? (
+            <button onClick={crearEstandar} disabled={busy} className="btn-ghost py-2">
+              {busy ? "Creando…" : "Crear checklist estándar (7 pasos)"}
+            </button>
+          ) : (
+            <>
+              <div className="mb-1 h-[5px] overflow-hidden rounded-full bg-surface-3">
+                <div
+                  className="h-full rounded-full bg-ok transition-all"
+                  style={{ width: total ? `${(hechos / total) * 100}%` : 0 }}
+                />
+              </div>
+              {tasks.map((t) => (
+                <label
+                  key={t.id}
+                  className="flex cursor-pointer items-start gap-2 rounded-lg px-1.5 py-1 text-[12.5px] leading-snug transition hover:bg-surface-3/60"
+                >
+                  <input
+                    type="checkbox"
+                    checked={t.hecho}
+                    onChange={() => marcar(t)}
+                    className="mt-0.5 accent-[#16A34A]"
+                  />
+                  <span className={t.hecho ? "text-ink-faint line-through" : "text-ink-soft"}>
+                    {t.paso}
+                  </span>
+                  {t.hecho && t.hecho_por && (
+                    <span className="ml-auto shrink-0 font-mono text-[9.5px] text-ink-faint">
+                      {t.hecho_por}
+                    </span>
+                  )}
+                </label>
+              ))}
+              <form onSubmit={agregarPaso} className="mt-1 flex gap-1.5">
+                <input
+                  value={nuevoPaso}
+                  onChange={(e) => setNuevoPaso(e.target.value)}
+                  placeholder="Agregar paso…"
+                  className="input flex-1 px-2 py-1 text-xs"
+                />
+                <button type="submit" disabled={!nuevoPaso.trim() || busy} className="btn-ghost px-2.5">
+                  +
+                </button>
+              </form>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /**
@@ -504,6 +638,7 @@ export default function Clients({ clients }: { clients: ClientStats[] }) {
                 </span>
               </div>
 
+              <OnboardingPanel clientId={c.id} />
               <EditClientPanel c={c} />
               <BotConfigPanel clientId={c.id} />
             </div>
