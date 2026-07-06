@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { TIPOS_EVENTO, type TipoEvento } from "@/lib/types";
 import { sendWhatsApp } from "@/lib/whatsapp";
 
 /**
  * POST /api/hooks/bot-events — lo llama n8n.
  * Header obligatorio: x-hq-token = HQ_API_TOKEN
- * Body: { tipo: 'mensaje'|'error'|'heartbeat', client_id?, workflow_id?, detalle?, costo_clp? }
+ * Body: { tipo, client_id?, workflow_id?, detalle?, costo_clp? }
+ * Tipos: mensaje | error | heartbeat | lead_captured | quote_generated |
+ *        meeting_booked | human_handoff — los 4 comerciales requieren la
+ *        migración 008 en Supabase (sin ella el insert devuelve 500 claro).
  * Si viene workflow_id en vez de client_id, se resuelve contra clients.workflow_id.
  * Los errores disparan alerta por WhatsApp a MI_WHATSAPP.
  */
@@ -18,9 +22,9 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const tipo = body.tipo;
-    if (!["mensaje", "error", "heartbeat"].includes(tipo)) {
+    if (!TIPOS_EVENTO.includes(tipo as TipoEvento)) {
       return NextResponse.json(
-        { error: "tipo debe ser mensaje, error o heartbeat" },
+        { error: `tipo debe ser uno de: ${TIPOS_EVENTO.join(", ")}` },
         { status: 400 },
       );
     }

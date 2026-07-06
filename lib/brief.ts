@@ -1,20 +1,37 @@
 import { db } from "./db";
 import { gemini } from "./gemini";
+import { calcularObjetivos } from "./objetivos";
 import { ESTADO_CONFIG } from "./types";
 import type { HorarioAtencion } from "./types";
 
 /**
- * Junta el estado del negocio (prospectos, pipeline, bots) y genera
- * el brief diario con Gemini. Lo guarda en la tabla briefs (tipo 'diario').
+ * Junta el estado COMPLETO del negocio (prospectos, pipeline, bots, roadmap,
+ * finanzas y objetivos del mes) y genera el brief diario con Gemini.
+ * Lo guarda en la tabla briefs (tipo 'diario').
  * Si Gemini falla, arma un brief básico sin IA (nunca falla completo).
+ * Si no hay datos, sugiere acciones comerciales concretas en vez de
+ * decir "nada pendiente".
  */
 export async function generarBrief(): Promise<string> {
   const s = db();
   const hoy = new Date().toISOString().slice(0, 10);
+  const inicioMes = `${hoy.slice(0, 7)}-01`;
   const hace24 = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
   const hace5d = new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString();
 
-  const [hotRes, vencRes, staleRes, errRes, cliRes, msgRes] = await Promise.all([
+  const [
+    hotRes,
+    vencRes,
+    staleRes,
+    errRes,
+    cliRes,
+    msgRes,
+    roadmapRes,
+    cobrosRes,
+    gastosRes,
+    decisionesRes,
+    objetivos,
+  ] = await Promise.all([
     s
       .from("prospects")
       .select("nombre,rubro,comuna,score")
@@ -41,12 +58,26 @@ export async function generarBrief(): Promise<string> {
       .select("client_id,detalle,created_at")
       .eq("tipo", "error")
       .gte("created_at", hace24),
-    s.from("clients").select("id,nombre").eq("activo", true),
+    s.from("clients").select("id,nombre,mensualidad").eq("activo", true),
     s
       .from("bot_events")
       .select("client_id")
       .eq("tipo", "mensaje")
       .gte("created_at", hace24),
+    s
+      .from("roadmap_items")
+      .select("tarea,area,fecha_limite")
+      .neq("estado", "Hecho")
+      .lte("fecha_limite", hoy)
+      .limit(10),
+    s.from("cobros").select("monto,estado").eq("mes", inicioMes),
+    s.from("gastos").select("monto").gte("fecha", inicioMes),
+    s
+      .from("decisiones")
+      .select("titulo,created_at")
+      .order("created_at", { ascending: false })
+      .limit(3),
+    calcularObjetivos().catch(() => []),
   ]);
 
   const nombreCliente = new Map<string, string>(
@@ -59,44 +90,87 @@ export async function generarBrief(): Promise<string> {
     mensajesPorCliente[nombre] = (mensajesPorCliente[nombre] ?? 0) + 1;
   }
 
+  const mrr = (cliRes.data ?? []).reduce(
+    (a: number, c: any) => a + (c.mensualidad || 0),
+    0,
+  );
+  const cobros = (cobrosRes.data ?? []) as { monto: number; estado: string }[];
+  const cobrosPendientes = cobros
+    .filter((c) => c.estado === "pendiente")
+    .reduce((a, c) => a + c.monto, 0);
+  const gastosMes = ((gastosRes.data ?? []) as { monto: number }[]).reduce(
+    (a, g) => a + g.monto,
+    0,
+  );
+
   const datos = {
     fecha: hoy,
     prospectos_calientes_sin_contactar: hotRes.data ?? [],
     seguimientos_vencidos_o_de_hoy: vencRes.data ?? [],
     pipeline_sin_movimiento_5_dias: staleRes.data ?? [],
+    tareas_roadmap_vencidas: roadmapRes.data ?? [],
     errores_bots_24h: (errRes.data ?? []).map((e: any) => ({
       cliente: nombreCliente.get(e.client_id) ?? "desconocido",
       detalle: e.detalle,
     })),
     conversaciones_24h_por_cliente: mensajesPorCliente,
+    finanzas: {
+      mrr_actual_clp: mrr,
+      cobros_pendientes_mes_clp: cobrosPendientes,
+      gastos_mes_clp: gastosMes,
+      gastos_superan_mrr: gastosMes > mrr,
+    },
+    objetivos_del_mes: objetivos.map((o) => ({
+      objetivo: o.label,
+      avance: `${o.avance}/${o.meta}`,
+      estado: o.estado,
+    })),
+    decisiones_recientes: decisionesRes.data ?? [],
   };
 
   let contenido: string;
   try {
     contenido = await gemini(
-      `Eres el asistente de operaciones de Respondo (bots de WhatsApp para pymes chilenas). Genera el brief diario de Marcelo para hoy ${hoy}.
+      `Eres el asistente de operaciones de Respondo (asistentes de ventas con IA para WhatsApp, pymes chilenas). Genera el brief diario de los fundadores para hoy ${hoy}. Fase actual: ${nombreCliente.size === 0 ? "validación comercial (aún sin clientes — es fase inicial, NO fracaso)" : "primeros pilotos"}.
 
 Formato: texto plano para WhatsApp (NADA de markdown). Secciones con estos encabezados, solo si tienen datos:
+🎯 3 PRIORIDADES DE HOY (siempre — las 3 acciones más importantes del día, numeradas)
 🔥 CONTACTAR HOY (prospectos calientes, máx 5, con score)
 ⏰ SEGUIMIENTOS (vencidos o para hoy)
 📋 PIPELINE DETENIDO (deals sin movimiento hace 5+ días)
+✅ TAREAS CRÍTICAS (roadmap vencido)
+💰 FINANZAS (1-2 líneas: MRR, por cobrar, gastos; alerta si gastos > MRR)
+📈 OBJETIVOS DEL MES (solo los atrasados, con su avance)
 ⚠️ BOTS CON PROBLEMAS (errores últimas 24 h)
 🤖 ACTIVIDAD (conversaciones por cliente, 1 línea)
 
-Estilo: español de Chile, directo, accionable, máximo 220 palabras. Cierra con UNA prioridad clara del día.
+Si una sección no tiene datos, NO la incluyas — pero si TODO está vacío, las 3 prioridades deben ser acciones comerciales concretas tipo "Prospectar 20 ferreterías en Viña del Mar", "Contactar los 10 prospectos de mayor score", "Enviar follow-up a contactados sin respuesta".
+
+Estilo: español de Chile, directo, accionable, máximo 250 palabras. Cierra con UNA recomendación final y una línea de momentum sobria acorde a la fase (sin cursilería).
 
 Datos:
 ${JSON.stringify(datos, null, 2)}`,
     );
   } catch {
-    // Fallback sin IA: brief básico pero útil
+    // Fallback sin IA: brief básico pero accionable
     const hot = (hotRes.data ?? [])
       .map((p: any) => `- ${p.nombre} (${p.comuna}, score ${p.score})`)
       .join("\n");
     const errores = datos.errores_bots_24h
       .map((e) => `- ${e.cliente}: ${e.detalle ?? "error"}`)
       .join("\n");
-    contenido = `Brief ${hoy} (modo básico)\n\n🔥 Contactar hoy:\n${hot || "- nada pendiente"}\n\n⏰ Seguimientos: ${datos.seguimientos_vencidos_o_de_hoy.length}\n📋 Pipeline detenido: ${datos.pipeline_sin_movimiento_5_dias.length}\n⚠️ Errores bots:\n${errores || "- sin errores"}`;
+    const atrasados = objetivos
+      .filter((o) => o.estado === "atrasado")
+      .map((o) => `- ${o.label}: ${o.avance}/${o.meta} → ${o.accion}`)
+      .join("\n");
+    const nada =
+      (hotRes.data ?? []).length === 0 &&
+      datos.seguimientos_vencidos_o_de_hoy.length === 0 &&
+      datos.pipeline_sin_movimiento_5_dias.length === 0;
+    const sugerencias = nada
+      ? `\n🎯 Sin pendientes con fecha — hoy se construye pipeline:\n- Prospectar un rubro nuevo (ferreterías, corredoras, clínicas) por comuna\n- Contactar los prospectos de mayor score\n- Enviar follow-up 1 a contactados sin respuesta`
+      : "";
+    contenido = `Brief ${hoy} (modo básico)\n\n🔥 Contactar hoy:\n${hot || "- sin calientes → buscar prospectos nuevos"}\n\n⏰ Seguimientos: ${datos.seguimientos_vencidos_o_de_hoy.length}\n📋 Pipeline detenido: ${datos.pipeline_sin_movimiento_5_dias.length}\n✅ Tareas vencidas: ${(roadmapRes.data ?? []).length}\n💰 MRR ${mrr.toLocaleString("es-CL")} · por cobrar ${cobrosPendientes.toLocaleString("es-CL")} · gastos mes ${gastosMes.toLocaleString("es-CL")}${gastosMes > mrr ? " ⚠️ gastos sobre MRR" : ""}\n${atrasados ? `📈 Objetivos atrasados:\n${atrasados}\n` : ""}⚠️ Errores bots:\n${errores || "- sin errores"}${sugerencias}`;
   }
 
   await s.from("briefs").insert({ contenido, tipo: "diario" });

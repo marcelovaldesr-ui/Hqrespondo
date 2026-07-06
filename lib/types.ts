@@ -47,21 +47,47 @@ export const ETAPA_LABEL: Record<Etapa, string> = {
   perdido: "Perdido",
 };
 
+/**
+ * Planes comerciales. Los VALORES ('esencial','cotizador','pro') son las
+ * claves históricas de la base de datos (check constraint en deals/clients)
+ * y NO deben cambiarse sin migración. Los NOMBRES y PRECIOS corresponden a
+ * la Estructura Final de Precios (jul-2026, estrategia-comercial/PLANES_Y_
+ * PRECIOS_RESPONDO.md), que reemplazó a la tabla interina:
+ *   esencial  → "Inicial"      $79.000/mes  + setup $290.000
+ *   cotizador → "Crecimiento"  $149.000/mes + setup $490.000  (plan ancla)
+ *   pro       → "Pro"          $279.000/mes + setup $890.000
+ * Plan Empresa (desde $450.000 + $1.200.000) se cotiza a medida: usar Pro
+ * como base y ajustar valores en el deal.
+ */
 export const PLANES = ["esencial", "cotizador", "pro"] as const;
 export type Plan = (typeof PLANES)[number];
 
 export const PLAN_LABEL: Record<Plan, string> = {
-  esencial: "Esencial",
-  cotizador: "Cotizador",
+  esencial: "Inicial",
+  cotizador: "Crecimiento",
   pro: "Pro",
 };
 
-/** Precios de partida (jun-2026). Ajustables por deal. */
+/** Estructura final de precios (jul-2026). Ajustables por deal. */
 export const PLAN_PRECIOS: Record<Plan, { setup: number; mensual: number }> = {
-  esencial: { setup: 150000, mensual: 24990 },
-  cotizador: { setup: 290000, mensual: 39990 },
-  pro: { setup: 590000, mensual: 69990 },
+  esencial: { setup: 290000, mensual: 79000 },
+  cotizador: { setup: 490000, mensual: 149000 },
+  pro: { setup: 890000, mensual: 279000 },
 };
+
+/** Límites de conversaciones/mes por plan (para propuestas). */
+export const PLAN_LIMITES: Record<Plan, number> = {
+  esencial: 800,
+  cotizador: 3500,
+  pro: 9000,
+};
+
+/**
+ * Piloto Fundador (primeros 5 clientes): descuento SOLO en el setup,
+ * mensualidad siempre de lista. Cliente 1: 30% · clientes 2–3: 20% ·
+ * clientes 4–5: 10%. A cambio: testimonio + uso como caso + feedback.
+ */
+export const PILOTO_FUNDADOR_DCTO = [0.3, 0.2, 0.2, 0.1, 0.1] as const;
 
 export interface Prospect {
   id: string;
@@ -113,7 +139,31 @@ export interface Client {
   created_at: string;
 }
 
-export type TipoEvento = "mensaje" | "error" | "heartbeat";
+/**
+ * Tipos de evento de bot. Los 3 primeros son los históricos; los demás son
+ * eventos COMERCIALES (requieren migración 008 en Supabase antes de usarse
+ * desde n8n — si la base no está migrada, el insert falla con error claro).
+ */
+export const TIPOS_EVENTO = [
+  "mensaje",
+  "error",
+  "heartbeat",
+  "lead_captured",
+  "quote_generated",
+  "meeting_booked",
+  "human_handoff",
+] as const;
+export type TipoEvento = (typeof TIPOS_EVENTO)[number];
+
+export const TIPO_EVENTO_LABEL: Record<TipoEvento, string> = {
+  mensaje: "Conversación atendida",
+  error: "Error",
+  heartbeat: "Heartbeat OK",
+  lead_captured: "Lead capturado",
+  quote_generated: "Cotización generada",
+  meeting_booked: "Reunión agendada",
+  human_handoff: "Derivado a humano",
+};
 
 export interface BotEvent {
   id: string;
@@ -234,7 +284,7 @@ export interface Gasto {
   created_at: string;
 }
 
-/** Cobro de mensualidad (tabla cobros) */
+/** Cobro de mensualidad (tabla cobros). */
 export interface Cobro {
   id: string;
   client_id: string;

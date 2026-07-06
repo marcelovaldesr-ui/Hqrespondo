@@ -11,6 +11,15 @@ export default function Decisiones({ initial }: { initial: Decision[] }) {
   const [detalle, setDetalle] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+
+  const visibles = q.trim()
+    ? initial.filter((d) =>
+        `${d.titulo} ${d.detalle ?? ""} ${d.decidido_por ?? ""}`
+          .toLowerCase()
+          .includes(q.toLowerCase()),
+      )
+    : initial;
 
   async function crear(e: React.FormEvent) {
     e.preventDefault();
@@ -69,14 +78,30 @@ export default function Decisiones({ initial }: { initial: Decision[] }) {
         </div>
       </form>
 
+      {initial.length > 3 && (
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Buscar en decisiones — precio, marca, foco…"
+          className="input mb-3 w-full py-2 text-sm"
+          aria-label="Buscar decisiones"
+        />
+      )}
+
       {initial.length === 0 ? (
         <div className="panel border-dashed border-line2 p-10 text-center text-sm text-ink-dim">
-          Sin decisiones registradas aún. Cada vez que definan algo importante
-          (precios, nichos, nombre del bot…), déjenlo escrito acá.
+          Sin decisiones registradas aún. Registra cada definición importante
+          (precios, nichos, marca, foco) para no repetir la misma discusión en
+          un mes más — este registro es la memoria del equipo.
+        </div>
+      ) : visibles.length === 0 ? (
+        <div className="panel border-dashed border-line2 p-8 text-center text-sm text-ink-dim">
+          Nada calza con “{q}”. Si la decisión no está registrada… puede que
+          nunca se haya cerrado: buen momento para decidirla y anotarla.
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          {initial.map((d) => (
+          {visibles.map((d) => (
             <div key={d.id} className="group panel px-4 py-3">
               <div className="flex items-center gap-3">
                 <span className="font-mono text-[11px] text-ink-dim">

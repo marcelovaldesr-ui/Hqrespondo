@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { plantillasPara } from "@/lib/mensajes";
 import {
   ESTADO_CONFIG,
   ESTADO_LABEL,
@@ -14,6 +15,29 @@ function scoreCls(score: number) {
   if (score >= 70) return { text: "text-ok", bar: "bg-ok" };
   if (score >= 40) return { text: "text-warn", bar: "bg-warn" };
   return { text: "text-ink-dim", bar: "bg-ink-faint" };
+}
+
+/** Acción recomendada por reglas simples (score + estado). */
+function accionRecomendada(p: Prospect): string {
+  if (p.estado === "nuevo")
+    return p.score >= 70
+      ? "Contactar hoy con el mensaje personalizado"
+      : p.score >= 40
+        ? "Contactar esta semana (prioriza los de score más alto primero)"
+        : "Baja prioridad — contactar solo si sobra capacidad, o descartar";
+  if (p.estado === "contactado")
+    return "Sin respuesta aún: enviar follow-up 1 a los 2–3 días (máx. 3–4 toques)";
+  if (p.estado === "respondio")
+    return "Responder hoy mismo, calificar (volumen, quién responde, horario ciego) y mandar la demo";
+  if (p.estado === "reunion")
+    return "Hacer la demo guiada y enviar propuesta de 1 página el MISMO día";
+  if (p.estado === "en_pipeline") return "Gestionar desde Pipeline";
+  return "Descartado — sin acción";
+}
+
+/** Fecha hoy+n en formato YYYY-MM-DD. */
+function enDias(n: number): string {
+  return new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
 }
 
 const ESTADO_PILL: Record<Estado, string> = {
@@ -78,12 +102,17 @@ export default function ProspectTable({
   const router = useRouter();
   const [items, setItems] = useState<Prospect[]>(prospects);
   const [filtro, setFiltro] = useState<Estado | "todos">("todos");
+  const [quick, setQuick] = useState<"" | "hot" | "sin_respuesta">("");
   const [rubro, setRubro] = useState<string>("todos");
   const [orden, setOrden] = useState<Orden>("score");
   const [q, setQ] = useState("");
   const [copiado, setCopiado] = useState<string | null>(null);
   const [abierto, setAbierto] = useState<string | null>(null);
   const [estadoError, setEstadoError] = useState<string | null>(null);
+  // Borradores de la fila expandida (una a la vez)
+  const [proxDraft, setProxDraft] = useState("");
+  const [notasDraft, setNotasDraft] = useState("");
+  const [guardandoDetalle, setGuardandoDetalle] = useState(false);
 
   useEffect(() => {
     setItems(prospects);
@@ -98,6 +127,9 @@ export default function ProspectTable({
     const base = items.filter(
       (p) =>
         (filtro === "todos" || p.estado === filtro) &&
+        (quick === "" ||
+          (quick === "hot" && p.estado === "nuevo" && p.score >= 70) ||
+          (quick === "sin_respuesta" && p.estado === "contactado")) &&
         (rubro === "todos" || p.rubro === rubro) &&
         (q === "" ||
           `${p.nombre} ${p.rubro} ${p.comuna}`
@@ -123,20 +155,35 @@ export default function ProspectTable({
         break;
     }
     return s;
-  }, [items, filtro, rubro, q, orden]);
+  }, [items, filtro, quick, rubro, q, orden]);
 
   async function cambiarEstado(id: string, estado: Estado) {
     const anterior = items.find((p) => p.id === id);
     setEstadoError(null);
+
+    // Al marcar "contactado" sin próxima acción, se agenda el follow-up 1
+    // automáticamente a +3 días (regla del kit de prospección).
+    const autoProxima =
+      estado === "contactado" && anterior && !anterior.proxima_accion
+        ? enDias(3)
+        : undefined;
+
     setItems((actuales) =>
-      actuales.map((p) => (p.id === id ? { ...p, estado } : p)),
+      actuales.map((p) =>
+        p.id === id
+          ? { ...p, estado, proxima_accion: autoProxima ?? p.proxima_accion }
+          : p,
+      ),
     );
 
     try {
       const res = await fetch(`/api/prospects/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ estado }),
+        body: JSON.stringify({
+          estado,
+          ...(autoProxima ? { proxima_accion: autoProxima } : {}),
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "No se pudo actualizar");
@@ -206,6 +253,54 @@ export default function ProspectTable({
     setTimeout(() => setCopiado(null), 1500);
   }
 
+  async function copiarTexto(id: string, texto: string) {
+    await navigator.clipboard.writeText(texto);
+    setCopiado(id);
+    setTimeout(() => setCopiado(null), 1500);
+  }
+
+  function toggleDetalle(p: Prospect) {
+    if (abierto === p.id) {
+      setAbierto(null);
+      return;
+    }
+    setAbierto(p.id);
+    setProxDraft(p.proxima_accion ?? "");
+    setNotasDraft(p.notas ?? "");
+  }
+
+  /** Guarda próxima acción + notas de la fila expandida. */
+  async function guardarDetalle(p: Prospect) {
+    if (guardandoDetalle) return;
+    setGuardandoDetalle(true);
+    setEstadoError(null);
+    try {
+      const res = await fetch(`/api/prospects/${p.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          proxima_accion: proxDraft || null,
+          notas: notasDraft || null,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? `Error ${res.status}`);
+      }
+      setItems((actuales) =>
+        actuales.map((x) =>
+          x.id === p.id
+            ? { ...x, proxima_accion: proxDraft || null, notas: notasDraft || null }
+            : x,
+        ),
+      );
+    } catch (err: any) {
+      setEstadoError(`No se pudo guardar: ${err.message}`);
+    } finally {
+      setGuardandoDetalle(false);
+    }
+  }
+
   async function aPipeline(p: Prospect) {
     await fetch("/api/deals", {
       method: "POST",
@@ -251,9 +346,12 @@ export default function ProspectTable({
             (estado) => (
             <button
               key={estado.value}
-              onClick={() => setFiltro(estado.value)}
+              onClick={() => {
+                setFiltro(estado.value);
+                setQuick("");
+              }}
               className={`chip transition ${
-                filtro === estado.value
+                filtro === estado.value && quick === ""
                   ? "border-brand/50 bg-brand/10 text-brand"
                   : "hover:text-ink"
               }`}
@@ -262,6 +360,34 @@ export default function ProspectTable({
             </button>
             ),
           )}
+          <button
+            onClick={() => {
+              setQuick(quick === "hot" ? "" : "hot");
+              setFiltro("todos");
+            }}
+            className={`chip transition ${
+              quick === "hot"
+                ? "border-ok/50 bg-ok/10 text-ok"
+                : "hover:text-ink"
+            }`}
+            title="Prospectos nuevos con score ≥ 70 — contactar primero"
+          >
+            ⚡ Calientes s/contactar
+          </button>
+          <button
+            onClick={() => {
+              setQuick(quick === "sin_respuesta" ? "" : "sin_respuesta");
+              setFiltro("todos");
+            }}
+            className={`chip transition ${
+              quick === "sin_respuesta"
+                ? "border-warn/50 bg-warn/10 text-warn"
+                : "hover:text-ink"
+            }`}
+            title="Contactados que aún no responden — candidatos a follow-up"
+          >
+            ⏳ Sin respuesta
+          </button>
         </div>
         <span className="ml-auto flex items-center gap-2.5">
           <span className="font-mono text-[11px] text-ink-dim">
@@ -397,11 +523,11 @@ export default function ProspectTable({
                           {copiado === p.id ? "Copiado ✓" : "Copiar"}
                         </button>
                         <button
-                          onClick={() => setAbierto(abierto === p.id ? null : p.id)}
-                          disabled={!p.mensaje}
-                          className="btn-ghost"
+                          onClick={() => toggleDetalle(p)}
+                          className={`btn-ghost ${abierto === p.id ? "border-brand/40 text-brand" : ""}`}
+                          title="Razón del score, mensaje, follow-ups, próxima acción y notas"
                         >
-                          Ver
+                          {abierto === p.id ? "Cerrar" : "Detalle"}
                         </button>
                         {p.estado !== ESTADO_CONFIG.en_pipeline.value && (
                           <button
@@ -422,15 +548,84 @@ export default function ProspectTable({
                       </div>
                     </td>
                   </tr>
-                  {abierto === p.id && p.mensaje && (
+                  {abierto === p.id && (
                     <tr>
-                      <td colSpan={5} className="px-3 pb-3 pt-0">
-                        <div className="ml-12 max-w-2xl rounded-lg border-l-2 border-ok bg-surface-3/70 px-5 py-4 text-sm leading-relaxed text-ink-soft">
-                          <p className="whitespace-pre-wrap">{p.mensaje}</p>
-                          <p className="mt-2 text-[10.5px] text-warn">
-                            Envío manual desde tu WhatsApp Business — nunca por
-                            Cloud API
-                          </p>
+                      <td colSpan={5} className="px-3 pb-4 pt-0">
+                        <div className="ml-0 grid gap-3 rounded-lg border border-line bg-surface-3/45 p-4 sm:ml-12 lg:grid-cols-[1.2fr_1fr]">
+                          {/* Columna izquierda: score explicado + mensaje */}
+                          <div className="flex flex-col gap-3">
+                            <div>
+                              <div className="lbl mb-1.5">Por qué score {p.score}</div>
+                              <p className="text-[12.5px] leading-relaxed text-ink-soft">
+                                {p.razon_score || "Sin razón registrada (score por defecto)."}
+                              </p>
+                              <p className="mt-1.5 text-[12px] text-ink-mut">
+                                <span className="font-medium text-brand">Acción recomendada:</span>{" "}
+                                {accionRecomendada(p)}
+                              </p>
+                            </div>
+                            {p.mensaje && (
+                              <div>
+                                <div className="lbl mb-1.5">Primer mensaje</div>
+                                <div className="rounded-lg border-l-2 border-ok bg-surface-2 px-4 py-3 text-[13px] leading-relaxed text-ink-soft">
+                                  <p className="whitespace-pre-wrap">{p.mensaje}</p>
+                                </div>
+                              </div>
+                            )}
+                            <div>
+                              <div className="lbl mb-1.5">Follow-ups sugeridos (copiar)</div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {plantillasPara(p).map((t) => (
+                                  <button
+                                    key={t.id}
+                                    onClick={() => copiarTexto(`${p.id}-${t.id}`, t.genera(p))}
+                                    className="btn-ghost px-2.5 py-1"
+                                    title={t.genera(p).slice(0, 140) + "…"}
+                                  >
+                                    {copiado === `${p.id}-${t.id}` ? "Copiado ✓" : t.label}
+                                  </button>
+                                ))}
+                              </div>
+                              <p className="mt-1.5 text-[10.5px] text-warn">
+                                Envío manual desde tu WhatsApp Business — nunca por Cloud API.
+                                Revisa los [corchetes] antes de enviar.
+                              </p>
+                            </div>
+                          </div>
+                          {/* Columna derecha: próxima acción + notas */}
+                          <div className="flex flex-col gap-2.5">
+                            <div>
+                              <label className="lbl mb-1.5 block">Próxima acción (fecha)</label>
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <input
+                                  type="date"
+                                  value={proxDraft}
+                                  onChange={(e) => setProxDraft(e.target.value)}
+                                  className="input w-auto py-1.5 text-xs"
+                                />
+                                <button onClick={() => setProxDraft(enDias(0))} className="btn-ghost px-2 py-1">Hoy</button>
+                                <button onClick={() => setProxDraft(enDias(3))} className="btn-ghost px-2 py-1">+3d</button>
+                                <button onClick={() => setProxDraft(enDias(7))} className="btn-ghost px-2 py-1">+7d</button>
+                              </div>
+                            </div>
+                            <div className="flex flex-1 flex-col">
+                              <label className="lbl mb-1.5 block">Notas</label>
+                              <textarea
+                                value={notasDraft}
+                                onChange={(e) => setNotasDraft(e.target.value)}
+                                placeholder="Quién contesta, qué preguntaron, objeciones…"
+                                rows={4}
+                                className="input flex-1 resize-y text-xs"
+                              />
+                            </div>
+                            <button
+                              onClick={() => guardarDetalle(p)}
+                              disabled={guardandoDetalle}
+                              className="btn-primary self-end px-4 py-1.5 text-xs"
+                            >
+                              {guardandoDetalle ? "Guardando…" : "Guardar"}
+                            </button>
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -441,7 +636,9 @@ export default function ProspectTable({
             {filtrados.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-3 py-10 text-center text-sm text-ink-dim">
-                  Sin prospectos. Busca un rubro + comuna arriba para partir.
+                  {items.length === 0
+                    ? "Todavía no hay prospectos guardados. Busca un rubro + comuna arriba — el próximo cliente está en esa lista."
+                    : "Nada calza con los filtros actuales. Límpialos o busca un rubro nuevo arriba."}
                 </td>
               </tr>
             )}

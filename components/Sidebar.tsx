@@ -81,15 +81,17 @@ function Icon({ name }: { name: string }) {
   }
 }
 
+/** Orden = flujo mental del día:
+ *  Hoy → Prospectar → Pipeline → Clientes/Bots → Finanzas → Brief → Roadmap → Decisiones */
 const LINKS = [
-  { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
+  { href: "/dashboard", label: "Centro de mando", icon: "dashboard" },
   { href: "/prospeccion", label: "Prospección", icon: "target" },
   { href: "/pipeline", label: "Pipeline", icon: "kanban" },
   { href: "/clientes", label: "Clientes & Bots", icon: "bot" },
+  { href: "/finanzas", label: "Finanzas", icon: "money" },
   { href: "/brief", label: "Brief del Día", icon: "file" },
   { href: "/roadmap", label: "Roadmap", icon: "map" },
   { href: "/decisiones", label: "Decisiones", icon: "check" },
-  { href: "/finanzas", label: "Finanzas", icon: "money" },
 ];
 
 export default function Sidebar() {
@@ -135,9 +137,15 @@ export default function Sidebar() {
       </nav>
 
       <div className="mt-auto hidden border-t border-line px-3 pt-4 sm:block">
+        <p className="mb-2.5 text-[10.5px] leading-relaxed text-ink-dim">
+          Menos ruido. Más demos.
+        </p>
         <div className="flex items-center justify-between font-mono text-[10px] text-ink-faint">
-          <span>Panel interno</span>
-          <span>v0.3</span>
+          <span className="flex items-center gap-1.5">
+            <span className="led h-[5px] w-[5px] bg-ok" />
+            Sistema activo
+          </span>
+          <span>v0.4</span>
         </div>
       </div>
     </aside>

@@ -559,6 +559,21 @@ export default function Clients({ clients }: { clients: ClientStats[] }) {
         </form>
       )}
 
+      {clients.length === 0 && (
+        <div className="panel mb-3 border-dashed border-line2 p-8 text-center">
+          <p className="text-sm font-medium text-ink-soft">
+            Aún no hay clientes activos — y eso está bien: es la fase de validación.
+          </p>
+          <p className="mx-auto mt-2 max-w-xl text-xs leading-relaxed text-ink-dim">
+            Cuando cierres el primer piloto, agrégalo aquí con su plan, mensualidad
+            y workflow de n8n. Se creará solo el checklist de instalación (7 pasos)
+            y este módulo pasará a monitorear su bot: conversaciones, errores, costo
+            y salud en vivo. Mientras tanto, el camino al primer cliente está en{" "}
+            <a href="/prospeccion" className="text-brand underline">Prospección</a>.
+          </p>
+        </div>
+      )}
+
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {clients.map((c) => {
           const st = salud(c);

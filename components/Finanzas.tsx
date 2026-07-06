@@ -22,7 +22,20 @@ const CATEGORIAS_SUGERIDAS = [
   "Otros",
 ];
 
-export default function Finanzas({ gastosIniciales }: { gastosIniciales: Gasto[] }) {
+/** Mensualidad de referencia para "clientes que faltan": plan ancla
+ *  Crecimiento ($149.000, estructura final jul-2026). Si ya hay clientes,
+ *  se usa el promedio real de sus mensualidades. */
+const MENSUALIDAD_REFERENCIA = 149000;
+
+export default function Finanzas({
+  gastosIniciales,
+  mrrActual = 0,
+  clientesActivos: nClientesActivos = 0,
+}: {
+  gastosIniciales: Gasto[];
+  mrrActual?: number;
+  clientesActivos?: number;
+}) {
   const router = useRouter();
   const [tab, setTab] = useState<"cobros" | "gastos">("cobros");
   const [mes, setMes] = useState(mesActual());
@@ -139,8 +152,65 @@ export default function Finanzas({ gastosIniciales }: { gastosIniciales: Gasto[]
   const cobrado = cobros.filter((c) => c.estado === "pagado").reduce((a, c) => a + c.monto, 0);
   const pendiente = cobros.filter((c) => c.estado === "pendiente").reduce((a, c) => a + c.monto, 0);
 
+  // ---- Resumen founder: equilibrio y margen ----
+  const margen = mrrActual - totalGastosMes;
+  const mensualidadRef =
+    nClientesActivos > 0 && mrrActual > 0
+      ? mrrActual / nClientesActivos
+      : MENSUALIDAD_REFERENCIA;
+  const clientesFaltan =
+    margen >= 0 ? 0 : Math.ceil((totalGastosMes - mrrActual) / mensualidadRef);
+
   return (
     <div>
+      {/* ---- Resumen del negocio ---- */}
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="metric-card px-4 py-3.5">
+          <div className="lbl">MRR actual</div>
+          <div className="mt-1.5 font-mono text-2xl leading-none text-ok">{clp(mrrActual)}</div>
+          <div className="mt-1.5 text-[10.5px] text-ink-dim">
+            {nClientesActivos === 0
+              ? "fase inicial — sin clientes aún"
+              : `${nClientesActivos} cliente${nClientesActivos === 1 ? "" : "s"} activo${nClientesActivos === 1 ? "" : "s"}`}
+          </div>
+        </div>
+        <div className="metric-card px-4 py-3.5">
+          <div className="lbl">Margen del mes</div>
+          <div className={`mt-1.5 font-mono text-2xl leading-none ${margen >= 0 ? "text-ok" : "text-danger"}`}>
+            {clp(margen)}
+          </div>
+          <div className="mt-1.5 text-[10.5px] text-ink-dim">MRR − gastos de {mes}</div>
+        </div>
+        <div className="metric-card px-4 py-3.5">
+          <div className="lbl">Punto de equilibrio</div>
+          <div className="mt-1.5 font-mono text-2xl leading-none">
+            {margen >= 0 ? "✓" : clientesFaltan}
+          </div>
+          <div className="mt-1.5 text-[10.5px] text-ink-dim">
+            {margen >= 0
+              ? "los gastos están cubiertos"
+              : `cliente${clientesFaltan === 1 ? "" : "s"} más para cubrir gastos (ref. ${clp(Math.round(mensualidadRef))}/mes)`}
+          </div>
+        </div>
+        <div className="metric-card px-4 py-3.5">
+          <div className="lbl">Por cobrar ({mes})</div>
+          <div className={`mt-1.5 font-mono text-2xl leading-none ${pendiente > 0 ? "text-warn" : ""}`}>
+            {clp(pendiente)}
+          </div>
+          <div className="mt-1.5 text-[10.5px] text-ink-dim">
+            {pendiente > 0 ? "hay mensualidades sin pagar" : "sin cobros pendientes"}
+          </div>
+        </div>
+      </div>
+
+      {totalGastosMes > mrrActual && (
+        <p className="mb-4 rounded-lg border border-warn/30 bg-warn/[0.07] px-3 py-2 text-xs text-warn">
+          ⚠ Los gastos del mes ({clp(totalGastosMes)}) superan el MRR ({clp(mrrActual)}).
+          {nClientesActivos === 0
+            ? " Normal en fase de validación — cada cliente cerrado acorta esta brecha."
+            : ` Faltan ~${clientesFaltan} cliente${clientesFaltan === 1 ? "" : "s"} para el equilibrio.`}
+        </p>
+      )}
       <div className="mb-5 flex flex-wrap items-center gap-3">
         <span className="flex overflow-hidden rounded-lg border border-line2">
           <button
@@ -288,7 +358,11 @@ export default function Finanzas({ gastosIniciales }: { gastosIniciales: Gasto[]
           <div className="panel p-5">
             <div className="lbl mb-3">Gastos de {mes}</div>
             {gastosDelMes.length === 0 ? (
-              <p className="text-sm text-ink-dim">Sin gastos registrados este mes.</p>
+              <p className="text-sm text-ink-dim">
+                Sin gastos registrados este mes. Registra los gastos reales
+                (dominio, APIs, marketing) para saber cuántos clientes necesitan
+                para cubrir costos — ese número aparece arriba.
+              </p>
             ) : (
               <div className="flex flex-col divide-y divide-line">
                 {gastosDelMes.map((g) => (

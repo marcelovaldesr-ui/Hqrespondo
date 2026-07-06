@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { clp } from "@/lib/format";
+import { generarPropuesta } from "@/lib/propuesta";
 import {
   ETAPAS,
   ETAPA_LABEL,
@@ -13,6 +14,39 @@ import {
   type Etapa,
   type Plan,
 } from "@/lib/types";
+
+const ETAPAS_ACTIVAS: Etapa[] = ["contactado", "demo", "propuesta"];
+
+/**
+ * Señales de atención de una oportunidad (reglas simples):
+ * follow-up vencido > detenida 5+ días > demo sin fecha > propuesta sin respuesta.
+ */
+function seniales(d: Deal): { texto: string; cls: string } | null {
+  if (!ETAPAS_ACTIVAS.includes(d.etapa)) return null;
+  const hoy = new Date().toISOString().slice(0, 10);
+  const diasQuieta = Math.floor(
+    (Date.now() - new Date(d.updated_at).getTime()) / 86400000,
+  );
+  if (d.fecha_proxima && d.fecha_proxima <= hoy)
+    return {
+      texto: `Follow-up vencido (${d.fecha_proxima})`,
+      cls: "border-danger/35 bg-danger/[0.07] text-danger",
+    };
+  if (diasQuieta >= 5)
+    return {
+      texto:
+        d.etapa === "propuesta"
+          ? `Propuesta sin respuesta hace ${diasQuieta} d`
+          : `Sin movimiento hace ${diasQuieta} d`,
+      cls: "border-warn/35 bg-warn/[0.08] text-warn",
+    };
+  if (d.etapa === "demo" && !d.fecha_proxima)
+    return {
+      texto: "Demo sin fecha — agendar",
+      cls: "border-accent/35 bg-accent/[0.06] text-accent",
+    };
+  return null;
+}
 
 const COL_HEAD: Record<Etapa, string> = {
   contactado: "text-ink-dim",
@@ -43,6 +77,7 @@ interface DealDraft {
   valor_setup: string;
   valor_mensual: string;
   proxima_accion: string;
+  fecha_proxima: string;
   notas: string;
 }
 
@@ -54,6 +89,7 @@ export default function Kanban({ deals }: { deals: Deal[] }) {
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DealDraft | null>(null);
+  const [copiado, setCopiado] = useState<string | null>(null);
 
   const activos = deals.filter((d) =>
     ["contactado", "demo", "propuesta"].includes(d.etapa),
@@ -118,6 +154,7 @@ export default function Kanban({ deals }: { deals: Deal[] }) {
       valor_setup: String(d.valor_setup),
       valor_mensual: String(d.valor_mensual),
       proxima_accion: d.proxima_accion ?? "",
+      fecha_proxima: d.fecha_proxima ?? "",
       notas: d.notas ?? "",
     });
   }
@@ -133,12 +170,20 @@ export default function Kanban({ deals }: { deals: Deal[] }) {
         valor_setup: Number(draft.valor_setup) || 0,
         valor_mensual: Number(draft.valor_mensual) || 0,
         proxima_accion: draft.proxima_accion || null,
+        fecha_proxima: draft.fecha_proxima || null,
         notas: draft.notas || null,
       }),
     });
     setSaving(false);
     setEditId(null);
     router.refresh();
+  }
+
+  /** Copia la propuesta de 1 página lista para pegar en WhatsApp/email. */
+  async function copiarPropuesta(d: Deal) {
+    await navigator.clipboard.writeText(generarPropuesta(d));
+    setCopiado(d.id);
+    setTimeout(() => setCopiado(null), 2000);
   }
 
   async function eliminar(d: Deal) {
@@ -273,6 +318,16 @@ export default function Kanban({ deals }: { deals: Deal[] }) {
                             placeholder="Próxima acción"
                             className="input px-2 text-xs"
                           />
+                          <label className="flex items-center gap-2 text-[10.5px] text-ink-dim">
+                            Fecha próxima acción
+                            <input
+                              type="date"
+                              value={draft.fecha_proxima}
+                              onChange={(e) => setDraft({ ...draft, fecha_proxima: e.target.value })}
+                              className="input flex-1 px-2 py-1 text-xs"
+                              aria-label="Fecha de próxima acción"
+                            />
+                          </label>
                           <input
                             value={draft.notas}
                             onChange={(e) => setDraft({ ...draft, notas: e.target.value })}
@@ -304,6 +359,7 @@ export default function Kanban({ deals }: { deals: Deal[] }) {
                     );
                   }
 
+                  const alerta = seniales(d);
                   return (
                     <div
                       key={d.id}
@@ -326,9 +382,21 @@ export default function Kanban({ deals }: { deals: Deal[] }) {
                       <div className="font-mono text-[9.5px] text-ink-faint">
                         Setup {clp(d.valor_setup)}
                       </div>
-                      {d.proxima_accion && (
-                        <div className="mt-2.5 rounded-lg bg-surface-3/70 px-2 py-1.5 text-[11px] text-ink-mut">
-                          → {d.proxima_accion}
+                      {alerta && (
+                        <div
+                          className={`mt-2.5 rounded-lg border px-2 py-1.5 text-[10.5px] font-medium ${alerta.cls}`}
+                        >
+                          ⚠ {alerta.texto}
+                        </div>
+                      )}
+                      {(d.proxima_accion || d.fecha_proxima) && (
+                        <div className="mt-2.5 flex items-center justify-between gap-2 rounded-lg bg-surface-3/70 px-2 py-1.5 text-[11px] text-ink-mut">
+                          <span className="truncate">→ {d.proxima_accion ?? "próxima acción"}</span>
+                          {d.fecha_proxima && (
+                            <span className="shrink-0 font-mono text-[9.5px] text-ink-dim">
+                              {d.fecha_proxima}
+                            </span>
+                          )}
                         </div>
                       )}
                       <div className="mt-3 hidden items-center justify-between gap-1.5 group-hover:flex">
@@ -345,6 +413,13 @@ export default function Kanban({ deals }: { deals: Deal[] }) {
                           className="btn-ghost px-2 py-0.5"
                         >
                           Editar
+                        </button>
+                        <button
+                          onClick={() => copiarPropuesta(d)}
+                          className="btn-ghost px-2 py-0.5"
+                          title="Copia la propuesta de 1 página (precios del deal) para pegar en WhatsApp o email. Revisa los [corchetes] antes de enviar."
+                        >
+                          {copiado === d.id ? "✓" : "Propuesta"}
                         </button>
                         <button
                           onClick={() => mover(d, 1)}
