@@ -77,20 +77,29 @@ function EditClientPanel({ c }: { c: ClientStats }) {
   async function guardar() {
     if (saving || !nombre.trim()) return;
     setSaving(true);
-    await fetch(`/api/clients/${c.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        nombre: nombre.trim(),
-        rubro: rubro || null,
-        plan,
-        mensualidad: Number(mensualidad) || 0,
-        telefono_bot: telefonoBot || null,
-        workflow_id: workflowId || null,
-      }),
-    });
-    setSaving(false);
-    setOpen(false);
+    try {
+      const res = await fetch(`/api/clients/${c.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nombre: nombre.trim(),
+          rubro: rubro || null,
+          plan,
+          mensualidad: Number(mensualidad) || 0,
+          telefono_bot: telefonoBot || null,
+          workflow_id: workflowId || null,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? `Error ${res.status}`);
+      }
+      setOpen(false);
+    } catch (e: any) {
+      alert(`No se pudo guardar: ${e.message}`);
+    } finally {
+      setSaving(false);
+    }
     router.refresh();
   }
 
@@ -101,7 +110,15 @@ function EditClientPanel({ c }: { c: ClientStats }) {
       )
     )
       return;
-    await fetch(`/api/clients/${c.id}`, { method: "DELETE" });
+    try {
+      const res = await fetch(`/api/clients/${c.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? `Error ${res.status}`);
+      }
+    } catch (e: any) {
+      alert(`No se pudo eliminar: ${e.message}`);
+    }
     router.refresh();
   }
 

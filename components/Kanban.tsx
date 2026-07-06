@@ -67,13 +67,29 @@ export default function Kanban({ deals }: { deals: Deal[] }) {
     0,
   );
 
+  async function llamarApi(url: string, init: RequestInit): Promise<boolean> {
+    try {
+      const res = await fetch(url, {
+        headers: { "Content-Type": "application/json" },
+        ...init,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? `Error ${res.status}`);
+      }
+      return true;
+    } catch (e: any) {
+      alert(`La operación falló: ${e.message}`);
+      return false;
+    }
+  }
+
   async function mover(deal: Deal, dir: -1 | 1) {
     const idx = ETAPAS.indexOf(deal.etapa);
     const destino = ETAPAS[idx + dir];
     if (!destino) return;
-    await fetch(`/api/deals/${deal.id}`, {
+    await llamarApi(`/api/deals/${deal.id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ etapa: destino }),
     });
     router.refresh();
@@ -109,9 +125,8 @@ export default function Kanban({ deals }: { deals: Deal[] }) {
   async function guardarEdicion(id: string) {
     if (!draft || saving) return;
     setSaving(true);
-    await fetch(`/api/deals/${id}`, {
+    await llamarApi(`/api/deals/${id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         nombre_negocio: draft.nombre_negocio,
         plan: draft.plan,
@@ -128,7 +143,8 @@ export default function Kanban({ deals }: { deals: Deal[] }) {
 
   async function eliminar(d: Deal) {
     if (!confirm(`¿Eliminar la oportunidad "${d.nombre_negocio}"?`)) return;
-    await fetch(`/api/deals/${d.id}`, { method: "DELETE" });
+    const ok = await llamarApi(`/api/deals/${d.id}`, { method: "DELETE" });
+    if (ok) setEditId(null);
     router.refresh();
   }
 

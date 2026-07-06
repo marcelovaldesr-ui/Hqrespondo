@@ -157,6 +157,30 @@ export default function ProspectTable({
     }
   }
 
+  async function borrarTodos() {
+    if (items.length === 0) return;
+    if (
+      !confirm(
+        `Vas a borrar TODOS los prospectos (${items.length}). Esto no se puede deshacer. ¿Continuar?`,
+      )
+    )
+      return;
+    if (!confirm("Última confirmación: ¿borrar absolutamente todo y partir de cero?")) return;
+    setEstadoError(null);
+    try {
+      const res = await fetch("/api/prospects", {
+        method: "DELETE",
+        headers: { "x-confirm": "BORRAR-TODO" },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`);
+      setItems([]);
+      router.refresh();
+    } catch (err: any) {
+      setEstadoError(`No se pudo borrar todo: ${err.message}`);
+    }
+  }
+
   async function eliminar(p: Prospect) {
     if (!confirm(`¿Eliminar el prospecto "${p.nombre}"? Esto no se puede deshacer.`)) return;
     setEstadoError(null);
@@ -166,11 +190,12 @@ export default function ProspectTable({
       const res = await fetch(`/api/prospects/${p.id}`, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? "No se pudo eliminar");
+        throw new Error(data.error ?? `Error ${res.status}`);
       }
+      router.refresh();
     } catch (err: any) {
       setItems(previos);
-      setEstadoError(err.message);
+      setEstadoError(`No se pudo eliminar: ${err.message}`);
     }
   }
 
@@ -249,6 +274,14 @@ export default function ProspectTable({
             title="Descarga lo filtrado como CSV (se abre en Excel)"
           >
             ⬇ Exportar a Excel
+          </button>
+          <button
+            onClick={borrarTodos}
+            disabled={items.length === 0}
+            className="btn-ghost px-3 py-1.5 hover:border-danger/40 hover:bg-danger/10 hover:text-danger"
+            title="Borra todos los prospectos para partir de cero (pide doble confirmación)"
+          >
+            🗑 Borrar todos
           </button>
         </span>
       </div>
