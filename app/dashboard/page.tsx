@@ -25,7 +25,7 @@ export default async function Dashboard() {
   const hace24 = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
   const hace7d = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
 
-  const [hotRes, segRes, dealsRes, clientsRes, errRes, msgRes, feedRes, sparkRes] =
+  const [hotRes, segRes, dealsRes, clientsRes, errRes, msgRes, feedRes, sparkRes, roadmapHoyRes, dealsHoyRes] =
     await Promise.all([
       s
         .from("prospects")
@@ -35,13 +35,15 @@ export default async function Dashboard() {
         .order("score", { ascending: false }),
       s
         .from("prospects")
-        .select("*", { count: "exact", head: true })
+        .select("id,nombre,estado,proxima_accion", { count: "exact" })
         .lte("proxima_accion", hoy)
         .not(
           "estado",
           "in",
           `("${ESTADO_CONFIG.descartado.value}","${ESTADO_CONFIG.en_pipeline.value}")`,
-        ),
+        )
+        .order("proxima_accion", { ascending: true })
+        .limit(8),
       s.from("deals").select("*").in("etapa", ["contactado", "demo", "propuesta"]),
       s.from("clients").select("id,nombre,mensualidad,activo"),
       s
@@ -64,6 +66,20 @@ export default async function Dashboard() {
         .select("created_at")
         .eq("tipo", "mensaje")
         .gte("created_at", hace7d),
+      s
+        .from("roadmap_items")
+        .select("id,tarea,area,fecha_limite")
+        .neq("estado", "Hecho")
+        .lte("fecha_limite", hoy)
+        .order("fecha_limite", { ascending: true })
+        .limit(8),
+      s
+        .from("deals")
+        .select("id,nombre_negocio,proxima_accion,fecha_proxima")
+        .in("etapa", ["contactado", "demo", "propuesta"])
+        .lte("fecha_proxima", hoy)
+        .order("fecha_proxima", { ascending: true })
+        .limit(8),
     ]);
 
   const hot = (hotRes.data ?? []) as Prospect[];
@@ -94,6 +110,26 @@ export default async function Dashboard() {
     if (idx >= 0 && idx < 7) spark[idx]++;
   }
   const sparkMax = Math.max(1, ...spark);
+
+  const segHoy = (segRes.data ?? []) as {
+    id: string;
+    nombre: string;
+    estado: string;
+    proxima_accion: string | null;
+  }[];
+  const tareasHoy = (roadmapHoyRes.data ?? []) as {
+    id: string;
+    tarea: string;
+    area: string | null;
+    fecha_limite: string | null;
+  }[];
+  const dealsHoy = (dealsHoyRes.data ?? []) as {
+    id: string;
+    nombre_negocio: string;
+    proxima_accion: string | null;
+    fecha_proxima: string | null;
+  }[];
+  const totalHoy = segHoy.length + tareasHoy.length + dealsHoy.length;
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -195,6 +231,68 @@ export default async function Dashboard() {
           </div>
         </Link>
       </div>
+
+      <section className="panel mt-3 p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <span className="lbl">Hoy — lo accionable</span>
+          <span className="font-mono text-[11px] text-ink-dim">
+            {totalHoy} pendiente{totalHoy === 1 ? "" : "s"}
+          </span>
+        </div>
+        {totalHoy === 0 ? (
+          <p className="text-sm text-ink-dim">
+            Nada pendiente para hoy — todo al día. ✓
+          </p>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-3">
+            <div>
+              <Link href="/prospeccion" className="lbl mb-2 block text-[10px] hover:text-brand">
+                Seguimientos de prospección ({segHoy.length})
+              </Link>
+              <div className="flex flex-col gap-1.5 text-[13px]">
+                {segHoy.length === 0 && <span className="text-xs text-ink-faint">—</span>}
+                {segHoy.map((s2) => (
+                  <Link key={s2.id} href="/prospeccion" className="group flex items-center gap-2">
+                    <span className="led bg-warn" />
+                    <span className="flex-1 truncate text-ink-soft group-hover:text-ink">{s2.nombre}</span>
+                    <span className="font-mono text-[10px] text-ink-dim">{s2.proxima_accion ?? ""}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Link href="/roadmap" className="lbl mb-2 block text-[10px] hover:text-brand">
+                Tareas del roadmap ({tareasHoy.length})
+              </Link>
+              <div className="flex flex-col gap-1.5 text-[13px]">
+                {tareasHoy.length === 0 && <span className="text-xs text-ink-faint">—</span>}
+                {tareasHoy.map((t) => (
+                  <Link key={t.id} href="/roadmap" className="group flex items-center gap-2">
+                    <span className="led bg-brand" />
+                    <span className="flex-1 truncate text-ink-soft group-hover:text-ink">{t.tarea}</span>
+                    <span className="font-mono text-[10px] text-ink-dim">{t.fecha_limite ?? ""}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Link href="/pipeline" className="lbl mb-2 block text-[10px] hover:text-brand">
+                Pipeline con fecha ({dealsHoy.length})
+              </Link>
+              <div className="flex flex-col gap-1.5 text-[13px]">
+                {dealsHoy.length === 0 && <span className="text-xs text-ink-faint">—</span>}
+                {dealsHoy.map((d) => (
+                  <Link key={d.id} href="/pipeline" className="group flex items-center gap-2">
+                    <span className="led bg-accent" />
+                    <span className="flex-1 truncate text-ink-soft group-hover:text-ink">{d.nombre_negocio}</span>
+                    <span className="truncate font-mono text-[10px] text-ink-dim">{d.proxima_accion ?? d.fecha_proxima ?? ""}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
 
       <div className="mt-3 grid gap-3 lg:grid-cols-[1.15fr_1fr]">
         <section className="panel-hot scanline p-5">
