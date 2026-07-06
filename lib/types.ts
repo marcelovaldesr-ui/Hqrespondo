@@ -189,3 +189,59 @@ export const ROADMAP_ESTADOS_BASE = [
   "Backlog",
   "Hecho",
 ] as const;
+
+/** Paso del checklist de instalación de un cliente (tabla onboarding_tasks) */
+export interface OnboardingTask {
+  id: string;
+  client_id: string;
+  paso: string;
+  orden: number;
+  hecho: boolean;
+  hecho_por: string | null;
+  hecho_at: string | null;
+  created_at: string;
+}
+
+/** Checklist estándar que se crea con cada cliente nuevo */
+export const ONBOARDING_PASOS_DEFAULT = [
+  "Kickoff con el cliente: qué vende, FAQs, tono deseado",
+  "Crear workflow del bot en n8n (duplicar plantilla)",
+  "Conectar número de WhatsApp (Cloud API)",
+  "Configurar tono, horarios y derivación en el panel",
+  "Guardar el workflow ID en la ficha del cliente",
+  "Prueba end-to-end con el dueño del negocio",
+  "Activar registro de mensajes y cobrar el setup",
+] as const;
+
+/** Decisión registrada del equipo (tabla decisiones) */
+export interface Decision {
+  id: string;
+  titulo: string;
+  detalle: string | null;
+  decidido_por: string | null;
+  created_at: string;
+}
+
+/** Gasto de la operación (tabla gastos) */
+export interface Gasto {
+  id: string;
+  fecha: string;
+  concepto: string;
+  categoria: string | null;
+  monto: number;
+  pagado_por: string | null;
+  notas: string | null;
+  created_at: string;
+}
+
+/** Cobro de mensualidad (tabla cobros) */
+export interface Cobro {
+  id: string;
+  client_id: string;
+  mes: string;
+  monto: number;
+  estado: "pendiente" | "pagado";
+  pagado_at: string | null;
+  notas: string | null;
+  created_at: string;
+}
