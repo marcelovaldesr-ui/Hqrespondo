@@ -51,8 +51,14 @@ ${JSON.stringify(lista, null, 2)}
 Responde SOLO con un array JSON válido, sin texto adicional:
 [{"i": 0, "score": 85, "razon": "...", "mensaje": "..."}]`;
 
+  // EXPERIMENTAL: grounding con Google Maps (datos frescos del negocio).
+  // Actívalo con GEMINI_MAPS_GROUNDING=1 — requiere modelo Gemini 3.x para
+  // la cuota gratis (5.000 prompts/mes); en 2.x se cobra aparte.
+  const tools =
+    process.env.GEMINI_MAPS_GROUNDING === "1" ? [{ google_maps: {} }] : undefined;
+
   try {
-    const result = await geminiJson<ScoreRow[]>(prompt);
+    const result = await geminiJson<ScoreRow[]>(prompt, tools);
     const byIndex = new Map(result.map((r) => [r.i, r]));
     return places.map((p, i) => {
       const r = byIndex.get(i);

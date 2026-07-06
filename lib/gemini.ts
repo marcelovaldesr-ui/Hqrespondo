@@ -1,6 +1,9 @@
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
-export async function gemini(prompt: string): Promise<string> {
+export async function gemini(
+  prompt: string,
+  tools?: unknown[],
+): Promise<string> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("Falta GEMINI_API_KEY");
   const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
@@ -10,6 +13,7 @@ export async function gemini(prompt: string): Promise<string> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
+      ...(tools && tools.length > 0 ? { tools } : {}),
     }),
   });
 
@@ -21,8 +25,8 @@ export async function gemini(prompt: string): Promise<string> {
 }
 
 /** Llama a Gemini esperando JSON; limpia fences ```json y parsea. */
-export async function geminiJson<T>(prompt: string): Promise<T> {
-  const text = await gemini(prompt);
+export async function geminiJson<T>(prompt: string, tools?: unknown[]): Promise<T> {
+  const text = await gemini(prompt, tools);
   const clean = text.replace(/```json|```/g, "").trim();
   return JSON.parse(clean) as T;
 }
