@@ -62,6 +62,20 @@ function Icon({ name }: { name: string }) {
           <path d="M6 2v10M10 3.5v10" />
         </svg>
       );
+    case "check":
+      return (
+        <svg {...common} aria-hidden="true">
+          <rect x="2" y="2" width="12" height="12" rx="2.5" />
+          <path d="M5.2 8.2l2 2 3.6-4.2" />
+        </svg>
+      );
+    case "money":
+      return (
+        <svg {...common} aria-hidden="true">
+          <rect x="1.8" y="3.5" width="12.4" height="9" rx="1.5" />
+          <circle cx="8" cy="8" r="2.2" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -74,6 +88,8 @@ const LINKS = [
   { href: "/clientes", label: "Clientes & Bots", icon: "bot" },
   { href: "/brief", label: "Brief del Día", icon: "file" },
   { href: "/roadmap", label: "Roadmap", icon: "map" },
+  { href: "/decisiones", label: "Decisiones", icon: "check" },
+  { href: "/finanzas", label: "Finanzas", icon: "money" },
 ];
 
 export default function Sidebar() {
