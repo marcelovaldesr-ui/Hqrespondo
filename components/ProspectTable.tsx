@@ -3,6 +3,8 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { plantillasPara } from "@/lib/mensajes";
+import { matchRubroSlug, conDemo } from "@/lib/growth/match";
+import { rubroPorSlug } from "@/lib/growth/industries";
 import {
   ESTADO_CONFIG,
   ESTADO_LABEL,
@@ -432,6 +434,8 @@ export default function ProspectTable({
             {filtrados.map((p) => {
               const sc = scoreCls(p.score);
               const wa = linkWhatsApp(p);
+              const rSlug = matchRubroSlug(p.rubro);
+              const rc = rSlug ? rubroPorSlug(rSlug) : null;
               return (
                 <Fragment key={p.id}>
                   <tr className="data-row">
@@ -591,6 +595,45 @@ export default function ProspectTable({
                                 Revisa los [corchetes] antes de enviar.
                               </p>
                             </div>
+                            {rc && (
+                              <div>
+                                <div className="lbl mb-1.5">Contenido para este rubro</div>
+                                <div className="rounded-lg border border-brand/20 bg-brand/[0.04] px-3 py-2.5">
+                                  <p className="text-[12.5px] font-medium text-ink">{rc.formula_sin}</p>
+                                  <div className="mt-2 flex flex-wrap gap-1.5">
+                                    {[rc.ideas_reel[0], rc.ideas_post[0], rc.ideas_carrusel[0]]
+                                      .filter((x): x is string => Boolean(x))
+                                      .map((idea, i) => (
+                                        <button
+                                          key={i}
+                                          onClick={() => copiarTexto(`${p.id}-rc-${i}`, idea)}
+                                          className="btn-ghost px-2.5 py-1"
+                                          title={idea}
+                                        >
+                                          {copiado === `${p.id}-rc-${i}`
+                                            ? "Copiado ✓"
+                                            : idea.length > 30
+                                              ? idea.slice(0, 30) + "…"
+                                              : idea}
+                                        </button>
+                                      ))}
+                                  </div>
+                                  <button
+                                    onClick={() => copiarTexto(`${p.id}-rcmsg`, conDemo(rc.mensaje_prospeccion))}
+                                    className="btn-ghost mt-1.5 px-2.5 py-1"
+                                    title={conDemo(rc.mensaje_prospeccion)}
+                                  >
+                                    {copiado === `${p.id}-rcmsg` ? "Copiado ✓" : "Copiar mensaje del rubro"}
+                                  </button>
+                                  <a
+                                    href={`/growth/rubros#${rc.slug}`}
+                                    className="mt-1.5 block text-[11px] text-brand hover:underline"
+                                  >
+                                    Ver todo el contenido de {rc.nombre} →
+                                  </a>
+                                </div>
+                              </div>
+                            )}
                           </div>
                           {/* Columna derecha: próxima acción + notas */}
                           <div className="flex flex-col gap-2.5">

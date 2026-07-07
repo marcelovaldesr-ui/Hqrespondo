@@ -39,7 +39,9 @@ export default function IdeasClient({
   const [fRubro, setFRubro] = useState(filtroRubro);
   const [fEstado, setFEstado] = useState("");
   const [fCanal, setFCanal] = useState("");
+  const [soloProspeccion, setSoloProspeccion] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [rmId, setRmId] = useState<string | null>(null);
 
   // formulario nueva idea
   const [titulo, setTitulo] = useState("");
@@ -59,13 +61,20 @@ export default function IdeasClient({
       if (fRubro && i.rubro !== fRubro) return false;
       if (fEstado && i.estado !== fEstado) return false;
       if (fCanal && i.canal !== fCanal) return false;
+      if (soloProspeccion) {
+        const sirve =
+          (i.funnel === "consideracion" || i.funnel === "decision") &&
+          (i.rubro != null ||
+            ["problema", "objeciones", "demo", "venta"].includes(i.pilar));
+        if (!sirve) return false;
+      }
       if (q.trim()) {
         const hay = `${i.titulo} ${i.descripcion} ${i.fuente ?? ""} ${i.objetivo_comercial ?? ""}`.toLowerCase();
         if (!hay.includes(q.toLowerCase())) return false;
       }
       return true;
     });
-  }, [initial, fPilar, fRubro, fEstado, fCanal, q]);
+  }, [initial, fPilar, fRubro, fEstado, fCanal, soloProspeccion, q]);
 
   async function crear(e: React.FormEvent) {
     e.preventDefault();
@@ -119,6 +128,30 @@ export default function IdeasClient({
     router.refresh();
   }
 
+  /** Crea una tarea de contenido en el roadmap desde una idea. */
+  async function aRoadmap(i: ContentIdea) {
+    try {
+      const res = await fetch("/api/roadmap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tarea: `Contenido: ${i.titulo}`,
+          area: "Contenido",
+          estado: "Esta semana",
+          notas: i.descripcion || null,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? `Error ${res.status}`);
+      }
+      setRmId(i.id);
+      setTimeout(() => setRmId((cur) => (cur === i.id ? null : cur)), 1600);
+    } catch (e: any) {
+      alert(`No se pudo agregar al roadmap: ${e.message}`);
+    }
+  }
+
   return (
     <div>
       {/* Barra de acciones */}
@@ -156,6 +189,13 @@ export default function IdeasClient({
             <option key={c} value={c}>{CANAL_LABEL[c]}</option>
           ))}
         </select>
+        <button
+          onClick={() => setSoloProspeccion((s) => !s)}
+          className={`chip transition ${soloProspeccion ? "border-coral/50 bg-coral/10 text-coral" : "hover:text-ink"}`}
+          title="Piezas que sirven para calentar o seguir leads (consideración/decisión, por rubro u objeción)"
+        >
+          Para prospección
+        </button>
         <span className="ml-auto font-mono text-[11px] text-ink-dim">{visibles.length} ideas</span>
       </div>
 
@@ -220,6 +260,13 @@ export default function IdeasClient({
             <div key={i.id} className="group panel px-4 py-3">
               <div className="flex items-start gap-2">
                 <span className="flex-1 text-[14px] font-medium leading-snug text-ink">{i.titulo}</span>
+                <button
+                  onClick={() => aRoadmap(i)}
+                  className={`btn-ghost hidden px-2 py-0.5 text-[10px] group-hover:inline-flex ${rmId === i.id ? "border-ok/40 text-ok" : "hover:border-brand/40 hover:text-brand"}`}
+                  title="Crear una tarea de contenido en el Roadmap"
+                >
+                  {rmId === i.id ? "✓ Roadmap" : "→ Roadmap"}
+                </button>
                 {i.seed ? (
                   <span className="chip px-2 py-0 text-[9.5px]">seed</span>
                 ) : (

@@ -200,7 +200,7 @@ export default function CalendarClient({
                 </div>
                 <div className="flex flex-col gap-1.5">
                   {items.map((i) => (
-                    <div key={i.id} className="group flex items-center gap-3 rounded-lg border border-line bg-surface-2 px-3 py-2 text-[13px]">
+                    <div key={i.id} className="group flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-line bg-surface-2 px-3 py-2 text-[13px]">
                       <span className="chip px-2 py-0 text-[10px]">{FORMATO_LABEL[i.formato]}</span>
                       <span className="flex-1 truncate text-ink-soft">{i.titulo}</span>
                       <span className="hidden text-[10px] text-ink-dim sm:inline">{CANAL_LABEL[i.canal]} · {PILAR_LABEL[i.pilar]}</span>

@@ -14,11 +14,16 @@
 - Registrar en RespondHQ → Decisiones el nombre "Growth Studio" y la mezcla de pilares.
 
 ## 🟢 Próximos 30 días
-- **Botón "→ Roadmap"** en una idea: crear una tarea de contenido en `roadmap_items` desde Growth Studio (reutiliza `/api/roadmap`).
-- **Marcar idea como "útil para prospección"** y mostrarla en la ficha del prospecto por rubro (cruce con `prospects.rubro`).
-- **Vista mobile tipo cards** afinada para Calendario e Ideas.
-- **Contador real de cupos** del Piloto Fundador conectado a `clients`/`deals` (hoy es texto en destacadas).
-- Completar los 7 rubros secundarios con el mismo nivel de detalle de los 5 ICP a medida que se prospecten.
+**✅ Implementado el 6-jul-2026** (ver PLAN_IMPLEMENTACION_GROWTH_30D.md):
+- ✅ **Contenido por rubro en la ficha del prospecto** — `lib/growth/match.ts` mapea el rubro libre del prospecto a un slug y muestra fórmula "sin", ideas y mensaje del rubro en el detalle de `ProspectTable` (con botones de copiar y link a `/growth/rubros#slug`).
+- ✅ **Botón "→ Roadmap"** en cada idea: crea una tarea `area: "Contenido"` vía `/api/roadmap`.
+- ✅ **Filtro "Para prospección"** en Ideas (regla derivada: funnel consideración/decisión + rubro u objeción; sin migración).
+- ✅ **Contador real de cupos** del Piloto Fundador en el panel (`5 − nº de clientes`).
+- ✅ **Pulido mobile** en filas del Calendario (wrap seguro).
+
+Pendiente:
+- Completar los 7 rubros secundarios al nivel de los 5 ICP — **a medida que la prospección muestre tracción** en ellos (decisión deliberada: no gastar tiempo pre-lanzamiento en contenido que aún no se necesita).
+- Camino explícito de "útil para prospección" con columna propia (migración 010) — solo si se quiere marcar a mano en vez de la regla derivada.
 
 ## 🔵 Más adelante (futuro, documentado)
 - **Generación con IA externa:** conectar Gemini (ya en el proyecto para scoring/brief) para enriquecer los generadores de carrusel/guion. Los generadores por plantilla quedan como fallback siempre disponible.

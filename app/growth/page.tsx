@@ -1,6 +1,8 @@
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import GrowthNav from "@/components/growth/GrowthNav";
+import { db } from "@/lib/db";
+import { PILOTO_FUNDADOR_DCTO } from "@/lib/types";
 import { getIdeas, getCalendar } from "@/lib/growth/store";
 import { PILARES } from "@/lib/growth/pillars";
 import { RUBROS_PRIORITARIOS } from "@/lib/growth/industries";
@@ -22,7 +24,13 @@ function fechaCorta(iso: string) {
 }
 
 export default async function GrowthDashboard() {
-  const [{ ideas, dbActiva }, { items }] = await Promise.all([getIdeas(), getCalendar()]);
+  const [{ ideas, dbActiva }, { items }, clientesRes] = await Promise.all([
+    getIdeas(),
+    getCalendar(),
+    db().from("clients").select("id", { count: "exact", head: true }),
+  ]);
+  const cuposTotal = PILOTO_FUNDADOR_DCTO.length;
+  const cupos = Math.max(0, cuposTotal - (clientesRes.count ?? 0));
 
   const hoy = new Date();
   const hoyISO = hoy.toISOString().slice(0, 10);
@@ -79,6 +87,10 @@ export default async function GrowthDashboard() {
               demanda comercial. Empieza por lo que apoya la prospección de esta
               semana.
             </p>
+            <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-coral/30 bg-coral/[0.07] px-3 py-1 text-[11px] text-coral">
+              <span className="led bg-coral" />
+              Piloto Fundador: quedan {cupos} de {cuposTotal} cupos
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link href="/growth/generador" className="btn-primary text-xs">
