@@ -62,37 +62,76 @@ export default function GeneratorClient() {
   const [carrusel, setCarrusel] = useState<CarouselDraft | null>(null);
   const [guion, setGuion] = useState<VideoScript | null>(null);
 
+  // Generación con IA (Gemini) — opcional, con fallback a plantillas
+  const [usarIA, setUsarIA] = useState(false);
+  const [cargando, setCargando] = useState(false);
+  const [origen, setOrigen] = useState<"ia" | "plantilla" | null>(null);
+  const [avisoGen, setAvisoGen] = useState<string | null>(null);
+
   // ideas desde estrategia
   const [fuente, setFuente] = useState<FuenteIdeas>("objeciones");
   const [ideas, setIdeas] = useState<Partial<import("@/lib/growth/types").ContentIdea>[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
 
-  function generar() {
-    if (modo === "carrusel") {
-      setCarrusel(
-        generarCarrusel({
-          tema: tema || (rubro ? "" : "Pierdes ventas por responder tarde"),
-          pilar,
-          rubro: rubro || null,
-          objetivo,
-          nivelVenta: nivel,
-          nSlides,
-          cta,
-        }),
-      );
-    } else if (modo === "guion") {
-      setGuion(
-        generarGuion({
-          tema: tema || "Pierdes ventas por responder tarde",
-          pilar,
-          rubro: rubro || null,
-          objetivo,
-          nivelVenta: nivel,
-          duracion,
-        }),
-      );
-    } else {
+  async function generar() {
+    setAvisoGen(null);
+    if (modo === "ideas") {
       setIdeas(generarIdeasDesdeEstrategia(fuente));
+      return;
+    }
+
+    const carrInput = {
+      tema: tema || (rubro ? "" : "Pierdes ventas por responder tarde"),
+      pilar,
+      rubro: rubro || null,
+      objetivo,
+      nivelVenta: nivel,
+      nSlides,
+      cta,
+    };
+    const guionInput = {
+      tema: tema || "Pierdes ventas por responder tarde",
+      pilar,
+      rubro: rubro || null,
+      objetivo,
+      nivelVenta: nivel,
+      duracion,
+    };
+
+    if (usarIA) {
+      setCargando(true);
+      try {
+        const res = await fetch("/api/growth/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            modo === "carrusel"
+              ? { tipo: "carrusel", ...carrInput }
+              : { tipo: "guion", ...guionInput },
+          ),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`);
+        if (modo === "carrusel") setCarrusel(data.item);
+        else setGuion(data.item);
+        setOrigen(data.fuente);
+        if (data.fuente === "plantilla") {
+          setAvisoGen(
+            "La IA no estaba disponible; se usó una plantilla. Verifica GEMINI_API_KEY.",
+          );
+        }
+      } catch (e: any) {
+        if (modo === "carrusel") setCarrusel(generarCarrusel(carrInput));
+        else setGuion(generarGuion(guionInput));
+        setOrigen("plantilla");
+        setAvisoGen("No se pudo generar con IA; se usó una plantilla.");
+      } finally {
+        setCargando(false);
+      }
+    } else {
+      if (modo === "carrusel") setCarrusel(generarCarrusel(carrInput));
+      else setGuion(generarGuion(guionInput));
+      setOrigen(null);
     }
   }
 
@@ -204,10 +243,25 @@ export default function GeneratorClient() {
                 <input value={cta} onChange={(e) => setCta(e.target.value)} className="input mt-1" />
               </label>
             )}
-            <div className="md:col-span-2">
-              <button onClick={generar} className="btn-primary text-xs">
-                {modo === "carrusel" ? "Generar carrusel" : "Generar guion"}
+            <div className="md:col-span-2 flex flex-wrap items-center gap-3">
+              <button onClick={generar} disabled={cargando} className="btn-primary text-xs">
+                {cargando
+                  ? "Generando…"
+                  : usarIA
+                    ? "Redactar con IA"
+                    : modo === "carrusel"
+                      ? "Generar carrusel"
+                      : "Generar guion"}
               </button>
+              <label className="flex items-center gap-1.5 text-[11px] text-ink-mut">
+                <input
+                  type="checkbox"
+                  checked={usarIA}
+                  onChange={(e) => setUsarIA(e.target.checked)}
+                />
+                ✨ Redactar con IA (Gemini) — revisa antes de publicar
+              </label>
+              {avisoGen && <span className="text-[11px] text-warn">{avisoGen}</span>}
             </div>
           </div>
         )}
@@ -217,7 +271,15 @@ export default function GeneratorClient() {
       {modo === "carrusel" && carrusel && (
         <div className="panel p-5">
           <div className="mb-3 flex items-center justify-between">
-            <span className="lbl">Carrusel generado</span>
+            <span className="flex items-center gap-2">
+              <span className="lbl">Carrusel generado</span>
+              {origen === "ia" && (
+                <span className="chip border-brand/30 bg-brand/[0.07] px-1.5 py-0 text-[9px] text-brand">IA</span>
+              )}
+              {origen === "plantilla" && (
+                <span className="chip px-1.5 py-0 text-[9px]">plantilla</span>
+              )}
+            </span>
             <div className="flex gap-2">
               <CopyBtn text={carruselTexto(carrusel)} label="Copiar todo" />
               <button onClick={() => guardarIdea({ titulo: carrusel.titulo, descripcion: carrusel.objetivo, pilar: carrusel.pilar, rubro: carrusel.rubro, canal: "instagram", formato: "carrusel", funnel: carrusel.funnel, cta: carrusel.cta })} className="btn-ghost px-2 py-0.5 text-[11px]">
@@ -249,7 +311,15 @@ export default function GeneratorClient() {
       {modo === "guion" && guion && (
         <div className="panel p-5">
           <div className="mb-3 flex items-center justify-between">
-            <span className="lbl">Guion generado · {guion.duracion}</span>
+            <span className="flex items-center gap-2">
+              <span className="lbl">Guion generado · {guion.duracion}</span>
+              {origen === "ia" && (
+                <span className="chip border-brand/30 bg-brand/[0.07] px-1.5 py-0 text-[9px] text-brand">IA</span>
+              )}
+              {origen === "plantilla" && (
+                <span className="chip px-1.5 py-0 text-[9px]">plantilla</span>
+              )}
+            </span>
             <div className="flex gap-2">
               <CopyBtn text={guionTexto(guion)} label="Copiar todo" />
               <button onClick={() => guardarIdea({ titulo: guion.titulo, descripcion: guion.objetivo, pilar: guion.pilar, rubro: guion.rubro, canal: "instagram", formato: "reel", funnel: guion.funnel, cta: guion.cta })} className="btn-ghost px-2 py-0.5 text-[11px]">
