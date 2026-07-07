@@ -76,6 +76,12 @@ function Icon({ name }: { name: string }) {
           <circle cx="8" cy="8" r="2.2" />
         </svg>
       );
+    case "spark":
+      return (
+        <svg {...common} aria-hidden="true">
+          <path d="M8 1.6l1.5 4 4 1.5-4 1.5L8 14.4 6.5 8.6l-4-1.5 4-1.5L8 1.6z" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -88,6 +94,7 @@ const LINKS = [
   { href: "/prospeccion", label: "Prospección", icon: "target" },
   { href: "/pipeline", label: "Pipeline", icon: "kanban" },
   { href: "/clientes", label: "Clientes & Bots", icon: "bot" },
+  { href: "/growth", label: "Growth Studio", icon: "spark" },
   { href: "/finanzas", label: "Finanzas", icon: "money" },
   { href: "/brief", label: "Brief del Día", icon: "file" },
   { href: "/roadmap", label: "Roadmap", icon: "map" },
