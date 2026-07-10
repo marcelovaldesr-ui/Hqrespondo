@@ -42,7 +42,7 @@ function CopyBtn({ text, label = "Copiar" }: { text: string; label?: string }) {
 const NIVEL_LABEL: Record<NivelVenta, string> = {
   suave: "Suave (guardar/compartir)",
   medio: "Medio (probar demo)",
-  directo: "Directo (agendar/piloto)",
+  directo: "Directo (agendar/escribir)",
 };
 
 export default function GeneratorClient() {
@@ -117,14 +117,16 @@ export default function GeneratorClient() {
         setOrigen(data.fuente);
         if (data.fuente === "plantilla") {
           setAvisoGen(
-            "La IA no estaba disponible; se usó una plantilla. Verifica GEMINI_API_KEY.",
+            `La IA no estaba disponible; se usó una plantilla.${data.nota ? " Detalle: " + String(data.nota).slice(0, 220) : ""}`,
           );
         }
       } catch (e: any) {
         if (modo === "carrusel") setCarrusel(generarCarrusel(carrInput));
         else setGuion(generarGuion(guionInput));
         setOrigen("plantilla");
-        setAvisoGen("No se pudo generar con IA; se usó una plantilla.");
+        setAvisoGen(
+          "No se pudo generar con IA (posible timeout); se usó una plantilla. Reintenta en unos segundos.",
+        );
       } finally {
         setCargando(false);
       }
@@ -189,6 +191,22 @@ export default function GeneratorClient() {
           </button>
         ))}
       </div>
+
+      {/* Guía de campos — plegable, no molesta */}
+      <details className="mb-4 rounded-lg border border-line bg-surface-3/40 px-4 py-2.5 text-[12px] text-ink-mut">
+        <summary className="cursor-pointer select-none text-[12.5px] font-medium text-ink-soft">
+          ¿Qué significa cada campo? (guía rápida)
+        </summary>
+        <ul className="mt-2.5 flex flex-col gap-1.5 leading-relaxed">
+          <li><strong className="text-ink">Tema / ángulo:</strong> el punto de partida del carrusel. Si lo dejas vacío, se elige uno solo (o usa el rubro). Ej: &quot;cotizar a mano te come el día&quot;.</li>
+          <li><strong className="text-ink">Pilar:</strong> el enfoque, y lo que MÁS cambia el resultado. Problema (golpea el dolor) · Confianza (desarma el miedo a la IA) · Producto (cómo funciona) · Demo (muéstralo en acción) · Rubros (le habla a una industria) · Objeciones (responde una duda) · Comparación (vs. otras opciones) · Educación (enseña sin vender) · Venta (mueve a la acción) · Founder (historia de los fundadores).</li>
+          <li><strong className="text-ink">Rubro (opcional):</strong> si eliges uno, usa los dolores y casos reales de ese rubro. &quot;Transversal&quot; = genérico.</li>
+          <li><strong className="text-ink">Nivel de venta:</strong> qué tan directo es el cierre. Suave = generar interés (guardar/compartir) · Medio = invitar a la demo · Directo = pedir agendar o escribir por DM.</li>
+          <li><strong className="text-ink">N° de slides:</strong> cuántas láminas (4–8). 6 es lo típico.</li>
+          <li><strong className="text-ink">Objetivo comercial (opcional):</strong> para qué es la pieza (ej: &quot;apoyar la prospección de ferreterías&quot;). Orienta el enfoque de la IA.</li>
+          <li><strong className="text-ink">CTA (opcional):</strong> la llamada a la acción del cierre. Vacío = se elige según el nivel de venta.</li>
+        </ul>
+      </details>
 
       {/* Inputs */}
       <div className="panel-hot mb-4 p-4">

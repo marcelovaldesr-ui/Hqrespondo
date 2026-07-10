@@ -138,7 +138,7 @@ export const PILARES: ContentPillar[] = [
       "Chatbot de botones vs asistente de ventas",
       "Por qué no necesitas un CRM completo al inicio",
       "Automatizar respuestas vs automatizar ventas",
-      "Persona ($650.000+) vs asistente (desde $79.000)",
+      "Persona ($650.000+) vs asistente (desde $24.990)",
       "Por qué publicamos precios cuando nadie lo hace",
     ],
     cta: "Compara en la demo",
@@ -171,20 +171,20 @@ export const PILARES: ContentPillar[] = [
     key: "venta",
     nombre: "Venta / Oferta",
     objetivo:
-      "Mover a la acción: demo, Piloto Fundador, oferta de lanzamiento, qué incluye la implementación.",
+      "Mover a la acción: demo, prueba 30 días, oferta de lanzamiento, qué incluye la implementación.",
     audiencia: "Prospecto listo para decidir.",
     formatos: ["reel", "historia", "post_linkedin", "anuncio"],
     ejemplos: [
-      "Buscamos 5 clientes fundadores (cupos)",
+      "Pruébalo 30 días sin riesgo (si no ayuda, no pagas)",
       "Qué incluye la implementación",
       "Agenda una demo en 20 min",
       "Precios claros, sin cotizar a ciegas",
       "Cómo empezamos contigo",
     ],
-    cta: "Agenda demo / Postula al Piloto Fundador",
+    cta: "Agenda demo / Pruébalo 30 días",
     funnel: "decision",
     relacion_ventas:
-      "CTA directo a WhatsApp/demo. Sostiene la urgencia real (cupos del Piloto Fundador).",
+      "CTA directo a WhatsApp/demo. Sostiene la reversión de riesgo (prueba 30 días).",
     mezcla_recomendada: "Bottom of funnel — 1 pieza fuerte por semana",
   },
   {

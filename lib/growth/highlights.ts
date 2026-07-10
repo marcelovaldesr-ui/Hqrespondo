@@ -3,9 +3,9 @@ import type { HighlightPlan } from "./types";
 /**
  * DESTACADAS DE INSTAGRAM.
  * Estructura definitiva de INSTAGRAM_RESPONDO.md §4 (orden en el perfil:
- * Respon-Do → Demo → Industrias → Planes → Dudas → Pilotos → Equipo → Clientes)
+ * Respon-Do → Demo → Industrias → Planes → Dudas → Garantía → Equipo → Clientes)
  * + destacadas complementarias pedidas (Casos de uso, IA + Humano).
- * Sin testimonios inventados: "Clientes" se llena con el primer piloto.
+ * Sin testimonios inventados: "Clientes" se llena con el primer cliente real.
  */
 export const DESTACADAS: HighlightPlan[] = [
   {
@@ -62,9 +62,9 @@ export const DESTACADAS: HighlightPlan[] = [
     cta: "Cotiza con nosotros",
     historias: [
       { texto: "Precios claros, sin cotizaciones a ciegas", visual: "Portada limpia" },
-      { texto: "Inicial desde $79.000/mes", visual: "Card de plan" },
-      { texto: "Crecimiento desde $149.000/mes — el más elegido", visual: "Card destacada" },
-      { texto: "Pro desde $279.000 / Empresa a medida", visual: "Card de plan" },
+      { texto: "Básico desde $24.990/mes", visual: "Card de plan" },
+      { texto: "Pro desde $39.990/mes — el más elegido", visual: "Card destacada" },
+      { texto: "Empresa desde $69.990/mes", visual: "Card de plan" },
       { texto: "Implementación única + mensualidad fija. La hacemos nosotros", visual: "CTA" },
     ],
   },
@@ -79,22 +79,22 @@ export const DESTACADAS: HighlightPlan[] = [
       { texto: "¿Responde cualquier cosa? No: solo con tu información", visual: "Objeción → respuesta" },
       { texto: "¿Y si no sabe? Deriva a un humano, no inventa", visual: "Objeción → respuesta" },
       { texto: "¿Me pueden bloquear WhatsApp? No: API oficial de Meta", visual: "Sello seguridad" },
-      { texto: "¿Cuánto cuesta? Planes desde $79.000/mes", visual: "Precio ancla" },
+      { texto: "¿Cuánto cuesta? Planes desde $24.990/mes", visual: "Precio ancla" },
       { texto: "¿Cuánto tarda? Lo dejamos andando esta semana", visual: "Tiempo de implementación" },
     ],
   },
   {
-    slug: "pilotos",
-    nombre: "Pilotos ⭐",
-    objetivo: "Vender el Piloto Fundador con urgencia real (cupos).",
+    slug: "garantia",
+    nombre: "Prueba 30 días ⭐",
+    objetivo: "Bajar el riesgo percibido: pruébalo 30 días, si no ayuda no paga.",
     estado: "idea",
     prioridad: "alta",
-    cta: "Quedan [X] cupos → escríbenos",
+    cta: "Empieza tu prueba → escríbenos",
     historias: [
-      { texto: "Buscamos nuestros primeros 5 clientes fundadores", visual: "Portada" },
-      { texto: "Implementación con hasta 30% de descuento + trabajo directo con los fundadores", visual: "Beneficio" },
-      { texto: "A cambio: tu testimonio honesto", visual: "Intercambio claro" },
-      { texto: "Quedan [X] cupos + CTA WhatsApp", visual: "Contador de cupos" },
+      { texto: "Pruébalo 30 días en tu propio WhatsApp", visual: "Portada" },
+      { texto: "Si no te ayuda a responder y cotizar más rápido, no pagas la mensualidad", visual: "Garantía clara" },
+      { texto: "Implementación acompañada: lo dejamos andando nosotros", visual: "Acompañamiento" },
+      { texto: "Escríbenos y partimos + CTA WhatsApp", visual: "CTA" },
     ],
   },
   {
@@ -113,7 +113,7 @@ export const DESTACADAS: HighlightPlan[] = [
   {
     slug: "clientes",
     nombre: "Clientes (prueba social — futura)",
-    objetivo: "Prueba social. Se llena con el primer piloto (número duro + video).",
+    objetivo: "Prueba social. Se llena con el primer cliente real (número duro + video).",
     estado: "idea",
     prioridad: "baja",
     cta: "¿Quieres ser el próximo caso?",

@@ -45,7 +45,7 @@ export const COPIES: CopySnippet[] = [
   c("hook", "Terminas atendiendo el WhatsApp tú mismo, a las 11 de la noche.", { funnel: "descubrimiento" }),
   c("hook", "Responder al tiro no es tener suerte. Es tener un sistema.", { funnel: "consideracion" }),
   c("hook", "Publicamos nuestros precios. Nadie en el rubro lo hace. Por eso lo hacemos.", { funnel: "consideracion", fuente: "transparencia" }),
-  c("hook", "Una persona en el WhatsApp: $650.000+ al mes. Un asistente: desde $79.000.", { funnel: "consideracion", fuente: "anclaje" }),
+  c("hook", "Una persona en el WhatsApp: $650.000+ al mes. Un asistente: desde $24.990.", { funnel: "consideracion", fuente: "anclaje" }),
   c("hook", "Tu vendedor perdiendo el día en '¿cuánto vale?' es plata en el suelo.", { funnel: "descubrimiento" }),
   c("hook", "No te dejamos solo: lo implementamos y lo acompañamos nosotros.", { funnel: "consideracion", fuente: "diferenciador" }),
   c("hook", "La IA no reemplaza a tu vendedor. Le saca lo aburrido.", { funnel: "consideracion" }),
@@ -59,7 +59,7 @@ export const COPIES: CopySnippet[] = [
   c("cta", "Guarda esto para cuando tu WhatsApp explote.", { funnel: "descubrimiento" }),
   c("cta", "Etiqueta al dueño de negocio que necesita ver esto.", { funnel: "descubrimiento" }),
   c("cta", "¿Tu rubro es este? Escríbenos y te mostramos cómo quedaría.", { funnel: "consideracion" }),
-  c("cta", "Postula al Piloto Fundador: quedan pocos cupos.", { funnel: "decision" }),
+  c("cta", "Pruébalo 30 días: si no te ayuda, no pagas la mensualidad.", { funnel: "decision" }),
   c("cta", "Comenta COTIZA y te mandamos la demo al DM. (Mes 2)", { funnel: "decision", canal: "instagram" }),
   c("cta", "Pídele cotizar como si fueras cliente → link demo", { funnel: "decision" }),
   c("cta", "Mándanos tu lista de precios y lo dejamos andando esta semana.", { funnel: "decision" }),
@@ -70,7 +70,7 @@ export const COPIES: CopySnippet[] = [
   c("cta", "Mira cómo deriva a un humano cuando no sabe algo.", { funnel: "consideracion" }),
   c("cta", "Escríbenos 'quiero la demo' y te la mandamos.", { funnel: "decision", canal: "whatsapp" }),
   c("cta", "¿Perdiste una venta por contestar tarde esta semana? Conversemos.", { funnel: "decision" }),
-  c("cta", "Reserva tu cupo del Piloto Fundador antes de que se acaben.", { funnel: "decision" }),
+  c("cta", "Empieza con 30 días de prueba: si no te sirve, no pagas.", { funnel: "decision" }),
   c("cta", "Compárte esto con tu socio y lo vemos los tres.", { funnel: "decision" }),
   c("cta", "Deja el 'lo veo después' para después. La demo toma 30 segundos.", { funnel: "decision" }),
 
@@ -89,7 +89,7 @@ export const COPIES: CopySnippet[] = [
   c("posicionamiento", "Tu WhatsApp responde al tiro, aunque estés ocupado. Y nunca inventa.", {}),
 
   /* ---------------- OBJECIONES (respuestas cortas) ---------------- */
-  c("objecion", "\"Está caro\" → ¿Cuánto vale una venta promedio tuya? Si se te escapan 2–3 al mes por contestar tarde, esto ya se pagó. Y si el presupuesto no da, partamos con el Inicial y subes cuando el volumen lo pida.", { fuente: "OBJECIONES §1", funnel: "decision" }),
+  c("objecion", "\"Está caro\" → ¿Cuánto vale una venta promedio tuya? Si se te escapan 2–3 al mes por contestar tarde, esto ya se pagó. Y si el presupuesto no da, partamos con el Básico y subes cuando el volumen lo pida.", { fuente: "OBJECIONES §1", funnel: "decision" }),
   c("objecion", "\"Ya respondo yo\" → Y lo haces mejor que nadie. La pregunta es: ¿a qué hora dejas de responder? El asistente te cubre las horas en que duermes, atiendes o estás en terreno.", { fuente: "OBJECIONES §2" }),
   c("objecion", "\"No quiero una IA hablando con mis clientes\" → Sano escepticismo. Pruébalo tú mismo: responde con tu información, con buen tono, y cuando algo se sale de libreto deriva a un humano en vez de inventar.", { fuente: "OBJECIONES §4" }),
   c("objecion", "\"¿Y si responde mal?\" → Tres capas: solo responde con tu info; lo probamos contigo antes de encender; y el primer mes lo ajustamos sin costo.", { fuente: "OBJECIONES §5" }),
@@ -117,7 +117,7 @@ export const COPIES: CopySnippet[] = [
   c("landing", "Nunca inventa precios. Si no sabe, deriva a tu equipo.", { canal: "web" }),
   c("anuncio", "¿Pierdes ventas por responder tarde? Tu WhatsApp puede responder solo, 24/7. Prueba la demo.", { canal: "instagram", funnel: "descubrimiento" }),
   c("propuesta", "Incluye: implementación completa hecha por nosotros, entrenamiento con tu información, pruebas contigo y primer mes de ajustes sin costo.", { canal: "propuesta", funnel: "decision" }),
-  c("propuesta", "Piloto Fundador: descuento en la implementación (mensualidad de lista) a cambio de tu testimonio honesto. Cupos limitados a los primeros 5 clientes.", { canal: "propuesta", funnel: "decision" }),
+  c("propuesta", "Prueba 30 días: si el asistente no te ayuda a responder y cotizar más rápido, no pagas la mensualidad de ese mes.", { canal: "propuesta", funnel: "decision" }),
 ];
 
 export function copiesPorTipo(tipo: CopyTipo) {

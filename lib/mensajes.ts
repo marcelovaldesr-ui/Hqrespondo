@@ -5,7 +5,7 @@ import type { Prospect } from "./types";
  * estrategia-comercial/MENSAJES_PROSPECCION_RESPONDO.md (jul-2026).
  * Reglas vigentes: el primer mensaje NO vende, máximo 3–4 toques,
  * nunca "¿viste mi mensaje?", y NO se ofrece piloto gratis (se ofrece
- * la demo pública y el Piloto Fundador).
+ * la demo pública y la prueba 30 días: si no ayuda, no paga la mensualidad).
  *
  * El link de la demo se toma de NEXT_PUBLIC_DEMO_LINK (Vercel). Si no
  * está configurado queda el marcador [link demo] para reemplazar a mano.
@@ -55,7 +55,7 @@ export const PLANTILLAS: PlantillaMensaje[] = [
     label: "Reactivación (2–4 semanas frío)",
     sugeridaEn: ["contactado", "respondio"],
     genera: () =>
-      `Hola 👋 Hace unas semanas conversamos sobre automatizar las respuestas de tu WhatsApp. Te cuento la novedad: ya cerramos [X de los 5] cupos del Piloto Fundador (implementación con descuento a cambio de testimonio). Quedan [Y]. Si sigue en tu radar, retomamos donde quedamos — y si ya no, dime y no te molesto más 🙂`,
+      `Hola 👋 Hace unas semanas conversamos sobre automatizar las respuestas de tu WhatsApp. Te cuento que ahora puedes probarlo 30 días sin riesgo: si no te ayuda a responder y cotizar más rápido, no pagas la mensualidad de ese mes. Si sigue en tu radar, retomamos donde quedamos — y si ya no, dime y no te molesto más 🙂`,
   },
 ];
 

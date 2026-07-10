@@ -51,43 +51,35 @@ export const ETAPA_LABEL: Record<Etapa, string> = {
  * Planes comerciales. Los VALORES ('esencial','cotizador','pro') son las
  * claves históricas de la base de datos (check constraint en deals/clients)
  * y NO deben cambiarse sin migración. Los NOMBRES y PRECIOS corresponden a
- * la Estructura Final de Precios (jul-2026, estrategia-comercial/PLANES_Y_
- * PRECIOS_RESPONDO.md), que reemplazó a la tabla interina:
- *   esencial  → "Inicial"      $79.000/mes  + setup $290.000
- *   cotizador → "Crecimiento"  $149.000/mes + setup $490.000  (plan ancla)
- *   pro       → "Pro"          $279.000/mes + setup $890.000
- * Plan Empresa (desde $450.000 + $1.200.000) se cotiza a medida: usar Pro
- * como base y ajustar valores en el deal.
+ * los planes VIGENTES publicados en respon-do.com (verificados 6-jul-2026):
+ *   esencial  → "Básico"   $24.990/mes + setup $150.000  (hasta 1.000 conv/mes)
+ *   cotizador → "Pro"      $39.990/mes + setup $290.000  (recomendado, hasta 4.000)
+ *   pro       → "Empresa"  $69.990/mes + setup $590.000  (hasta 12.000)
+ * Oferta de reversión de riesgo vigente: prueba 30 días (si no ayuda, no paga la
+ * mensualidad). El "plan piloto" quedó DESCONTINUADO — no ofrecerlo.
  */
 export const PLANES = ["esencial", "cotizador", "pro"] as const;
 export type Plan = (typeof PLANES)[number];
 
 export const PLAN_LABEL: Record<Plan, string> = {
-  esencial: "Inicial",
-  cotizador: "Crecimiento",
-  pro: "Pro",
+  esencial: "Básico",
+  cotizador: "Pro",
+  pro: "Empresa",
 };
 
-/** Estructura final de precios (jul-2026). Ajustables por deal. */
+/** Precios VIGENTES (respon-do.com, jul-2026). Ajustables por deal. */
 export const PLAN_PRECIOS: Record<Plan, { setup: number; mensual: number }> = {
-  esencial: { setup: 290000, mensual: 79000 },
-  cotizador: { setup: 490000, mensual: 149000 },
-  pro: { setup: 890000, mensual: 279000 },
+  esencial: { setup: 150000, mensual: 24990 },
+  cotizador: { setup: 290000, mensual: 39990 },
+  pro: { setup: 590000, mensual: 69990 },
 };
 
 /** Límites de conversaciones/mes por plan (para propuestas). */
 export const PLAN_LIMITES: Record<Plan, number> = {
-  esencial: 800,
-  cotizador: 3500,
-  pro: 9000,
+  esencial: 1000,
+  cotizador: 4000,
+  pro: 12000,
 };
-
-/**
- * Piloto Fundador (primeros 5 clientes): descuento SOLO en el setup,
- * mensualidad siempre de lista. Cliente 1: 30% · clientes 2–3: 20% ·
- * clientes 4–5: 10%. A cambio: testimonio + uso como caso + feedback.
- */
-export const PILOTO_FUNDADOR_DCTO = [0.3, 0.2, 0.2, 0.1, 0.1] as const;
 
 export interface Prospect {
   id: string;

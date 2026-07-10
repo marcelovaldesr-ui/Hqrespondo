@@ -118,7 +118,7 @@ export async function calcularObjetivos(): Promise<Objetivo[]> {
       "Clientes cerrados",
       METAS_MES.clientes,
       clientes,
-      () => "Empujar cierre: cupos Piloto Fundador con fecha de término",
+      () => "Empujar cierre: ofrecer la prueba 30 días (si no ayuda, no paga la mensualidad)",
     ],
   ];
 

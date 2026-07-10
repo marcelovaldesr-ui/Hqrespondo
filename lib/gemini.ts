@@ -5,6 +5,7 @@ async function llamarModelo(
   model: string,
   prompt: string,
   tools?: unknown[],
+  generationConfig?: Record<string, unknown>,
 ): Promise<Response> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("Falta GEMINI_API_KEY");
@@ -14,6 +15,7 @@ async function llamarModelo(
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
       ...(tools && tools.length > 0 ? { tools } : {}),
+      ...(generationConfig ? { generationConfig } : {}),
     }),
   });
 }
@@ -23,17 +25,21 @@ async function llamarModelo(
  * responde 429/500/503 (cuota o alta demanda, frecuente en modelos nuevos
  * del tier gratis), reintenta con gemini-2.5-flash SIN tools — mejor una
  * respuesta del modelo estable que caer al fallback sin IA.
+ *
+ * `generationConfig` es opcional (temperature, maxOutputTokens, thinkingConfig…).
+ * Los callers que no lo pasan (scoring, brief) se comportan igual que antes.
  */
 export async function gemini(
   prompt: string,
   tools?: unknown[],
+  generationConfig?: Record<string, unknown>,
 ): Promise<string> {
   const principal = process.env.GEMINI_MODEL || MODELO_RESPALDO;
 
-  let res = await llamarModelo(principal, prompt, tools);
+  let res = await llamarModelo(principal, prompt, tools, generationConfig);
 
   if (!res.ok && [429, 500, 503].includes(res.status) && principal !== MODELO_RESPALDO) {
-    res = await llamarModelo(MODELO_RESPALDO, prompt, undefined);
+    res = await llamarModelo(MODELO_RESPALDO, prompt, undefined, generationConfig);
   }
 
   if (!res.ok) {
@@ -43,9 +49,17 @@ export async function gemini(
   return data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 }
 
-/** Llama a Gemini esperando JSON; limpia fences ```json y parsea. */
-export async function geminiJson<T>(prompt: string, tools?: unknown[]): Promise<T> {
-  const text = await gemini(prompt, tools);
+/** Llama a Gemini esperando JSON; limpia fences ```json, extrae el objeto y parsea. */
+export async function geminiJson<T>(
+  prompt: string,
+  tools?: unknown[],
+  generationConfig?: Record<string, unknown>,
+): Promise<T> {
+  const text = await gemini(prompt, tools, generationConfig);
   const clean = text.replace(/```json|```/g, "").trim();
-  return JSON.parse(clean) as T;
+  // Extrae el primer objeto {...} por si el modelo agrega texto alrededor.
+  const start = clean.indexOf("{");
+  const end = clean.lastIndexOf("}");
+  const json = start >= 0 && end > start ? clean.slice(start, end + 1) : clean;
+  return JSON.parse(json) as T;
 }

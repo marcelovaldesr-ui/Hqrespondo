@@ -30,7 +30,7 @@ const DATOS_ANCLA = [
 const CTA_POR_NIVEL: Record<NivelVenta, string> = {
   suave: "Guarda esto y compártelo con quien le pase.",
   medio: "Pruébalo tú mismo en la demo (link en la bio).",
-  directo: "Agenda una demo de 20 minutos — quedan cupos del Piloto Fundador.",
+  directo: "Agenda una demo de 20 minutos — pruébalo 30 días sin riesgo.",
 };
 
 const HOOK_POR_PILAR: Record<PilarKey, (tema: string) => string> = {

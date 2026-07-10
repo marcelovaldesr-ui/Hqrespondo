@@ -22,10 +22,10 @@ const CATEGORIAS_SUGERIDAS = [
   "Otros",
 ];
 
-/** Mensualidad de referencia para "clientes que faltan": plan ancla
- *  Crecimiento ($149.000, estructura final jul-2026). Si ya hay clientes,
+/** Mensualidad de referencia para "clientes que faltan": plan recomendado
+ *  Pro ($39.990, precios vigentes respon-do.com jul-2026). Si ya hay clientes,
  *  se usa el promedio real de sus mensualidades. */
-const MENSUALIDAD_REFERENCIA = 149000;
+const MENSUALIDAD_REFERENCIA = 39990;
 
 export default function Finanzas({
   gastosIniciales,

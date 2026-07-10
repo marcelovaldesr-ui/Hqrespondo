@@ -31,7 +31,7 @@ La implementación completa la hacemos nosotros — tú no configuras nada.
 PLAN RECOMENDADO: ${PLAN_LABEL[d.plan].toUpperCase()}
 - Mensualidad: ${clp(mensual)} /mes (hasta ${PLAN_LIMITES[d.plan].toLocaleString("es-CL")} conversaciones/mes)${usaLista ? "  ← precio de lista, REVISAR ANTES DE ENVIAR" : ""}
 - Implementación (una vez): ${clp(setup)}${usaLista ? "  ← precio de lista, REVISAR ANTES DE ENVIAR" : ""}
-- [Si aplica Piloto Fundador: descuento en el setup a cambio de testimonio — indicar % y fecha de término]
+- Valores de lista; ajustables según el alcance y el volumen real de tu negocio.
 
 GARANTÍA
 Si en los primeros 30 días el asistente no cumple lo acordado en el alcance, lo ajustamos sin costo; si aun así no funciona, te devolvemos la mensualidad del primer mes. (El setup corresponde a trabajo ejecutado y no se devuelve.)
