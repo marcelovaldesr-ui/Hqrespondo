@@ -57,9 +57,20 @@ export async function geminiJson<T>(
 ): Promise<T> {
   const text = await gemini(prompt, tools, generationConfig);
   const clean = text.replace(/```json|```/g, "").trim();
-  // Extrae el primer objeto {...} por si el modelo agrega texto alrededor.
-  const start = clean.indexOf("{");
-  const end = clean.lastIndexOf("}");
+  // Extrae el primer bloque JSON — objeto {...} O arreglo [...] — por si el
+  // modelo agrega texto alrededor. Debe soportar arreglos: scoring.ts espera [].
+  const iObj = clean.indexOf("{");
+  const iArr = clean.indexOf("[");
+  let start = -1;
+  let cierre = "}";
+  if (iArr >= 0 && (iObj < 0 || iArr < iObj)) {
+    start = iArr;
+    cierre = "]";
+  } else if (iObj >= 0) {
+    start = iObj;
+    cierre = "}";
+  }
+  const end = clean.lastIndexOf(cierre);
   const json = start >= 0 && end > start ? clean.slice(start, end + 1) : clean;
   return JSON.parse(json) as T;
 }

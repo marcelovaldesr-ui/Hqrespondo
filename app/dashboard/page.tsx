@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { clp, fechaHoy, hora } from "@/lib/format";
-import { calcularObjetivos } from "@/lib/objetivos";
+import { calcularObjetivos, META_DIARIA_CONTACTOS } from "@/lib/objetivos";
 import PageHeader from "@/components/PageHeader";
 import { ESTADO_CONFIG, TIPO_EVENTO_LABEL, type TipoEvento } from "@/lib/types";
 import type { Deal, Prospect } from "@/lib/types";
@@ -69,6 +69,7 @@ export default async function Dashboard() {
     dealsHoyRes,
     gastosMesRes,
     cobrosPendRes,
+    trabajadosHoyRes,
     objetivos,
   ] = await Promise.all([
     s
@@ -130,6 +131,11 @@ export default async function Dashboard() {
       .select("monto")
       .eq("mes", inicioMes)
       .eq("estado", "pendiente"),
+    s
+      .from("prospects")
+      .select("id", { count: "exact", head: true })
+      .gte("updated_at", `${hoy}T00:00:00`)
+      .not("estado", "in", `("nuevo","descartado")`),
     calcularObjetivos(),
   ]);
 
@@ -151,6 +157,7 @@ export default async function Dashboard() {
     deals.reduce((a, d) => a + (d.valor_mensual || 0) * (PROB[d.etapa] ?? 0), 0),
   );
   const errores = errRes.count ?? 0;
+  const trabajadosHoy = trabajadosHoyRes.count ?? 0;
   const gastosMes = ((gastosMesRes.data ?? []) as { monto: number }[]).reduce(
     (a, g) => a + g.monto,
     0,
@@ -331,6 +338,38 @@ export default async function Dashboard() {
             ))}
           </div>
         </div>
+      </section>
+
+      {/* ---- Meta de venta de hoy ---- */}
+      <section className="panel mt-3 flex flex-wrap items-center gap-4 p-4">
+        <div className="min-w-0 flex-1">
+          <div className="lbl">Ritmo de venta — hoy</div>
+          <p className="mt-1 text-[13px] text-ink-soft">
+            Meta del día:{" "}
+            <strong className="text-ink">
+              {META_DIARIA_CONTACTOS} negocios contactados
+            </strong>{" "}
+            (entre los dos). Vas{" "}
+            <strong className={trabajadosHoy >= META_DIARIA_CONTACTOS ? "text-ok" : "text-ink"}>
+              {trabajadosHoy}
+            </strong>
+            .{" "}
+            {trabajadosHoy >= META_DIARIA_CONTACTOS
+              ? "¡Meta cumplida! 🎯"
+              : "El próximo cliente está en la lista."}
+          </p>
+          <span className="mt-2 block h-[5px] w-full max-w-sm overflow-hidden rounded-full bg-surface-3">
+            <span
+              className="block h-full rounded-full bg-gradient-to-r from-brand to-coral"
+              style={{
+                width: `${Math.min(100, (trabajadosHoy / META_DIARIA_CONTACTOS) * 100)}%`,
+              }}
+            />
+          </span>
+        </div>
+        <Link href="/prospeccion" className="btn-primary text-xs">
+          Prospectar ahora
+        </Link>
       </section>
 
       {/* ---- Métricas principales ---- */}

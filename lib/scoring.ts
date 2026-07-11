@@ -1,5 +1,6 @@
 import { geminiJson } from "./gemini";
 import type { PlaceResult } from "./places";
+import { REGLAS_TONO, anclaRubro } from "./prospeccionAI";
 
 export interface ScoredPlace extends PlaceResult {
   score: number;
@@ -33,17 +34,26 @@ export async function scoreProspects(
     reviews: p.reviews,
   }));
 
-  const prompt = `Eres el asistente de prospección de Respondo, un servicio chileno que instala bots de WhatsApp con IA para pymes (responden, cotizan y agendan automáticamente). Marcelo, su fundador, va a contactar negocios del rubro "${rubro}" en ${comuna}, Chile.
+  const ancla = anclaRubro(rubro);
+
+  const prompt = `Eres Marcelo, uno de los dos fundadores de Respondo (servicio chileno que implementa asistentes de ventas en el WhatsApp de pymes: responden, cotizan y agendan). Vas a contactar negocios del rubro "${rubro}" en ${comuna}, Chile.
 
 Para CADA negocio de la lista, entrega:
-1. "score" (0-100): qué tan buen prospecto es para Respondo.
+1. "score" (0-100): qué tan buen prospecto es.
    - +20 si tiene teléfono (contactable por WhatsApp).
-   - +20 si NO tiene sitio web o parece tener presencia digital débil (más necesidad).
-   - +20 si el rubro cotiza o agenda frecuentemente (dental, taller, ferretería, estética, servicios).
-   - +20 si tiene rating >= 4.0 con 20+ reviews (negocio vivo, con clientes).
+   - +20 si NO tiene sitio web o su presencia digital parece débil (más necesidad).
+   - +20 si el rubro cotiza o agenda seguido (dental, taller, ferretería, estética, servicios).
+   - +20 si rating >= 4.0 con 20+ reviews (negocio vivo, con clientes).
    - +20 base si nada lo descarta. Resta si parece cadena grande o institución pública.
+   El rating/reviews SOLO influyen en el score, NUNCA en el texto del mensaje.
 2. "razon": una frase corta con el porqué del score.
-3. "mensaje": primer mensaje de WhatsApp para ese negocio. Español de Chile, cercano pero profesional, máximo 55 palabras. Estructura: saludo con nombre del negocio → un dato concreto del negocio (rating, rubro, etc.) → qué hace Respondo en una frase → pregunta simple para abrir conversación. SIN promesas exageradas, SIN emojis excesivos (máximo 1), SIN sonar a spam masivo.
+3. "mensaje": el primer mensaje de WhatsApp para ese negocio, siguiendo al pie de la letra las reglas de abajo.
+
+${ancla}
+
+${REGLAS_TONO}
+
+RECORDATORIO CLAVE para el "mensaje": NO menciones el rating ni las reseñas ("vi tus 4.6 estrellas" está PROHIBIDO — eso es leer una ficha de Google, no conocer al negocio). Abre con el dolor del rubro en forma de pregunta. Máximo 55 palabras. Que suene a que lo escribiste mirando ese negocio, no a un envío masivo. No repitas la misma frase de apertura entre negocios del mismo rubro.
 
 Negocios:
 ${JSON.stringify(lista, null, 2)}
@@ -58,7 +68,11 @@ Responde SOLO con un array JSON válido, sin texto adicional:
     process.env.GEMINI_MAPS_GROUNDING === "1" ? [{ google_maps: {} }] : undefined;
 
   try {
-    const result = await geminiJson<ScoreRow[]>(prompt, tools);
+    const result = await geminiJson<ScoreRow[]>(prompt, tools, {
+      temperature: 0.9,
+      topP: 0.95,
+      thinkingConfig: { thinkingBudget: 0 },
+    });
     const byIndex = new Map(result.map((r) => [r.i, r]));
     return places.map((p, i) => {
       const r = byIndex.get(i);

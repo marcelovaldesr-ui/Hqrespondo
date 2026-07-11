@@ -115,6 +115,11 @@ export default function ProspectTable({
   const [proxDraft, setProxDraft] = useState("");
   const [notasDraft, setNotasDraft] = useState("");
   const [guardandoDetalle, setGuardandoDetalle] = useState(false);
+  // Mensajes con IA (2 variantes) para el prospecto abierto
+  const [iaVariantes, setIaVariantes] = useState<string[]>([]);
+  const [iaTipo, setIaTipo] = useState<string | null>(null);
+  const [iaLoading, setIaLoading] = useState(false);
+  const [iaError, setIaError] = useState<string | null>(null);
 
   useEffect(() => {
     setItems(prospects);
@@ -262,6 +267,9 @@ export default function ProspectTable({
   }
 
   function toggleDetalle(p: Prospect) {
+    setIaVariantes([]);
+    setIaTipo(null);
+    setIaError(null);
     if (abierto === p.id) {
       setAbierto(null);
       return;
@@ -269,6 +277,41 @@ export default function ProspectTable({
     setAbierto(p.id);
     setProxDraft(p.proxima_accion ?? "");
     setNotasDraft(p.notas ?? "");
+  }
+
+  async function generarIA(
+    p: Prospect,
+    tipo: "primero" | "follow1" | "reactivacion",
+  ) {
+    setIaLoading(true);
+    setIaError(null);
+    setIaTipo(tipo);
+    setIaVariantes([]);
+    try {
+      const res = await fetch(`/api/prospects/${p.id}/mensaje`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`);
+      setIaVariantes(data.variantes ?? []);
+    } catch (e: any) {
+      setIaError(e.message ?? "No se pudo generar");
+    } finally {
+      setIaLoading(false);
+    }
+  }
+
+  async function usarComoMensaje(p: Prospect, texto: string) {
+    setItems((actuales) =>
+      actuales.map((x) => (x.id === p.id ? { ...x, mensaje: texto } : x)),
+    );
+    await fetch(`/api/prospects/${p.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mensaje: texto }),
+    });
   }
 
   /** Guarda próxima acción + notas de la fila expandida. */
@@ -593,6 +636,47 @@ export default function ProspectTable({
                               <p className="mt-1.5 text-[10.5px] text-warn">
                                 Envío manual desde tu WhatsApp Business — nunca por Cloud API.
                                 Revisa los [corchetes] antes de enviar.
+                              </p>
+                            </div>
+                            {/* Mensajes con IA — voz de fundador, 2 variantes por toque */}
+                            <div>
+                              <div className="lbl mb-1.5">✨ Mensajes con IA (voz de fundador)</div>
+                              <div className="flex flex-wrap gap-1.5">
+                                <button onClick={() => generarIA(p, "primero")} disabled={iaLoading} className="btn-ghost px-2.5 py-1">
+                                  Primer mensaje
+                                </button>
+                                <button onClick={() => generarIA(p, "follow1")} disabled={iaLoading} className="btn-ghost px-2.5 py-1">
+                                  Follow-up 1
+                                </button>
+                                <button onClick={() => generarIA(p, "reactivacion")} disabled={iaLoading} className="btn-ghost px-2.5 py-1">
+                                  Reactivación
+                                </button>
+                              </div>
+                              {iaLoading && (
+                                <p className="mt-1.5 text-[11px] text-ink-dim">Generando 2 opciones…</p>
+                              )}
+                              {iaError && <p className="mt-1.5 text-[11px] text-danger">{iaError}</p>}
+                              {iaVariantes.length > 0 && (
+                                <div className="mt-2 flex flex-col gap-2">
+                                  {iaVariantes.map((v, i) => (
+                                    <div key={i} className="rounded-lg border border-brand/20 bg-brand/[0.04] px-3 py-2">
+                                      <p className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-ink-soft">{v}</p>
+                                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                        <button onClick={() => copiarTexto(`${p.id}-ia-${i}`, v)} className="btn-ghost px-2 py-0.5 text-[10px]">
+                                          {copiado === `${p.id}-ia-${i}` ? "Copiado ✓" : "Copiar"}
+                                        </button>
+                                        {iaTipo === "primero" && (
+                                          <button onClick={() => usarComoMensaje(p, v)} className="btn-ghost px-2 py-0.5 text-[10px]">
+                                            Usar como primer mensaje
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              <p className="mt-1.5 text-[10px] text-ink-dim">
+                                2 opciones con ángulos distintos. Vuelve a tocar el botón para pedir otras.
                               </p>
                             </div>
                             {rc && (

@@ -38,6 +38,9 @@ export const METAS_MES = {
   clientes: 2,
 } as const;
 
+/** Meta diaria de contactos nuevos (ritmo mínimo del kit: 15/día hábil entre los 2). */
+export const META_DIARIA_CONTACTOS = 15;
+
 /** Día 1–31 → fracción esperada del mes transcurrido (lineal, simple). */
 function fraccionMes(): number {
   const hoy = new Date();
