@@ -134,6 +134,7 @@ export default function ProspectTable({
   const [filtro, setFiltro] = useState<Estado | "todos">("todos");
   const [quick, setQuick] = useState<"" | "hot" | "sin_respuesta" | "seguir_hoy">("");
   const [rubro, setRubro] = useState<string>("todos");
+  const [comuna, setComuna] = useState<string>("todos");
   const [orden, setOrden] = useState<Orden>("score");
   const [q, setQ] = useState("");
   const [copiado, setCopiado] = useState<string | null>(null);
@@ -165,6 +166,11 @@ export default function ProspectTable({
     [items],
   );
 
+  const comunas = useMemo(
+    () => Array.from(new Set(items.map((p) => p.comuna).filter(Boolean))).sort(),
+    [items],
+  );
+
   const filtrados = useMemo(() => {
     const hoyStr = enDias(0);
     const base = items.filter(
@@ -179,6 +185,7 @@ export default function ProspectTable({
             p.estado !== "descartado" &&
             p.estado !== "en_pipeline")) &&
         (rubro === "todos" || p.rubro === rubro) &&
+        (comuna === "todos" || p.comuna === comuna) &&
         (q === "" ||
           `${p.nombre} ${p.rubro} ${p.comuna}`
             .toLowerCase()
@@ -506,6 +513,17 @@ export default function ProspectTable({
           <option value="todos">Todos los rubros</option>
           {rubros.map((r) => (
             <option key={r} value={r}>{r}</option>
+          ))}
+        </select>
+        <select
+          value={comuna}
+          onChange={(e) => setComuna(e.target.value)}
+          className="input w-auto py-2 text-xs"
+          aria-label="Filtrar por comuna"
+        >
+          <option value="todos">Todas las comunas</option>
+          {comunas.map((c) => (
+            <option key={c} value={c}>{c}</option>
           ))}
         </select>
         <select
