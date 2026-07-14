@@ -40,6 +40,30 @@ const GEN_VERIFICACION: Record<string, unknown> = {
   maxOutputTokens: 400,
 };
 
+// Vercel (plan Hobby) mata la función a los 10s TOTALES sin importar
+// maxDuration. Hunter ya gastó un poco de ese presupuesto, así que la
+// verificación con Gemini (google_search puede tardar 10-20s ella sola)
+// tiene que tener un techo propio — si se pasa, seguimos con el dato de
+// Hunter en vez de arriesgar que Vercel corte TODO el request a medias
+// (eso es lo que devolvía una página de error no-JSON al cliente).
+const TIMEOUT_VERIFICACION_MS = 6500;
+
+function conTimeout<T>(promesa: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error("timeout de verificación IA")), ms);
+    promesa.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      },
+    );
+  });
+}
+
 export async function buscarContactoMixto(
   p: ProspectoParaContacto,
   area: AreaObjetivo | string,
@@ -66,10 +90,9 @@ Responde SOLO con JSON válido, sin markdown:
 {"confirmado": true, "telefono": null, "linkedin": "...", "resumen": "..."}`;
 
   try {
-    const { data, fuentes } = await geminiJsonConFuentes<VerificacionIA>(
-      prompt,
-      [{ google_search: {} }],
-      GEN_VERIFICACION,
+    const { data, fuentes } = await conTimeout(
+      geminiJsonConFuentes<VerificacionIA>(prompt, [{ google_search: {} }], GEN_VERIFICACION),
+      TIMEOUT_VERIFICACION_MS,
     );
 
     const confirmadoConFuente = Boolean(data.confirmado) && fuentes.length > 0;

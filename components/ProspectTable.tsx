@@ -96,6 +96,26 @@ function descargarCSV(rows: Prospect[]) {
   URL.revokeObjectURL(url);
 }
 
+/**
+ * Lee la respuesta de un fetch sin asumir que siempre es JSON válido — si
+ * Vercel corta la función a medias (timeout del plan Hobby, crash, etc.)
+ * devuelve una página de error plana, no JSON, y un res.json() directo
+ * revienta con un mensaje ilegible ("Unexpected token..."). Acá se atrapa
+ * eso y se devuelve un mensaje entendible.
+ */
+async function leerRespuesta(res: Response): Promise<any> {
+  const texto = await res.text();
+  try {
+    return texto ? JSON.parse(texto) : {};
+  } catch {
+    return {
+      error: res.ok
+        ? "El servidor respondió algo inesperado (no era JSON)."
+        : `Error ${res.status}: la función falló o se demoró demasiado (revisa los logs de Vercel).`,
+    };
+  }
+}
+
 /** Link wa.me con el mensaje pre-cargado (envío manual, 1 clic) */
 function linkWhatsApp(p: Prospect): string | null {
   if (!p.telefono) return null;
@@ -328,7 +348,7 @@ export default function ProspectTable({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ area_objetivo: area, fuente }),
       });
-      const data = await res.json();
+      const data = await leerRespuesta(res);
       if (!res.ok) throw new Error(data.error ?? "No se pudo buscar");
       // Apollo devuelve varios candidatos a la vez (data.contactos); las
       // demás fuentes devuelven uno solo (data.contacto).
@@ -355,7 +375,7 @@ export default function ProspectTable({
       const res = await fetch(`/api/prospects/${p.id}/contactos/${contactoId}/revelar`, {
         method: "POST",
       });
-      const data = await res.json();
+      const data = await leerRespuesta(res);
       if (!res.ok) throw new Error(data.error ?? "No se pudo revelar");
       setContactos((c) => ({
         ...c,
