@@ -3,10 +3,11 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { buscarContactoDecision } from "@/lib/contactoAI";
 import { buscarContactoHunter } from "@/lib/hunterAPI";
+import { buscarContactoMixto } from "@/lib/contactoMixto";
 import { buscarPersonasApollo } from "@/lib/apolloAPI";
 import { isAreaObjetivo, type ContactoDecision, type Fuente } from "@/lib/types";
 
-const FUENTES_VALIDAS: Fuente[] = ["ia", "hunter", "apollo"];
+const FUENTES_VALIDAS: Fuente[] = ["ia", "hunter", "apollo", "hunter_ia"];
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -40,7 +41,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   try {
     const body = await req.json().catch(() => ({}));
     const area = body?.area_objetivo;
-    const fuente: Fuente = FUENTES_VALIDAS.includes(body?.fuente) ? body.fuente : "ia";
+    const fuente: Fuente = FUENTES_VALIDAS.includes(body?.fuente) ? body.fuente : "hunter_ia";
     if (!isAreaObjetivo(area)) {
       return NextResponse.json({ error: "area_objetivo inválida" }, { status: 400 });
     }
@@ -82,6 +83,33 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       const { data, error } = await s.from("contactos_decision").insert(filas).select("*");
       if (error) throw new Error(error.message);
       return NextResponse.json({ contactos: (data ?? []) as ContactoDecision[], encontrado: true });
+    }
+
+    // "hunter_ia" (modo mixto): Hunter aporta el dato real, la IA solo lo
+    // verifica/enriquece. Si Hunter no encontró nada, el resultado vuelve
+    // marcado como fuente_real="ia" (100% búsqueda IA, sin base real).
+    if (fuente === "hunter_ia") {
+      const resultado = await buscarContactoMixto(prospect, area);
+      const { data: fila, error: iErr } = await s
+        .from("contactos_decision")
+        .insert({
+          prospect_id: params.id,
+          area_objetivo: area,
+          nombre: resultado.nombre,
+          cargo: resultado.cargo,
+          telefono: resultado.telefono,
+          email: resultado.email,
+          linkedin_url: resultado.linkedin_url,
+          fuentes: resultado.fuentes,
+          confianza: resultado.confianza,
+          verificado: false,
+          notas: resultado.resumen,
+          fuente: resultado.fuente_real,
+        })
+        .select("*")
+        .single();
+      if (iErr) throw new Error(iErr.message);
+      return NextResponse.json({ contacto: fila as ContactoDecision, encontrado: resultado.encontrado });
     }
 
     const resultado =

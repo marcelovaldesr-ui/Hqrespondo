@@ -322,7 +322,7 @@ export default function ProspectTable({
     setContactoError((e) => ({ ...e, [p.id]: "" }));
     try {
       const area = areaSel[p.id] ?? "gerencia_general";
-      const fuente = fuenteSel[p.id] ?? "ia";
+      const fuente = fuenteSel[p.id] ?? "hunter_ia";
       const res = await fetch(`/api/prospects/${p.id}/contactos`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -891,12 +891,17 @@ export default function ProspectTable({
                           </summary>
                           <div className="mt-2 rounded-lg border border-line bg-surface-3/45 p-3">
                             <p className="mb-2 text-[11px] text-ink-dim">
-                              Busca al encargado de un área específica — con IA (búsqueda web),
-                              Hunter.io o Apollo.io (planes gratuitos) — útil en negocios
+                              Busca al encargado de un área específica — útil en negocios
                               medianos/grandes con áreas separadas. En una pyme chica el dueño
                               suele ser el mismo contacto de arriba: úsalo solo si tiene sentido
                               acá. Ningún dato se usa para contactar hasta que lo marques como
                               verificado.
+                              <br />
+                              <strong className="text-ink-soft">"Hunter + IA" (recomendado)</strong>{" "}
+                              busca primero en Hunter (dato real) y usa la IA solo para
+                              VERIFICAR que la persona sigue ahí y sumar teléfono/LinkedIn si
+                              hay una fuente pública — nunca para inventar un nombre. Si Hunter
+                              no encuentra nada, cae automáticamente a búsqueda 100% IA.
                             </p>
                             <div className="flex flex-wrap items-center gap-1.5">
                               <select
@@ -917,7 +922,7 @@ export default function ProspectTable({
                                 ))}
                               </select>
                               <select
-                                value={fuenteSel[p.id] ?? "ia"}
+                                value={fuenteSel[p.id] ?? "hunter_ia"}
                                 onChange={(e) =>
                                   setFuenteSel((f) => ({
                                     ...f,

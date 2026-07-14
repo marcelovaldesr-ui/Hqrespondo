@@ -334,19 +334,24 @@ export interface FuenteContacto {
 }
 
 /**
- * De dónde salió el contacto (migración 011):
+ * De dónde salió el contacto (migraciones 011 y 012):
  * - "ia": generado por Gemini con google_search grounding (lib/contactoAI.ts).
  * - "hunter": Domain Search de Hunter.io — base de datos real, no IA.
- * - "apollo": People Search + Enrichment de Apollo.io — base de datos real.
- *   Apollo primero busca GRATIS (nombre parcial, sin contacto) y recién al
- *   "revelar" (botón aparte, gasta 1 crédito) entrega email/teléfono.
+ * - "apollo": People Search + Enrichment de Apollo.io — DESHABILITADO en el
+ *   selector: confirmado (API_INACCESSIBLE) que el plan gratuito no da
+ *   acceso a mixed_people/api_search. El código queda listo por si suben
+ *   de plan.
+ * - "hunter_ia": modo mixto (lib/contactoMixto.ts) — Hunter aporta el dato
+ *   real y la IA solo lo VERIFICA/enriquece (nunca inventa desde cero). Si
+ *   Hunter no encuentra nada, el resultado se guarda como "ia" pura.
  */
-export const FUENTES_CONTACTO = ["ia", "hunter", "apollo"] as const;
+export const FUENTES_CONTACTO = ["hunter_ia", "hunter", "ia", "apollo"] as const;
 export type Fuente = (typeof FUENTES_CONTACTO)[number];
 
 export const FUENTE_LABEL: Record<Fuente, string> = {
-  ia: "IA (búsqueda web)",
-  hunter: "Hunter.io",
+  hunter_ia: "Hunter + IA (recomendado)",
+  hunter: "Solo Hunter.io",
+  ia: "Solo IA (búsqueda web)",
   apollo: "Apollo.io",
 };
 
