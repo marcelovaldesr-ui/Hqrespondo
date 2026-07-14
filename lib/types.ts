@@ -334,7 +334,7 @@ export interface FuenteContacto {
 }
 
 /**
- * De dónde salió el contacto (migraciones 011 y 012):
+ * De dónde salió el contacto (migraciones 011, 012 y 013):
  * - "ia": generado por Gemini con google_search grounding (lib/contactoAI.ts).
  * - "hunter": Domain Search de Hunter.io — base de datos real, no IA.
  * - "apollo": People Search + Enrichment de Apollo.io — DESHABILITADO en el
@@ -344,14 +344,20 @@ export interface FuenteContacto {
  * - "hunter_ia": modo mixto (lib/contactoMixto.ts) — Hunter aporta el dato
  *   real y la IA solo lo VERIFICA/enriquece (nunca inventa desde cero). Si
  *   Hunter no encuentra nada, el resultado se guarda como "ia" pura.
+ * - "lusha": Prospecting + Enrich de Lusha.io (lib/lushaAPI.ts) — a
+ *   diferencia de Apollo, el plan gratuito SÍ permite buscar y revelar.
+ *   Probado el 14-jul-2026 con cobertura real para pymes/medianas
+ *   chilenas (no solo multinacionales). Igual que Apollo: busca gratis
+ *   (nombre real, sin contacto) y revela a pedido (gasta crédito).
  */
-export const FUENTES_CONTACTO = ["hunter_ia", "hunter", "ia", "apollo"] as const;
+export const FUENTES_CONTACTO = ["hunter_ia", "hunter", "ia", "lusha", "apollo"] as const;
 export type Fuente = (typeof FUENTES_CONTACTO)[number];
 
 export const FUENTE_LABEL: Record<Fuente, string> = {
   hunter_ia: "Hunter + IA (recomendado)",
   hunter: "Solo Hunter.io",
   ia: "Solo IA (búsqueda web)",
+  lusha: "Lusha (busca gratis, revela con crédito)",
   apollo: "Apollo.io",
 };
 
@@ -379,6 +385,10 @@ export interface ContactoDecision {
   // poder "revelar" (gastar crédito) más tarde. Null si nunca se buscó
   // por Apollo o si ya fue revelado y no hace falta reconsultar.
   apollo_person_id: string | null;
+  // Solo relevante cuando fuente === "lusha": id interno de Lusha para
+  // poder "revelar" (gastar crédito) más tarde. Null si nunca se buscó
+  // por Lusha o si ya fue revelado y no hace falta reconsultar.
+  lusha_contact_id: string | null;
   created_at: string;
   updated_at: string;
 }

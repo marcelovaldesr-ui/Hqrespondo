@@ -366,9 +366,13 @@ export default function ProspectTable({
     }
   }
 
-  /** Revela email/teléfono de un candidato de Apollo — gasta 1 crédito, por eso pide confirmación. */
-  async function revelarContacto(p: Prospect, contactoId: string) {
-    if (!confirm("Esto gasta 1 crédito de tu plan gratuito de Apollo. ¿Continuar?")) return;
+  /** Revela email/teléfono de un candidato de Apollo o Lusha — gasta crédito, por eso pide confirmación. */
+  async function revelarContacto(p: Prospect, contactoId: string, fuente: Fuente | string) {
+    const mensaje =
+      fuente === "lusha"
+        ? "Esto gasta crédito de tu plan gratuito de Lusha (1 por email, 5 por teléfono). ¿Continuar?"
+        : "Esto gasta 1 crédito de tu plan gratuito de Apollo. ¿Continuar?";
+    if (!confirm(mensaje)) return;
     setRevelandoId(contactoId);
     setContactoError((e) => ({ ...e, [p.id]: "" }));
     try {
@@ -969,8 +973,10 @@ export default function ProspectTable({
                             <p className="mt-1 text-[10.5px] text-ink-dim">
                               Apollo.io queda deshabilitado por ahora: confirmado con Apollo
                               (API_INACCESSIBLE) que "mixed_people/api_search" no está disponible en
-                              el plan gratuito, sin importar la key. El código queda listo por si
-                              suben de plan más adelante.
+                              el plan gratuito, sin importar la key. Lusha sí funciona en plan
+                              gratuito (probado con cobertura real en pymes chilenas): busca gratis
+                              y cada "Revelar contacto" gasta crédito (1 por email, 5 por teléfono,
+                              40 créditos/mes en total).
                             </p>
                             {contactoError[p.id] && (
                               <p className="mt-1.5 text-[11px] text-danger">{contactoError[p.id]}</p>
@@ -1051,18 +1057,22 @@ export default function ProspectTable({
                                     </div>
                                   )}
                                   <div className="mt-2 flex flex-wrap items-center gap-2.5">
-                                    {c.fuente === "apollo" && !c.telefono && !c.email && (
-                                      <button
-                                        onClick={() => revelarContacto(p, c.id)}
-                                        disabled={revelandoId === c.id}
-                                        className="btn-ghost px-2 py-0.5 text-[10px] text-brand"
-                                        title="Consulta a Apollo el email/teléfono real de este candidato"
-                                      >
-                                        {revelandoId === c.id
-                                          ? "Revelando…"
-                                          : "Revelar contacto (gasta 1 crédito Apollo)"}
-                                      </button>
-                                    )}
+                                    {(c.fuente === "apollo" || c.fuente === "lusha") &&
+                                      !c.telefono &&
+                                      !c.email && (
+                                        <button
+                                          onClick={() => revelarContacto(p, c.id, c.fuente)}
+                                          disabled={revelandoId === c.id}
+                                          className="btn-ghost px-2 py-0.5 text-[10px] text-brand"
+                                          title={`Consulta a ${c.fuente === "lusha" ? "Lusha" : "Apollo"} el email/teléfono real de este candidato`}
+                                        >
+                                          {revelandoId === c.id
+                                            ? "Revelando…"
+                                            : c.fuente === "lusha"
+                                              ? "Revelar contacto (gasta crédito Lusha)"
+                                              : "Revelar contacto (gasta 1 crédito Apollo)"}
+                                        </button>
+                                      )}
                                     <label className="flex items-center gap-1.5 text-[11px] text-ink-soft">
                                       <input
                                         type="checkbox"

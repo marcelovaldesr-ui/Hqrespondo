@@ -5,9 +5,10 @@ import { buscarContactoDecision } from "@/lib/contactoAI";
 import { buscarContactoHunter } from "@/lib/hunterAPI";
 import { buscarContactoMixto } from "@/lib/contactoMixto";
 import { buscarPersonasApollo } from "@/lib/apolloAPI";
+import { buscarPersonasLusha } from "@/lib/lushaAPI";
 import { isAreaObjetivo, type ContactoDecision, type Fuente } from "@/lib/types";
 
-const FUENTES_VALIDAS: Fuente[] = ["ia", "hunter", "apollo", "hunter_ia"];
+const FUENTES_VALIDAS: Fuente[] = ["ia", "hunter", "apollo", "hunter_ia", "lusha"];
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -83,6 +84,40 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       const { data, error } = await s.from("contactos_decision").insert(filas).select("*");
       if (error) throw new Error(error.message);
       return NextResponse.json({ contactos: (data ?? []) as ContactoDecision[], encontrado: true });
+    }
+
+    // Lusha: mismo patrón que Apollo (búsqueda gratis con nombre completo
+    // real, sin contacto) — pero acá el plan gratuito SÍ deja revelar
+    // después (ver lib/lushaAPI.ts).
+    if (fuente === "lusha") {
+      const { candidatos, motivo } = await buscarPersonasLusha(prospect, area);
+      if (candidatos.length === 0) {
+        return NextResponse.json({ contactos: [], encontrado: false, motivo });
+      }
+      const filas = candidatos.map((c) => ({
+        prospect_id: params.id,
+        area_objetivo: area,
+        nombre: c.nombre,
+        cargo: c.cargo,
+        telefono: null,
+        email: null,
+        linkedin_url: c.linkedin_url,
+        fuentes: [],
+        confianza: "media" as const,
+        verificado: false,
+        notas: `Encontrado con Lusha${c.ciudad_pais ? ` (${c.ciudad_pais})` : ""}${
+          c.departamentos.length ? ` — depto. ${c.departamentos.join(", ")}` : ""
+        }. Costo de revelar: ${c.costo_revelar}.`,
+        fuente: "lusha",
+        lusha_contact_id: c.lusha_contact_id,
+      }));
+      const { data, error } = await s.from("contactos_decision").insert(filas).select("*");
+      if (error) throw new Error(error.message);
+      return NextResponse.json({
+        contactos: (data ?? []) as ContactoDecision[],
+        encontrado: true,
+        motivo,
+      });
     }
 
     // "hunter_ia" (modo mixto): Hunter aporta el dato real, la IA solo lo
