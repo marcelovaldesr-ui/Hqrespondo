@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { clp } from "@/lib/format";
 import { generarPropuesta } from "@/lib/propuesta";
+import KitVenta from "@/components/KitVenta";
 import {
   ETAPAS,
   ETAPA_LABEL,
@@ -227,6 +228,15 @@ export default function Kanban({ deals }: { deals: Deal[] }) {
           + Oportunidad
         </button>
       </div>
+
+      <details className="mb-5">
+        <summary className="cursor-pointer select-none text-[12.5px] font-medium text-brand">
+          🧰 Kit de venta — objeciones y preguntas de diagnóstico (a mano para la demo y el cierre)
+        </summary>
+        <div className="mt-2 rounded-lg border border-line bg-surface-2 p-3">
+          <KitVenta />
+        </div>
+      </details>
 
       {showForm && (
         <form onSubmit={crear} className="panel-hot mb-5 flex flex-wrap items-end gap-3 p-4">

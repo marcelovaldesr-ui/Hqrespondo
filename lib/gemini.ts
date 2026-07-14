@@ -49,16 +49,9 @@ export async function gemini(
   return data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 }
 
-/** Llama a Gemini esperando JSON; limpia fences ```json, extrae el objeto y parsea. */
-export async function geminiJson<T>(
-  prompt: string,
-  tools?: unknown[],
-  generationConfig?: Record<string, unknown>,
-): Promise<T> {
-  const text = await gemini(prompt, tools, generationConfig);
+/** Extrae el primer bloque JSON (objeto {} o arreglo []) de un texto con posible ruido alrededor. */
+function extraerJson(text: string): string {
   const clean = text.replace(/```json|```/g, "").trim();
-  // Extrae el primer bloque JSON — objeto {...} O arreglo [...] — por si el
-  // modelo agrega texto alrededor. Debe soportar arreglos: scoring.ts espera [].
   const iObj = clean.indexOf("{");
   const iArr = clean.indexOf("[");
   let start = -1;
@@ -71,6 +64,64 @@ export async function geminiJson<T>(
     cierre = "}";
   }
   const end = clean.lastIndexOf(cierre);
-  const json = start >= 0 && end > start ? clean.slice(start, end + 1) : clean;
-  return JSON.parse(json) as T;
+  return start >= 0 && end > start ? clean.slice(start, end + 1) : clean;
+}
+
+/** Llama a Gemini esperando JSON; limpia fences ```json, extrae el objeto y parsea. */
+export async function geminiJson<T>(
+  prompt: string,
+  tools?: unknown[],
+  generationConfig?: Record<string, unknown>,
+): Promise<T> {
+  const text = await gemini(prompt, tools, generationConfig);
+  return JSON.parse(extraerJson(text)) as T;
+}
+
+export interface FuenteWeb {
+  url: string;
+  titulo?: string;
+}
+
+/**
+ * Igual que geminiJson, pero además devuelve las FUENTES reales que Gemini
+ * citó gracias al tool de grounding (ej. google_search). Úsala quien necesite
+ * poder JUSTIFICAR un dato (no solo generarlo) — ej. lib/contactoAI.ts, donde
+ * un dato sin fuente verificable no debe tratarse como confiable.
+ *
+ * Si el modelo no usó grounding (o no citó nada), `fuentes` viene vacío: eso
+ * es una señal válida de "no hay respaldo", no un error.
+ */
+export async function geminiJsonConFuentes<T>(
+  prompt: string,
+  tools?: unknown[],
+  generationConfig?: Record<string, unknown>,
+): Promise<{ data: T; fuentes: FuenteWeb[] }> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new Error("Falta GEMINI_API_KEY");
+  const principal = process.env.GEMINI_MODEL || MODELO_RESPALDO;
+
+  let res = await llamarModelo(principal, prompt, tools, generationConfig);
+  if (!res.ok && [429, 500, 503].includes(res.status) && principal !== MODELO_RESPALDO) {
+    // OJO: el reintento sin `tools` pierde el grounding — si pasa, el caller
+    // debe interpretar fuentes=[] como "no se pudo verificar", no como dato limpio.
+    res = await llamarModelo(MODELO_RESPALDO, prompt, undefined, generationConfig);
+  }
+  if (!res.ok) {
+    throw new Error(`Gemini ${res.status}: ${await res.text()}`);
+  }
+
+  const body = await res.json();
+  const candidato = body?.candidates?.[0];
+  const text: string = candidato?.content?.parts?.[0]?.text ?? "";
+
+  const chunks: any[] = candidato?.groundingMetadata?.groundingChunks ?? [];
+  const fuentes: FuenteWeb[] = [];
+  for (const c of chunks) {
+    const url = c?.web?.uri;
+    if (typeof url === "string" && url.length > 0) {
+      fuentes.push({ url, titulo: c?.web?.title });
+    }
+  }
+
+  return { data: JSON.parse(extraerJson(text)) as T, fuentes };
 }

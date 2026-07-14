@@ -95,7 +95,7 @@ export const COPIES: CopySnippet[] = [
   c("objecion", "\"¿Y si responde mal?\" → Tres capas: solo responde con tu info; lo probamos contigo antes de encender; y el primer mes lo ajustamos sin costo.", { fuente: "OBJECIONES §5" }),
   c("objecion", "\"¿Puede inventar precios?\" → No, es regla de diseño: cotiza solo con tu lista. Si le preguntan algo que no está, dice que lo confirma con el equipo.", { fuente: "OBJECIONES §6" }),
   c("objecion", "\"Ya tengo WhatsApp Business\" → Perfecto, es la base. Nosotros agregamos que conteste, cotice y registre solo, 24/7. Es la diferencia entre tener el teléfono y tener a alguien contestándolo.", { fuente: "OBJECIONES §7" }),
-  c("objecion", "\"Lo veo más adelante\" → ¿Qué cambia de aquí a entonces? Cada mes son consultas que no vuelven. Y el descuento Fundador es para los primeros 5.", { fuente: "OBJECIONES §8", funnel: "decision" }),
+  c("objecion", "\"Lo veo más adelante\" → ¿Qué cambia de aquí a entonces? Cada mes son consultas que no vuelven. Y ahora el primer mes de servicio va gratis: lo pruebas sin pagar la mensualidad.", { fuente: "OBJECIONES §8", funnel: "decision" }),
   c("objecion", "\"¿Por qué no un chatbot más barato?\" → Esos son menús de botones que configuras tú. Lo nuestro es conversación real con tus precios, implementada por nosotros. No competimos con los de $15.000; competimos con las ventas que pierdes.", { fuente: "OBJECIONES §11" }),
 
   /* ---------------- PROSPECCIÓN (primer toque) ---------------- */

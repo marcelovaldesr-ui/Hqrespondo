@@ -3,13 +3,21 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { plantillasPara } from "@/lib/mensajes";
+import KitVenta from "@/components/KitVenta";
 import { matchRubroSlug, conDemo } from "@/lib/growth/match";
 import { rubroPorSlug } from "@/lib/growth/industries";
 import {
+  AREA_OBJETIVO_LABEL,
+  AREA_OBJETIVO_OPTIONS,
   ESTADO_CONFIG,
   ESTADO_LABEL,
   ESTADO_OPTIONS,
+  FUENTE_LABEL,
+  FUENTES_CONTACTO,
+  type AreaObjetivo,
+  type ContactoDecision,
   type Estado,
+  type Fuente,
   type Prospect,
 } from "@/lib/types";
 
@@ -104,7 +112,7 @@ export default function ProspectTable({
   const router = useRouter();
   const [items, setItems] = useState<Prospect[]>(prospects);
   const [filtro, setFiltro] = useState<Estado | "todos">("todos");
-  const [quick, setQuick] = useState<"" | "hot" | "sin_respuesta">("");
+  const [quick, setQuick] = useState<"" | "hot" | "sin_respuesta" | "seguir_hoy">("");
   const [rubro, setRubro] = useState<string>("todos");
   const [orden, setOrden] = useState<Orden>("score");
   const [q, setQ] = useState("");
@@ -120,6 +128,13 @@ export default function ProspectTable({
   const [iaTipo, setIaTipo] = useState<string | null>(null);
   const [iaLoading, setIaLoading] = useState(false);
   const [iaError, setIaError] = useState<string | null>(null);
+  // Contacto del encargado (prospección adicional, beta) — por prospecto
+  const [contactos, setContactos] = useState<Record<string, ContactoDecision[]>>({});
+  const [areaSel, setAreaSel] = useState<Record<string, AreaObjetivo>>({});
+  const [fuenteSel, setFuenteSel] = useState<Record<string, Fuente>>({});
+  const [contactoLoading, setContactoLoading] = useState<string | null>(null);
+  const [contactoError, setContactoError] = useState<Record<string, string>>({});
+  const [revelandoId, setRevelandoId] = useState<string | null>(null);
 
   useEffect(() => {
     setItems(prospects);
@@ -131,12 +146,18 @@ export default function ProspectTable({
   );
 
   const filtrados = useMemo(() => {
+    const hoyStr = enDias(0);
     const base = items.filter(
       (p) =>
         (filtro === "todos" || p.estado === filtro) &&
         (quick === "" ||
           (quick === "hot" && p.estado === "nuevo" && p.score >= 70) ||
-          (quick === "sin_respuesta" && p.estado === "contactado")) &&
+          (quick === "sin_respuesta" && p.estado === "contactado") ||
+          (quick === "seguir_hoy" &&
+            p.proxima_accion != null &&
+            p.proxima_accion <= hoyStr &&
+            p.estado !== "descartado" &&
+            p.estado !== "en_pipeline")) &&
         (rubro === "todos" || p.rubro === rubro) &&
         (q === "" ||
           `${p.nombre} ${p.rubro} ${p.comuna}`
@@ -168,12 +189,15 @@ export default function ProspectTable({
     const anterior = items.find((p) => p.id === id);
     setEstadoError(null);
 
-    // Al marcar "contactado" sin próxima acción, se agenda el follow-up 1
-    // automáticamente a +3 días (regla del kit de prospección).
+    // Cadencia automática (regla del kit): al marcar "contactado" sin fecha se
+    // agenda el follow-up 1 a +3 días; al marcar "respondió" sin fecha se agenda
+    // responder HOY (un lead que contestó no puede esperar).
     const autoProxima =
       estado === "contactado" && anterior && !anterior.proxima_accion
         ? enDias(3)
-        : undefined;
+        : estado === "respondio" && anterior && !anterior.proxima_accion
+          ? enDias(0)
+          : undefined;
 
     setItems((actuales) =>
       actuales.map((p) =>
@@ -277,6 +301,90 @@ export default function ProspectTable({
     setAbierto(p.id);
     setProxDraft(p.proxima_accion ?? "");
     setNotasDraft(p.notas ?? "");
+    if (!contactos[p.id]) cargarContactos(p.id);
+  }
+
+  /** Carga los contactos de encargado ya buscados para este prospecto. */
+  async function cargarContactos(id: string) {
+    try {
+      const res = await fetch(`/api/prospects/${id}/contactos`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "No se pudo cargar");
+      setContactos((c) => ({ ...c, [id]: data.contactos ?? [] }));
+    } catch {
+      // Silencioso: esto es un enriquecimiento opcional, no debe bloquear el detalle.
+    }
+  }
+
+  /** Busca al encargado del área elegida, con la fuente elegida (IA / Hunter / Apollo). */
+  async function buscarContacto(p: Prospect) {
+    setContactoLoading(p.id);
+    setContactoError((e) => ({ ...e, [p.id]: "" }));
+    try {
+      const area = areaSel[p.id] ?? "gerencia_general";
+      const fuente = fuenteSel[p.id] ?? "ia";
+      const res = await fetch(`/api/prospects/${p.id}/contactos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ area_objetivo: area, fuente }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "No se pudo buscar");
+      // Apollo devuelve varios candidatos a la vez (data.contactos); las
+      // demás fuentes devuelven uno solo (data.contacto).
+      const nuevos: ContactoDecision[] = data.contactos ?? (data.contacto ? [data.contacto] : []);
+      if (nuevos.length === 0 && data.motivo) {
+        setContactoError((e) => ({ ...e, [p.id]: data.motivo }));
+      }
+      if (nuevos.length > 0) {
+        setContactos((c) => ({ ...c, [p.id]: [...nuevos, ...(c[p.id] ?? [])] }));
+      }
+    } catch (err: any) {
+      setContactoError((e) => ({ ...e, [p.id]: err.message ?? "Error al buscar" }));
+    } finally {
+      setContactoLoading(null);
+    }
+  }
+
+  /** Revela email/teléfono de un candidato de Apollo — gasta 1 crédito, por eso pide confirmación. */
+  async function revelarContacto(p: Prospect, contactoId: string) {
+    if (!confirm("Esto gasta 1 crédito de tu plan gratuito de Apollo. ¿Continuar?")) return;
+    setRevelandoId(contactoId);
+    setContactoError((e) => ({ ...e, [p.id]: "" }));
+    try {
+      const res = await fetch(`/api/prospects/${p.id}/contactos/${contactoId}/revelar`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "No se pudo revelar");
+      setContactos((c) => ({
+        ...c,
+        [p.id]: (c[p.id] ?? []).map((x) => (x.id === contactoId ? data.contacto : x)),
+      }));
+    } catch (err: any) {
+      setContactoError((e) => ({ ...e, [p.id]: err.message ?? "Error al revelar" }));
+    } finally {
+      setRevelandoId(null);
+    }
+  }
+
+  /** El humano confirma (o desmarca) que revisó el dato antes de contactar. */
+  async function marcarVerificado(p: Prospect, contactoId: string, verificado: boolean) {
+    setContactos((c) => ({
+      ...c,
+      [p.id]: (c[p.id] ?? []).map((x) => (x.id === contactoId ? { ...x, verificado } : x)),
+    }));
+    await fetch(`/api/prospects/${p.id}/contactos/${contactoId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ verificado }),
+    });
+  }
+
+  async function eliminarContacto(p: Prospect, contactoId: string) {
+    if (!confirm("¿Eliminar este contacto?")) return;
+    setContactos((c) => ({ ...c, [p.id]: (c[p.id] ?? []).filter((x) => x.id !== contactoId) }));
+    await fetch(`/api/prospects/${p.id}/contactos/${contactoId}`, { method: "DELETE" });
   }
 
   async function generarIA(
@@ -432,6 +540,20 @@ export default function ProspectTable({
             title="Contactados que aún no responden — candidatos a follow-up"
           >
             ⏳ Sin respuesta
+          </button>
+          <button
+            onClick={() => {
+              setQuick(quick === "seguir_hoy" ? "" : "seguir_hoy");
+              setFiltro("todos");
+            }}
+            className={`chip transition ${
+              quick === "seguir_hoy"
+                ? "border-accent/50 bg-accent/10 text-accent"
+                : "hover:text-ink"
+            }`}
+            title="Prospectos con seguimiento agendado para hoy o vencido — que ninguno se caiga"
+          >
+            ⏰ Seguir hoy
           </button>
         </div>
         <span className="ml-auto flex items-center gap-2.5">
@@ -731,7 +853,8 @@ export default function ProspectTable({
                                   className="input w-auto py-1.5 text-xs"
                                 />
                                 <button onClick={() => setProxDraft(enDias(0))} className="btn-ghost px-2 py-1">Hoy</button>
-                                <button onClick={() => setProxDraft(enDias(3))} className="btn-ghost px-2 py-1">+3d</button>
+                                <button onClick={() => setProxDraft(enDias(3))} className="btn-ghost px-2 py-1">+3d · F1</button>
+                                <button onClick={() => setProxDraft(enDias(5))} className="btn-ghost px-2 py-1">+5d · F2</button>
                                 <button onClick={() => setProxDraft(enDias(7))} className="btn-ghost px-2 py-1">+7d</button>
                               </div>
                             </div>
@@ -754,6 +877,194 @@ export default function ProspectTable({
                             </button>
                           </div>
                         </div>
+                        <details className="mt-2 sm:ml-12">
+                          <summary className="cursor-pointer select-none text-[12px] font-medium text-brand">
+                            🧰 Kit de venta — objeciones y preguntas de diagnóstico
+                          </summary>
+                          <div className="mt-2 rounded-lg border border-line bg-surface-3/45 p-3">
+                            <KitVenta />
+                          </div>
+                        </details>
+                        <details className="mt-2 sm:ml-12">
+                          <summary className="cursor-pointer select-none text-[12px] font-medium text-brand">
+                            🎯 Contacto del encargado (beta) — prospección adicional
+                          </summary>
+                          <div className="mt-2 rounded-lg border border-line bg-surface-3/45 p-3">
+                            <p className="mb-2 text-[11px] text-ink-dim">
+                              Busca al encargado de un área específica — con IA (búsqueda web),
+                              Hunter.io o Apollo.io (planes gratuitos) — útil en negocios
+                              medianos/grandes con áreas separadas. En una pyme chica el dueño
+                              suele ser el mismo contacto de arriba: úsalo solo si tiene sentido
+                              acá. Ningún dato se usa para contactar hasta que lo marques como
+                              verificado.
+                            </p>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <select
+                                value={areaSel[p.id] ?? "gerencia_general"}
+                                onChange={(e) =>
+                                  setAreaSel((a) => ({
+                                    ...a,
+                                    [p.id]: e.target.value as AreaObjetivo,
+                                  }))
+                                }
+                                className="input w-auto py-1.5 text-xs"
+                                aria-label="Área objetivo"
+                              >
+                                {AREA_OBJETIVO_OPTIONS.map((o) => (
+                                  <option key={o.value} value={o.value}>
+                                    {o.label}
+                                  </option>
+                                ))}
+                              </select>
+                              <select
+                                value={fuenteSel[p.id] ?? "ia"}
+                                onChange={(e) =>
+                                  setFuenteSel((f) => ({
+                                    ...f,
+                                    [p.id]: e.target.value as Fuente,
+                                  }))
+                                }
+                                className="input w-auto py-1.5 text-xs"
+                                aria-label="Fuente de búsqueda"
+                              >
+                                {FUENTES_CONTACTO.map((f) => (
+                                  <option key={f} value={f} disabled={f === "apollo"}>
+                                    {f === "apollo" ? `${FUENTE_LABEL[f]} (no disponible en plan gratuito)` : FUENTE_LABEL[f]}
+                                  </option>
+                                ))}
+                              </select>
+                              <button
+                                onClick={() => buscarContacto(p)}
+                                disabled={contactoLoading === p.id}
+                                className="btn-ghost px-2.5 py-1"
+                              >
+                                {contactoLoading === p.id ? "Buscando…" : "Buscar encargado"}
+                              </button>
+                            </div>
+                            <p className="mt-1 text-[10.5px] text-ink-dim">
+                              Apollo.io queda deshabilitado por ahora: confirmado con Apollo
+                              (API_INACCESSIBLE) que "mixed_people/api_search" no está disponible en
+                              el plan gratuito, sin importar la key. El código queda listo por si
+                              suben de plan más adelante.
+                            </p>
+                            {contactoError[p.id] && (
+                              <p className="mt-1.5 text-[11px] text-danger">{contactoError[p.id]}</p>
+                            )}
+                            <div className="mt-2 flex flex-col gap-2">
+                              {(contactos[p.id] ?? []).map((c) => (
+                                <div
+                                  key={c.id}
+                                  className="rounded-lg border border-line2 bg-surface-2 px-3 py-2"
+                                >
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <span
+                                      className={`chip px-1.5 py-0 text-[10px] ${
+                                        c.confianza === "alta"
+                                          ? "border-ok/40 text-ok"
+                                          : c.confianza === "media"
+                                            ? "border-warn/40 text-warn"
+                                            : "border-danger/40 text-danger"
+                                      }`}
+                                    >
+                                      Confianza {c.confianza}
+                                    </span>
+                                    <span className="text-[11px] text-ink-dim">
+                                      {AREA_OBJETIVO_LABEL[c.area_objetivo as AreaObjetivo] ??
+                                        c.area_objetivo}
+                                    </span>
+                                    <span className="chip px-1.5 py-0 text-[10px] text-ink-mut">
+                                      {FUENTE_LABEL[c.fuente as Fuente] ?? c.fuente}
+                                    </span>
+                                    {!c.verificado && (
+                                      <span className="chip border-warn/40 px-1.5 py-0 text-[10px] text-warn">
+                                        Sin verificar — no contactar aún
+                                      </span>
+                                    )}
+                                  </div>
+                                  {c.nombre ? (
+                                    <>
+                                      <p className="mt-1.5 text-[13px] font-semibold">
+                                        {c.nombre}
+                                        {c.cargo ? ` — ${c.cargo}` : ""}
+                                      </p>
+                                      <div className="mt-1 flex flex-wrap gap-2 text-[11.5px] text-ink-soft">
+                                        {c.telefono && <span className="font-mono">{c.telefono}</span>}
+                                        {c.email && <span>{c.email}</span>}
+                                        {c.linkedin_url && (
+                                          <a
+                                            href={c.linkedin_url}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="underline hover:text-ink"
+                                          >
+                                            LinkedIn
+                                          </a>
+                                        )}
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <p className="mt-1.5 text-[12px] text-ink-dim">
+                                      No se encontró un encargado publicado para esta área.
+                                    </p>
+                                  )}
+                                  {c.notas && (
+                                    <p className="mt-1 text-[11px] text-ink-mut">{c.notas}</p>
+                                  )}
+                                  {c.fuentes.length > 0 && (
+                                    <div className="mt-1 flex flex-wrap gap-1.5">
+                                      {c.fuentes.map((f, i) => (
+                                        <a
+                                          key={i}
+                                          href={f.url}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="text-[10.5px] text-brand underline"
+                                        >
+                                          {f.titulo || "fuente"} ↗
+                                        </a>
+                                      ))}
+                                    </div>
+                                  )}
+                                  <div className="mt-2 flex flex-wrap items-center gap-2.5">
+                                    {c.fuente === "apollo" && !c.telefono && !c.email && (
+                                      <button
+                                        onClick={() => revelarContacto(p, c.id)}
+                                        disabled={revelandoId === c.id}
+                                        className="btn-ghost px-2 py-0.5 text-[10px] text-brand"
+                                        title="Consulta a Apollo el email/teléfono real de este candidato"
+                                      >
+                                        {revelandoId === c.id
+                                          ? "Revelando…"
+                                          : "Revelar contacto (gasta 1 crédito Apollo)"}
+                                      </button>
+                                    )}
+                                    <label className="flex items-center gap-1.5 text-[11px] text-ink-soft">
+                                      <input
+                                        type="checkbox"
+                                        checked={c.verificado}
+                                        onChange={(e) =>
+                                          marcarVerificado(p, c.id, e.target.checked)
+                                        }
+                                      />
+                                      Verificado (lo confirmé yo)
+                                    </label>
+                                    <button
+                                      onClick={() => eliminarContacto(p, c.id)}
+                                      className="btn-ghost px-2 py-0.5 text-[10px] hover:border-danger/40 hover:text-danger"
+                                    >
+                                      Eliminar
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                              {(contactos[p.id] ?? []).length === 0 && !contactoError[p.id] && (
+                                <p className="text-[11px] text-ink-dim">
+                                  Todavía no se ha buscado un encargado para este prospecto.
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </details>
                       </td>
                     </tr>
                   )}

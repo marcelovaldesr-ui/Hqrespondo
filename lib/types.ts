@@ -287,3 +287,93 @@ export interface Cobro {
   notas: string | null;
   created_at: string;
 }
+
+/**
+ * Prospección ADICIONAL (tabla contactos_decision, migración 010): busca al
+ * ENCARGADO de un área específica dentro de un prospecto ya guardado — no
+ * el dueño/teléfono general que ya trae `prospects`, sino ej. "el de
+ * marketing" de una cadena o empresa con áreas separadas. Pensada para
+ * negocios medianos/grandes, NO para reemplazar la prospección por rubro
+ * (Places) que ya existe.
+ */
+export const AREAS_OBJETIVO = [
+  "gerencia_general",
+  "marketing",
+  "operaciones",
+  "compras",
+  "rrhh",
+  "ventas",
+  "atencion_cliente",
+] as const;
+export type AreaObjetivo = (typeof AREAS_OBJETIVO)[number];
+
+export const AREA_OBJETIVO_LABEL: Record<AreaObjetivo, string> = {
+  gerencia_general: "Gerencia general",
+  marketing: "Marketing",
+  operaciones: "Operaciones",
+  compras: "Compras / Abastecimiento",
+  rrhh: "RR.HH.",
+  ventas: "Ventas",
+  atencion_cliente: "Atención al cliente",
+};
+
+export const AREA_OBJETIVO_OPTIONS = AREAS_OBJETIVO.map((a) => ({
+  value: a,
+  label: AREA_OBJETIVO_LABEL[a],
+}));
+
+export function isAreaObjetivo(value: unknown): value is AreaObjetivo {
+  return typeof value === "string" && (AREAS_OBJETIVO as readonly string[]).includes(value);
+}
+
+export type Confianza = "alta" | "media" | "baja";
+
+export interface FuenteContacto {
+  url: string;
+  titulo?: string;
+}
+
+/**
+ * De dónde salió el contacto (migración 011):
+ * - "ia": generado por Gemini con google_search grounding (lib/contactoAI.ts).
+ * - "hunter": Domain Search de Hunter.io — base de datos real, no IA.
+ * - "apollo": People Search + Enrichment de Apollo.io — base de datos real.
+ *   Apollo primero busca GRATIS (nombre parcial, sin contacto) y recién al
+ *   "revelar" (botón aparte, gasta 1 crédito) entrega email/teléfono.
+ */
+export const FUENTES_CONTACTO = ["ia", "hunter", "apollo"] as const;
+export type Fuente = (typeof FUENTES_CONTACTO)[number];
+
+export const FUENTE_LABEL: Record<Fuente, string> = {
+  ia: "IA (búsqueda web)",
+  hunter: "Hunter.io",
+  apollo: "Apollo.io",
+};
+
+/**
+ * Un contacto encontrado (o intentado) para un prospecto. `verificado`
+ * empieza SIEMPRE en false: significa que un humano confirmó el dato antes
+ * de usarlo para contactar. La UI no debe ofrecer envío directo mientras
+ * `verificado` sea false, sin importar la `confianza` que reporte la fuente.
+ */
+export interface ContactoDecision {
+  id: string;
+  prospect_id: string;
+  area_objetivo: AreaObjetivo | string;
+  nombre: string | null;
+  cargo: string | null;
+  telefono: string | null;
+  email: string | null;
+  linkedin_url: string | null;
+  fuentes: FuenteContacto[];
+  confianza: Confianza;
+  verificado: boolean;
+  notas: string | null;
+  fuente: Fuente | string;
+  // Solo relevante cuando fuente === "apollo": id interno de Apollo para
+  // poder "revelar" (gastar crédito) más tarde. Null si nunca se buscó
+  // por Apollo o si ya fue revelado y no hace falta reconsultar.
+  apollo_person_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
