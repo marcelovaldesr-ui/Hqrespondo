@@ -210,7 +210,7 @@ export default function ProspectTable({
         break;
     }
     return s;
-  }, [items, filtro, quick, rubro, q, orden]);
+  }, [items, filtro, quick, rubro, comuna, q, orden]);
 
   async function cambiarEstado(id: string, estado: Estado) {
     const anterior = items.find((p) => p.id === id);
