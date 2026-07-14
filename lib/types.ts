@@ -334,7 +334,7 @@ export interface FuenteContacto {
 }
 
 /**
- * De dónde salió el contacto (migraciones 011, 012 y 013):
+ * De dónde salió el contacto (migraciones 011, 012, 013 y 014):
  * - "ia": generado por Gemini con google_search grounding (lib/contactoAI.ts).
  * - "hunter": Domain Search de Hunter.io — base de datos real, no IA.
  * - "apollo": People Search + Enrichment de Apollo.io — DESHABILITADO en el
@@ -349,16 +349,25 @@ export interface FuenteContacto {
  *   Probado el 14-jul-2026 con cobertura real para pymes/medianas
  *   chilenas (no solo multinacionales). Igual que Apollo: busca gratis
  *   (nombre real, sin contacto) y revela a pedido (gasta crédito).
+ * - "todas": el que se PIDE (lib/contactoCombinado.ts) — nunca se guarda
+ *   tal cual, siempre se resuelve a uno de los siguientes:
+ * - "hunter_lusha": Hunter y Lusha confirmaron la MISMA persona (cruce de
+ *   dos bases reales independientes) — confianza alta sin pasar por IA.
+ *   Si no hay cruce, "todas" cae a "hunter_ia" (con nota de qué otros
+ *   candidatos vio Lusha), a "lusha" (candidatos múltiples, si Hunter no
+ *   encontró nada) o a "ia" pura (si ninguna base real encontró nada).
  */
-export const FUENTES_CONTACTO = ["hunter_ia", "hunter", "ia", "lusha", "apollo"] as const;
-export type Fuente = (typeof FUENTES_CONTACTO)[number];
+export const FUENTES_CONTACTO = ["todas", "hunter_ia", "hunter", "ia", "lusha", "apollo"] as const;
+export type Fuente = (typeof FUENTES_CONTACTO)[number] | "hunter_lusha";
 
 export const FUENTE_LABEL: Record<Fuente, string> = {
-  hunter_ia: "Hunter + IA (recomendado)",
+  todas: "Todas las fuentes (recomendado)",
+  hunter_ia: "Hunter + IA",
   hunter: "Solo Hunter.io",
   ia: "Solo IA (búsqueda web)",
   lusha: "Lusha (busca gratis, revela con crédito)",
   apollo: "Apollo.io",
+  hunter_lusha: "Hunter + Lusha (cruzado)",
 };
 
 /**
