@@ -199,6 +199,25 @@ Responde SOLO con JSON válido, sin markdown:
     return { tipo: "multiple", candidatos: candidatosLusha, motivo: lusha?.motivo };
   }
 
-  const ia = await buscarContactoDecision(p, area);
-  return { tipo: "unico", ...ia, fuente_real: "ia" };
+  // Ninguna base real encontró nada — único caso donde dependemos 100% de la
+  // IA. Si Gemini falla (cuota, JSON truncado, etc.) no debe tirar abajo
+  // todo el request: devolvemos "no encontrado" en vez de un error 500 crudo.
+  try {
+    const ia = await buscarContactoDecision(p, area);
+    return { tipo: "unico", ...ia, fuente_real: "ia" };
+  } catch (e: any) {
+    return {
+      tipo: "unico",
+      encontrado: false,
+      nombre: null,
+      cargo: null,
+      telefono: null,
+      email: null,
+      linkedin_url: null,
+      confianza: "baja",
+      fuentes: [],
+      resumen: `Hunter y Lusha no encontraron nada, y la búsqueda por IA falló en este intento (${e.message ?? "error desconocido"}). Prueba de nuevo en unos segundos.`,
+      fuente_real: "ia",
+    };
+  }
 }

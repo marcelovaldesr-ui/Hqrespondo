@@ -67,6 +67,26 @@ function extraerJson(text: string): string {
   return start >= 0 && end > start ? clean.slice(start, end + 1) : clean;
 }
 
+/**
+ * Intenta parsear JSON y, si falla, tira un error CLARO en vez de dejar
+ * escapar el mensaje crudo de JSON.parse ("Unexpected end of JSON input"),
+ * que confunde y no dice nada útil. Pasa esto casi siempre que el modelo
+ * corta la respuesta por el límite de maxOutputTokens (JSON incompleto) o
+ * responde vacío — no es un bug de parseo, es una respuesta truncada.
+ */
+function parsearJsonSeguro<T>(text: string): T {
+  const limpio = extraerJson(text);
+  try {
+    return JSON.parse(limpio) as T;
+  } catch {
+    throw new Error(
+      limpio
+        ? `Gemini no devolvió JSON completo (probable corte por límite de tokens). Respuesta parcial: "${limpio.slice(0, 150)}"`
+        : "Gemini respondió vacío (sin texto) — puede ser un corte por límite de tokens o un bloqueo de seguridad.",
+    );
+  }
+}
+
 /** Llama a Gemini esperando JSON; limpia fences ```json, extrae el objeto y parsea. */
 export async function geminiJson<T>(
   prompt: string,
@@ -74,7 +94,7 @@ export async function geminiJson<T>(
   generationConfig?: Record<string, unknown>,
 ): Promise<T> {
   const text = await gemini(prompt, tools, generationConfig);
-  return JSON.parse(extraerJson(text)) as T;
+  return parsearJsonSeguro<T>(text);
 }
 
 export interface FuenteWeb {
@@ -123,5 +143,5 @@ export async function geminiJsonConFuentes<T>(
     }
   }
 
-  return { data: JSON.parse(extraerJson(text)) as T, fuentes };
+  return { data: parsearJsonSeguro<T>(text), fuentes };
 }

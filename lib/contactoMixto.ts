@@ -71,8 +71,26 @@ export async function buscarContactoMixto(
   const base = await buscarContactoHunter(p, area);
 
   if (!base.encontrado || !base.nombre) {
-    const ia = await buscarContactoDecision(p, area);
-    return { ...ia, fuente_real: "ia" };
+    // Hunter no encontró nada — único caso 100% dependiente de la IA. Si
+    // Gemini falla (cuota, JSON truncado, etc.) no debe tirar abajo todo el
+    // request: devolvemos "no encontrado" en vez de un error 500 crudo.
+    try {
+      const ia = await buscarContactoDecision(p, area);
+      return { ...ia, fuente_real: "ia" };
+    } catch (e: any) {
+      return {
+        encontrado: false,
+        nombre: null,
+        cargo: null,
+        telefono: null,
+        email: null,
+        linkedin_url: null,
+        confianza: "baja",
+        fuentes: [],
+        resumen: `Hunter no encontró nada, y la búsqueda por IA falló en este intento (${e.message ?? "error desconocido"}). Prueba de nuevo en unos segundos.`,
+        fuente_real: "ia",
+      };
+    }
   }
 
   const prompt = `Verifica con búsqueda web si esta persona sigue trabajando ahí (NO la busques desde cero, solo confírmala):

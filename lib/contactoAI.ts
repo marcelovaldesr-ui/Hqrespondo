@@ -50,7 +50,10 @@ interface RawContacto {
 const GEN: Record<string, unknown> = {
   temperature: 0.2,
   topP: 0.9,
-  maxOutputTokens: 500,
+  // 800 en vez de 500: con google_search el modelo a veces gasta varios
+  // tokens en razonar/citar antes del JSON final; un límite muy justo corta
+  // la respuesta a medias y produce "Unexpected end of JSON input".
+  maxOutputTokens: 800,
 };
 
 function areaLabel(area: AreaObjetivo | string): string {
