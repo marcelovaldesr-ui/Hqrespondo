@@ -613,9 +613,9 @@ export default function ProspectTable({
           <a
             href="/api/prospects/csv-llamadas"
             className="btn-ghost px-3 py-1.5"
-            title="Lista de llamadas del día: 40 mejores con score ≥70 y teléfono. Marca la ronda (no se repiten hasta 7 días). Re-descargarla el mismo día entrega la misma lista."
+            title="Excel de llamadas del día: 40 mejores con score ≥70 y teléfono. Marca la ronda (no se repiten hasta 7 días). Re-descargarlo el mismo día entrega la misma lista."
           >
-            📞 CSV llamadas del día
+            📞 Llamadas del día
           </a>
           <button
             onClick={borrarTodos}
