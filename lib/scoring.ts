@@ -79,7 +79,11 @@ export function calcularScore(
       senales.chatbot || senales.reservas || senales.ecommerce || senales.crm;
     if (!automatizado) {
       detalle.web_sin_automatizacion = 25;
-      razones.push("web SIN chatbot ni reservas ni CRM → gestiona manual");
+      razones.push(
+        senales.formulario_hora
+          ? "pide la hora por FORMULARIO (alguien responde a mano cada solicitud) → gestiona manual"
+          : "web SIN chatbot ni reservas ni CRM → gestiona manual",
+      );
       if (senales.whatsapp_link) {
         detalle.whatsapp_manual = 5;
         razones.push("atiende por WhatsApp (link en su web)");
