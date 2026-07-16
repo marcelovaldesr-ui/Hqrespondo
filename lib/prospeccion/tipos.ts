@@ -6,6 +6,8 @@
  * variables de entorno con defaults sensatos.
  */
 
+import type { SenalesWeb } from "../enriquecimiento";
+
 /** Fila mínima de prospects que el agente necesita leer/escribir. */
 export interface ProspectoAgente {
   id: string;
@@ -15,6 +17,7 @@ export interface ProspectoAgente {
   telefono: string | null;
   web: string | null;
   notas: string | null;
+  senales_web: SenalesWeb | null;
   contacto_nombre: string | null;
   contacto_email: string | null;
   contacto_linkedin: string | null;

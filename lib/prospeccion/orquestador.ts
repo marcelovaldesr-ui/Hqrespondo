@@ -29,7 +29,7 @@ import { log, contarRecientes } from "./logger";
 import { enviarTelegram } from "./telegram";
 
 const SELECT =
-  "id,nombre,rubro,comuna,telefono,web,notas,contacto_nombre,contacto_email,contacto_linkedin,contacto_celular,contacto_confianza,prospeccion_estado,enriquecer_intentos,toque_num,proximo_toque_at,gmail_thread_id";
+  "id,nombre,rubro,comuna,telefono,web,notas,senales_web,contacto_nombre,contacto_email,contacto_linkedin,contacto_celular,contacto_confianza,prospeccion_estado,enriquecer_intentos,toque_num,proximo_toque_at,gmail_thread_id";
 
 const ahora = () => new Date().toISOString();
 const enDias = (d: number) => new Date(Date.now() + d * 86_400_000).toISOString();
@@ -78,8 +78,10 @@ export async function enriquecerLote(): Promise<{ ok: number; no_encontrado: num
       detalle: { intento: intentos, ...hallado },
     });
 
-    if (hallado.email) {
+    if (hallado.email && hallado.confianza !== "baja") {
       // Éxito → entra a la secuencia; primer toque disponible ya.
+      // (confianza "baja" = email adivinado por patrón: NO se manda solo —
+      //  los rebotes queman la reputación de la cuenta; va al humano.)
       await db()
         .from("prospects")
         .update({
@@ -144,6 +146,7 @@ async function enviarToqueEmail(p: ProspectoAgente, t: Toque): Promise<boolean> 
     rubro: p.rubro,
     comuna: p.comuna,
     notas: p.notas,
+    senales: p.senales_web,
   });
   const de = remitente();
   const r = await enviarEmail({
@@ -187,6 +190,7 @@ async function redactarToqueLinkedin(
     rubro: p.rubro,
     comuna: p.comuna,
     notas: p.notas,
+    senales: p.senales_web,
   });
   await log({
     prospectId: p.id,
@@ -356,7 +360,13 @@ export async function probar(n = 5): Promise<PreviewProspecto[]> {
       comuna: p.comuna,
       web: p.web,
     });
-    const min = { nombre: p.nombre, rubro: p.rubro, comuna: p.comuna, notas: p.notas };
+    const min = {
+      nombre: p.nombre,
+      rubro: p.rubro,
+      comuna: p.comuna,
+      notas: p.notas,
+      senales: p.senales_web,
+    };
     let email_muestra: PreviewProspecto["email_muestra"] = null;
     let linkedin_muestra: string | null = null;
     try {

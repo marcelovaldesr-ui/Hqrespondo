@@ -11,9 +11,33 @@
  */
 import { gemini, geminiJson } from "../gemini";
 import { REGLAS_TONO, anclaRubro, type ProspectoMin } from "../prospeccionAI";
+import type { SenalesWeb } from "../enriquecimiento";
 import type { Toque } from "./tipos";
 
 const DEMO = process.env.NEXT_PUBLIC_DEMO_LINK || "https://www.respon-do.com";
+
+/** Prospecto + señales reales de su web (el corazón de la personalización). */
+export interface ProspectoConSenales extends ProspectoMin {
+  senales?: SenalesWeb | null;
+}
+
+/**
+ * Convierte las señales detectadas en una OBSERVACIÓN concreta y verificable
+ * del negocio. Esto es lo que separa el mensaje de un spam genérico: menciona
+ * algo que es VERDAD de ese negocio específico (lo vimos en su web).
+ */
+export function observacionDe(s: SenalesWeb | null | undefined): string | null {
+  if (!s) return null;
+  if (s.solo_redes)
+    return "No tienen sitio web propio: atienden todo por Instagram/Facebook, o sea responden cada consulta a mano por DM.";
+  if (s.formulario_hora)
+    return "En su sitio web piden la hora con un formulario: cada solicitud la tiene que responder una persona del equipo, y el cliente queda esperando.";
+  if (s.visitada && s.whatsapp_link)
+    return "En su sitio web derivan la atención a WhatsApp (tienen botón de WhatsApp), o sea las consultas las responde una persona.";
+  if (s.visitada && !s.chatbot && !s.reservas)
+    return "Su sitio web no tiene agenda online ni nada que responda solo: todo lo que entra lo contesta una persona.";
+  return null;
+}
 
 export interface EmailRedactado {
   asunto: string;
@@ -40,15 +64,20 @@ function tareaEmail(t: Toque, p: ProspectoMin): string {
  */
 export async function redactarEmail(
   t: Toque,
-  p: ProspectoMin,
+  p: ProspectoConSenales,
 ): Promise<EmailRedactado> {
   const notas = p.notas?.trim()
     ? `Notas reales sobre este prospecto (úsalas para personalizar): ${p.notas.trim()}`
+    : "";
+  const obs = observacionDe(p.senales);
+  const observacion = obs
+    ? `OBSERVACIÓN REAL de este negocio (la vimos en su web — úsala con naturalidad en el email, como quien se dio el tiempo de mirar, NUNCA como "estuve revisando su sitio web" de vendedor): ${obs}`
     : "";
 
   const prompt = `${anclaRubro(p.rubro)}
 Negocio: ${p.nombre}${p.comuna ? ` (${p.comuna})` : ""}.
 ${notas}
+${observacion}
 
 ${REGLAS_TONO}
 
@@ -102,7 +131,7 @@ export function elegirMejorEmail(vs: EmailRedactado[]): EmailRedactado {
  */
 export async function redactarLinkedin(
   t: Toque,
-  p: ProspectoMin,
+  p: ProspectoConSenales,
 ): Promise<string> {
   const esConexion = t.angulo === "conexion_linkedin";
   const limite = esConexion ? 300 : 500;

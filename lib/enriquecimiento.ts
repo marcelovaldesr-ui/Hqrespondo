@@ -86,6 +86,14 @@ const RESERVAS: Firma[] = [
   ["MotoPress Appointment", /motopress-appointment/i],
   ["AgendaOnline", /agendaonline\.cl/i],
   ["Agendalo", /agendalo\.cl/i],
+  // Verticales fuertes en Chile (dental/médico/canchas/gimnasios)
+  ["Doctoralia", /doctoralia|docplanner/i],
+  ["Medipass", /medipass/i],
+  ["SaludTools", /saludtools/i],
+  ["Easycancha", /easycancha/i],
+  ["Playtomic", /playtomic/i],
+  ["Boxmagic", /boxmagic/i],
+  ["AgendaMédica", /agendamedica/i],
 ];
 
 /** Formularios de contacto/solicitud — el negocio responde A MANO. */
@@ -152,7 +160,10 @@ export function clasificarPotencial(
 // 5s por fetch: en serverless (Vercel) el presupuesto total de la función es
 // acotado; un sitio que demora más de 5s casi nunca entrega señal útil.
 const TIMEOUT_MS = 5000;
-const MAX_BYTES = 400_000;
+// 1.5 MB: los sitios Elementor/WordPress pesados superan 1 MB y el link del
+// sistema de reservas puede quedar al final del HTML. Con 400 KB se nos escapó
+// un Dentalink real (caso ohmydent.com, jul-2026) → score 100 falso.
+const MAX_BYTES = 1_500_000;
 
 async function fetchHtml(url: string): Promise<string | null> {
   const controller = new AbortController();
