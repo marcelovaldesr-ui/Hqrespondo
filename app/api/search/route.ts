@@ -6,8 +6,13 @@ import { ESTADO_CONFIG } from "@/lib/types";
 
 /**
  * POST /api/search  { rubro, comuna }
- * Busca en Places API → dedupe contra prospects → scoring Gemini → inserta.
+ * Busca en Places API → dedupe contra prospects → enriquecimiento web +
+ * score determinista + mensaje Gemini → inserta.
+ *
+ * maxDuration: el enriquecimiento visita hasta 3 páginas por negocio;
+ * sin esto Vercel corta la función a ~10s y la búsqueda entera se pierde.
  */
+export const maxDuration = 60;
 export async function POST(req: Request) {
   try {
     const { rubro, comuna } = await req.json();

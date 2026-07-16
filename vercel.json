@@ -1,5 +1,9 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "crons": [
+    { "path": "/api/prospeccion/diaria", "schedule": "0 13,15,17,19,21 * * *" },
+    { "path": "/api/prospeccion/revisar", "schedule": "0 14,16,18,20,22 * * *" }
+  ]
 }

@@ -71,17 +71,23 @@ export function calcularScore(
   }
 
   // Señales web — el corazón del criterio manual vs automatizado
-  if (!senales.visitada) {
+  if (senales.solo_redes) {
+    detalle.solo_redes = 20;
+    razones.push("su única web es Instagram/Facebook → gestiona TODO a mano por DM");
+  } else if (!senales.visitada) {
     detalle.sin_web_verificable = 10;
     razones.push("sin web propia verificable → probablemente gestiona manual");
   } else {
     const automatizado =
       senales.chatbot || senales.reservas || senales.ecommerce || senales.crm;
     if (!automatizado) {
-      detalle.web_sin_automatizacion = 25;
+      // Formulario de solicitud = manual, pero con wizard/página dedicada:
+      // suma menos que "nada de nada" para que el 100 quede reservado a lo
+      // verificado sin NINGUNA fachada de agendamiento.
+      detalle.web_sin_automatizacion = senales.formulario_hora ? 15 : 25;
       razones.push(
         senales.formulario_hora
-          ? "pide la hora por FORMULARIO (alguien responde a mano cada solicitud) → gestiona manual"
+          ? "pide la hora por FORMULARIO/wizard (sin horas online: alguien responde a mano cada solicitud)"
           : "web SIN chatbot ni reservas ni CRM → gestiona manual",
       );
       if (senales.whatsapp_link) {

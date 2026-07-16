@@ -93,6 +93,15 @@ export interface Prospect {
   reviews: number | null;
   score: number;
   razon_score: string | null;
+  /** Señales de automatización de la web (lib/enriquecimiento.ts) */
+  senales_web?: {
+    potencial?: "alto" | "medio" | "bajo" | "desconocido";
+    chatbot?: string | null;
+    reservas?: string | null;
+    formulario_hora?: boolean;
+    solo_redes?: boolean;
+    whatsapp_link?: boolean;
+  } | null;
   mensaje: string | null;
   estado: Estado;
   proxima_accion: string | null;

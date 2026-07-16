@@ -677,6 +677,24 @@ export default function ProspectTable({
                     </td>
                     <td className="px-5 py-4 align-top">
                       <div className="flex flex-wrap gap-1">
+                        {p.senales_web?.potencial === "alto" && (
+                          <span className="chip border-ok/40 bg-ok/10 px-1.5 py-0 text-[10px] font-semibold text-ok">
+                            {p.senales_web?.solo_redes
+                              ? "SOLO REDES"
+                              : p.senales_web?.formulario_hora
+                                ? "FORMULARIO"
+                                : "MANUAL"}
+                          </span>
+                        )}
+                        {p.senales_web?.potencial === "bajo" && (
+                          <span className="chip border-danger/40 bg-danger/10 px-1.5 py-0 text-[10px] font-semibold text-danger">
+                            {p.senales_web?.chatbot
+                              ? `BOT: ${p.senales_web.chatbot}`
+                              : p.senales_web?.reservas
+                                ? `AGENDA: ${p.senales_web.reservas}`
+                                : "AUTOMATIZADO"}
+                          </span>
+                        )}
                         {!p.web && (
                           <span className="chip border-warn/30 px-1.5 py-0 text-[10px] text-warn">
                             Sin web

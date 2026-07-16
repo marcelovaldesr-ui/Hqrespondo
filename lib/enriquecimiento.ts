@@ -21,6 +21,8 @@
 export interface SenalesWeb {
   /** true si se pudo descargar el HTML */
   visitada: boolean;
+  /** Su única "web" es una red social (IG/FB/Linktree) → gestión 100% manual */
+  solo_redes?: boolean;
   /** Herramienta de chatbot detectada (Cliengo, Tidio, …) o null */
   chatbot: string | null;
   /** Sistema de reservas/agenda online REAL detectado o null */
@@ -140,13 +142,16 @@ function detectar(html: string, firmas: Firma[]): string | null {
 export function clasificarPotencial(
   s: Omit<SenalesWeb, "potencial">,
 ): SenalesWeb["potencial"] {
+  if (s.solo_redes) return "alto"; // solo IG/FB = gestión 100% manual
   if (!s.visitada) return "desconocido";
   if (s.chatbot || s.reservas) return "bajo"; // ya automatizaron lo que vendemos
   if (s.ecommerce || s.crm) return "medio"; // digitalizados, pero sin bot/agenda
   return "alto"; // sin automatización (formulario cuenta como manual)
 }
 
-const TIMEOUT_MS = 8000;
+// 5s por fetch: en serverless (Vercel) el presupuesto total de la función es
+// acotado; un sitio que demora más de 5s casi nunca entrega señal útil.
+const TIMEOUT_MS = 5000;
 const MAX_BYTES = 400_000;
 
 async function fetchHtml(url: string): Promise<string | null> {
@@ -215,8 +220,11 @@ export async function enriquecerWeb(web: string | null): Promise<SenalesWeb> {
   if (!web) return vacio;
 
   const url = /^https?:\/\//i.test(web) ? web : `https://${web}`;
-  // Redes sociales no son "web propia": no dicen nada de automatización.
-  if (/facebook\.com|instagram\.com|linktr\.ee|wa\.me\//i.test(url)) return vacio;
+  // Su única "web" es una red social → no hay nada que automatizar ahí:
+  // gestionan TODO a mano por DM. Es de los mejores prospectos que existen.
+  if (/facebook\.com|instagram\.com|linktr\.ee|wa\.me\//i.test(url)) {
+    return { ...vacio, solo_redes: true, potencial: "alto" };
+  }
 
   const home = await fetchHtml(url);
   if (!home) return vacio;
@@ -267,7 +275,7 @@ export async function enriquecerWeb(web: string | null): Promise<SenalesWeb> {
 /** Enriquece un batch en paralelo (máx `concurrencia` webs a la vez). */
 export async function enriquecerBatch(
   webs: (string | null)[],
-  concurrencia = 5,
+  concurrencia = 10,
 ): Promise<SenalesWeb[]> {
   const resultados: SenalesWeb[] = new Array(webs.length);
   let i = 0;

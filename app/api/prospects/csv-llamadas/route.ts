@@ -65,8 +65,16 @@ export async function GET(req: Request) {
     const preview = url.searchParams.get("preview") === "1";
 
     const ahora = new Date();
-    const hoy = new Date(ahora);
-    hoy.setHours(0, 0, 0, 0);
+    // "Hoy" en hora de CHILE, no del servidor (Vercel corre en UTC: sin esto,
+    // después de las ~20:00 de Chile el día "cambia" y la lista se duplica).
+    const fechaChile = ahora.toLocaleDateString("en-CA", {
+      timeZone: "America/Santiago",
+    }); // YYYY-MM-DD
+    const offsetChile = new Date(
+      ahora.toLocaleString("en-US", { timeZone: "America/Santiago" }),
+    );
+    const msOffset = ahora.getTime() - offsetChile.getTime();
+    const hoy = new Date(new Date(`${fechaChile}T00:00:00`).getTime() + msOffset);
     const hace7d = new Date(ahora.getTime() - 7 * 24 * 3600 * 1000);
 
     const s = db();
@@ -102,8 +110,11 @@ export async function GET(req: Request) {
         continue;
       }
       const previo = porDominio.get(host);
-      if (!previo) porDominio.set(host, { ...p, sucursales: 1 });
-      else previo.sucursales += 1;
+      if (!previo) porDominio.set(host, { ...p, sucursales: 1, ids_grupo: [p.id] });
+      else {
+        previo.sucursales += 1;
+        previo.ids_grupo.push(p.id); // marcar TODO el grupo al exportar
+      }
     }
     const filas = [...porDominio.values(), ...sinWeb].sort(
       (a, b) => (b.score ?? 0) - (a.score ?? 0),
@@ -124,7 +135,8 @@ export async function GET(req: Request) {
             ultimo_intento_llamada: ahora.toISOString(),
             intentos_llamada: (p.intentos_llamada ?? 0) + 1,
           })
-          .eq("id", p.id),
+          // marca también las sucursales agrupadas (misma web)
+          .in("id", (p as any).ids_grupo ?? [p.id]),
       ),
     );
 
