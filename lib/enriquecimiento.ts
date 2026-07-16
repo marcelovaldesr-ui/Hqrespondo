@@ -94,6 +94,8 @@ const RESERVAS: Firma[] = [
   ["SaludTools", /saludtools/i],
   ["Easycancha", /easycancha/i],
   ["Playtomic", /playtomic/i],
+  ["MatchPoint", /matchpoint\.com\.es|tpc\.matchpoint/i],
+  ["Gestionatuclub", /gestionatuclub\.cl/i],
   ["Boxmagic", /boxmagic/i],
   ["AgendaMédica", /agendamedica/i],
 ];
