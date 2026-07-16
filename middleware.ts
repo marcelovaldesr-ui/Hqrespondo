@@ -9,11 +9,19 @@ import type { NextRequest } from "next/server";
  *
  * Las rutas /api/hooks/* quedan fuera: las usa n8n y validan
  * su propio token (x-hq-token) dentro del handler.
+ *
+ * Las rutas /api/prospeccion/* también quedan fuera: las llama Vercel Cron
+ * (que NO manda Basic Auth — sin esta excepción el agente muere en 401
+ * silencioso) y todas validan su propio secreto adentro (lib/prospeccion/auth).
  */
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  if (pathname.startsWith("/api/hooks")) return NextResponse.next();
+  if (
+    pathname.startsWith("/api/hooks") ||
+    pathname.startsWith("/api/prospeccion")
+  )
+    return NextResponse.next();
 
   const cuentas = [
     { user: process.env.HQ_USER, pass: process.env.HQ_PASSWORD },

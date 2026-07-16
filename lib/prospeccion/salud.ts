@@ -166,6 +166,10 @@ export async function diagnosticar(ping: boolean, mostrarChatId: boolean): Promi
     "TELEGRAM_BOT_TOKEN",
     "TELEGRAM_CHAT_ID",
     "PROS_CRON_SECRET",
+    // Vercel Cron manda "Authorization: Bearer CRON_SECRET" SOLO si esta
+    // variable existe en Vercel. Sin ella, el cron llega sin credencial y
+    // el agente nunca corre solo (401 silencioso).
+    "CRON_SECRET",
   ];
   const variables: Record<string, boolean> = {};
   for (const k of requeridas) variables[k] = tiene(k);

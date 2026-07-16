@@ -82,6 +82,7 @@ ${observacion}
 ${REGLAS_TONO}
 
 CANAL: EMAIL (no WhatsApp). Igual: cero jerga, suena a persona. Asunto corto (máx 6 palabras), en minúscula tipo email real de una persona, SIN clickbait ni signos de exclamación. Cuerpo en 2ª persona, párrafos de 1–2 líneas, con un saludo y una firma simple ("Marcelo, Respondo").
+PROHIBIDO PROMETER lo que no está confirmado para ESE negocio: nada de "agenda directamente en su sistema", "se integra con su software", "sincroniza su calendario" ni funciones específicas. Lo seguro y verdadero: responde las consultas, cotiza con sus precios, toma los datos y agenda la hora. Si dudas, promete menos.
 
 TAREA: ${tareaEmail(t, p)}
 
