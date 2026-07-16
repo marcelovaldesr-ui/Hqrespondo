@@ -33,6 +33,14 @@ interface MensajeRow {
   mensaje: string;
 }
 
+/** true si el teléfono publicado es un celular chileno (9xxxxxxxx). */
+export function esCelular(t: string | null): boolean {
+  if (!t) return false;
+  let d = t.replace(/\D/g, "");
+  if (d.startsWith("56")) d = d.slice(2);
+  return d.startsWith("9") && d.length === 9;
+}
+
 /** Calcula el score determinista de un negocio. Exportado para tests. */
 export function calcularScore(
   p: PlaceResult,
@@ -49,14 +57,25 @@ export function calcularScore(
     razones.push("sin teléfono");
   }
 
-  // Rubro (usa la clasificación comercial de growth/industries)
+  // Opera por WhatsApp: el teléfono publicado en Google es un CELULAR.
+  // Señal más fuerte que el rubro: describe cómo trabaja ESTE negocio.
+  const celular = esCelular(p.telefono);
+  if (celular) {
+    detalle.opera_por_whatsapp = 10;
+    razones.push("publica un celular como teléfono → atiende por WhatsApp");
+  }
+
+  // Rubro (clasificación comercial de growth/industries). Peso MODERADO a
+  // propósito: el "negocio perfecto" lo definen sus señales de operación
+  // manual, no la industria — hay ferreterías sin WhatsApp y aguateros que
+  // operan 100% por WhatsApp.
   const slug = matchRubroSlug(rubro);
   const ficha = slug ? rubroPorSlug(slug) : null;
   if (ficha?.prioridad_comercial === "alta") {
-    detalle.rubro = 20;
+    detalle.rubro = 15;
     razones.push(`rubro prioritario (${ficha.nombre})`);
   } else if (ficha) {
-    detalle.rubro = 10;
+    detalle.rubro = 8;
   }
 
   // Negocio vivo (rating/reviews solo para el score, nunca para el mensaje)
@@ -74,6 +93,13 @@ export function calcularScore(
   if (senales.solo_redes) {
     detalle.solo_redes = 20;
     razones.push("su única web es Instagram/Facebook → gestiona TODO a mano por DM");
+  } else if (!senales.visitada && celular) {
+    // El "negocio perfecto" invisible: ni web tiene y atiende a un celular.
+    // Todo su flujo (consultas, pedidos, reservas) vive en WhatsApp.
+    detalle.sin_web_celular = 20;
+    razones.push("sin web y atiende a un celular → opera 100% por WhatsApp");
+    senales.celular_whatsapp = true;
+    senales.potencial = "alto";
   } else if (!senales.visitada) {
     detalle.sin_web_verificable = 10;
     razones.push("sin web propia verificable → probablemente gestiona manual");

@@ -681,9 +681,11 @@ export default function ProspectTable({
                           <span className="chip border-ok/40 bg-ok/10 px-1.5 py-0 text-[10px] font-semibold text-ok">
                             {p.senales_web?.solo_redes
                               ? "SOLO REDES"
-                              : p.senales_web?.formulario_hora
-                                ? "FORMULARIO"
-                                : "MANUAL"}
+                              : p.senales_web?.celular_whatsapp
+                                ? "SOLO WHATSAPP"
+                                : p.senales_web?.formulario_hora
+                                  ? "FORMULARIO"
+                                  : "MANUAL"}
                           </span>
                         )}
                         {p.senales_web?.potencial === "bajo" && (

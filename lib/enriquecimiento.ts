@@ -23,6 +23,8 @@ export interface SenalesWeb {
   visitada: boolean;
   /** Su única "web" es una red social (IG/FB/Linktree) → gestión 100% manual */
   solo_redes?: boolean;
+  /** Sin web y con CELULAR publicado en Google → opera 100% por WhatsApp */
+  celular_whatsapp?: boolean;
   /** Herramienta de chatbot detectada (Cliengo, Tidio, …) o null */
   chatbot: string | null;
   /** Sistema de reservas/agenda online REAL detectado o null */

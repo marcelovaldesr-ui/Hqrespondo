@@ -100,6 +100,7 @@ export interface Prospect {
     reservas?: string | null;
     formulario_hora?: boolean;
     solo_redes?: boolean;
+    celular_whatsapp?: boolean;
     whatsapp_link?: boolean;
   } | null;
   mensaje: string | null;
