@@ -1,0 +1,40 @@
+# Cron externo del agente de prospección (bypass del límite 1×/día de Vercel Hobby).
+# GitHub solo GATILLA por URL: el trabajo corre en Vercel igual que siempre.
+#
+# Requiere 1 secreto en GitHub: repo → Settings → Secrets and variables →
+# Actions → New repository secret → nombre CRON_KEY, valor = PROS_CRON_SECRET.
+#
+# Horarios en UTC (Chile invierno = UTC-4):
+#   diaria  → 13,15,17,19,21 UTC = 9,11,13,15,17 Chile (L-V)
+#   revisar → 14,16,18,20,22 UTC = 10,12,14,16,18 Chile (L-V)
+# El agente además tiene su propia ventana horaria interna: si un cron cae
+# fuera de 9-19 Chile (ej. por cambio de hora en septiembre), no envía nada.
+
+name: Agente de prospección
+
+on:
+  schedule:
+    - cron: "0 13,15,17,19,21 * * 1-5"   # corridas de envío/enriquecimiento
+    - cron: "30 14,16,18,20,22 * * 1-5"  # revisión de respuestas (media hora corrida)
+  workflow_dispatch: {} # botón manual "Run workflow" para probar
+
+jobs:
+  correr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Decidir qué toca según la hora
+        id: que
+        run: |
+          MIN=$(date -u +%M)
+          if [ "$MIN" -lt 15 ]; then echo "endpoint=diaria" >> "$GITHUB_OUTPUT";
+          else echo "endpoint=revisar" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Llamar al agente
+        run: |
+          set -e
+          URL="https://hqrespondo.vercel.app/api/prospeccion/${{ steps.que.outputs.endpoint }}?key=${{ secrets.CRON_KEY }}"
+          echo "→ ${{ steps.que.outputs.endpoint }}"
+          RES=$(curl -s -m 90 -w "\nHTTP %{http_code}" "$URL")
+          echo "$RES"
+          echo "$RES" | grep -q "HTTP 200" || exit 1
