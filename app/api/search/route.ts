@@ -57,6 +57,8 @@ export async function POST(req: Request) {
       reviews: p.reviews,
       score: p.score,
       razon_score: p.razon_score,
+      senales_web: p.senales_web,
+      score_detalle: p.score_detalle,
       mensaje: p.mensaje,
       estado: ESTADO_CONFIG.nuevo.value,
       place_id: p.place_id,
