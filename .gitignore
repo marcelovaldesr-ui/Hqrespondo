@@ -11,3 +11,5 @@ out/
 BUILD_ID
 app-build-manifest.json
 app-path-routes-manifest.json
+
+.claude/

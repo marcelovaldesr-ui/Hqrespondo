@@ -611,9 +611,9 @@ export default function ProspectTable({
             ⬇ Exportar a Excel
           </button>
           <a
-            href="/api/prospects/csv-llamadas"
+            href="/llamadas"
             className="btn-ghost px-3 py-1.5"
-            title="Excel de llamadas del día: 40 mejores con score ≥70 y teléfono. Marca la ronda (no se repiten hasta 7 días). Re-descargarlo el mismo día entrega la misma lista."
+            title="Panel de llamadas del día: registra cada resultado con un clic (los 'no contestó' vuelven mañana solos)"
           >
             📞 Llamadas del día
           </a>

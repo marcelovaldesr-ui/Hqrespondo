@@ -82,6 +82,12 @@ function Icon({ name }: { name: string }) {
           <path d="M8 1.6l1.5 4 4 1.5-4 1.5L8 14.4 6.5 8.6l-4-1.5 4-1.5L8 1.6z" />
         </svg>
       );
+    case "phone":
+      return (
+        <svg {...common} aria-hidden="true">
+          <path d="M3.2 2.2h2.6l1.3 3.2-1.7 1.3a9.5 9.5 0 0 0 4 4l1.3-1.7 3.2 1.3v2.6c0 .7-.6 1.3-1.3 1.3C7 14.2 1.8 9 1.8 3.5c0-.7.6-1.3 1.4-1.3z" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -91,6 +97,7 @@ function Icon({ name }: { name: string }) {
  *  Hoy → Prospectar → Pipeline → Clientes/Bots → Finanzas → Brief → Roadmap → Decisiones */
 const LINKS = [
   { href: "/dashboard", label: "Centro de mando", icon: "dashboard" },
+  { href: "/llamadas", label: "Llamadas del día", icon: "phone" },
   { href: "/prospeccion", label: "Prospección", icon: "target" },
   { href: "/pipeline", label: "Pipeline", icon: "kanban" },
   { href: "/clientes", label: "Clientes & Bots", icon: "bot" },
