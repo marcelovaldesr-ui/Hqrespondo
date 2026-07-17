@@ -59,6 +59,7 @@ export default function LlamadasHoy({
 }) {
   const [filas, setFilas] = useState(filasIniciales);
   const [hechas, setHechas] = useState<Record<string, Resultado>>({});
+  const [notasRapidas, setNotasRapidas] = useState<Record<string, string>>({});
   const [abierta, setAbierta] = useState<string | null>(null);
   const [form, setForm] = useState({ resultado: "interesado" as Resultado, dueno: "", contacto: "", nota: "" });
   const [guardando, setGuardando] = useState<string | null>(null);
@@ -83,7 +84,7 @@ export default function LlamadasHoy({
           resultado,
           dueno: extra?.dueno ?? "",
           contacto: extra?.contacto ?? "",
-          nota: extra?.nota ?? "",
+          nota: extra?.nota || notasRapidas[f.id] || "",
         }),
       });
       if (!res.ok) throw new Error((await res.json())?.error ?? `HTTP ${res.status}`);
@@ -110,6 +111,17 @@ export default function LlamadasHoy({
           <span className="rounded-lg border border-line bg-surface-1 px-3 py-1.5 font-mono text-[12px]">
             Hoy: <b>{contadorHoy}</b> llamadas · quedan <b>{pendientes}</b>
           </span>
+          <button
+            onClick={() => window.location.reload()}
+            className={`px-3 py-1.5 text-[12px] ${
+              pendientes === 0
+                ? "rounded-lg bg-brand font-medium text-white hover:opacity-90"
+                : "btn-ghost"
+            }`}
+            title="Trae la siguiente tanda de elegibles (los ya registrados salen solos)"
+          >
+            🔄 Actualizar lista
+          </button>
           <a
             href="/api/prospects/csv-llamadas?preview=1"
             className="btn-ghost px-3 py-1.5 text-[12px]"
@@ -119,6 +131,12 @@ export default function LlamadasHoy({
           </a>
         </div>
       </div>
+
+      {pendientes === 0 && filas.length > 0 && (
+        <p className="mb-3 rounded-lg border border-ok/30 bg-ok/10 px-3 py-2 text-[12.5px] text-ok">
+          ✓ Tanda completa. Dale a <b>Actualizar lista</b> para traer los siguientes elegibles.
+        </p>
+      )}
 
       {error && (
         <p className="mb-3 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
@@ -203,6 +221,15 @@ export default function LlamadasHoy({
                   </span>
                 ) : (
                   <div className="flex shrink-0 items-center gap-1.5">
+                    <input
+                      value={notasRapidas[f.id] ?? ""}
+                      onChange={(e) =>
+                        setNotasRapidas((n) => ({ ...n, [f.id]: e.target.value }))
+                      }
+                      placeholder="nota: buzón, apagado…"
+                      className="w-36 rounded-lg border border-line bg-surface-3 px-2 py-1.5 text-[11.5px] outline-none focus:border-brand"
+                      title="Se guarda junto con el botón que aprietes (opcional)"
+                    />
                     <button
                       onClick={() => registrar(f, "no_contesto")}
                       disabled={guardando === f.id}
