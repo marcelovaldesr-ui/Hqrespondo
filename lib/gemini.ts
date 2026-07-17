@@ -1,6 +1,13 @@
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 const MODELO_RESPALDO = "gemini-2.5-flash";
 
+// Un modelo saturado a veces NO responde 503: simplemente se queda colgado.
+// Sin timeout, ese cuelgue congela la función serverless completa hasta que
+// Vercel la mata (60s) — sin failover, sin log, sin emails (pasó el 17-jul
+// con gemini-3.5-flash en "high demand"). El timeout convierte el cuelgue en
+// un error reintentable → gatilla el respaldo.
+const TIMEOUT_MS = 20_000;
+
 async function llamarModelo(
   model: string,
   prompt: string,
@@ -9,15 +16,42 @@ async function llamarModelo(
 ): Promise<Response> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("Falta GEMINI_API_KEY");
-  return fetch(`${BASE}/${model}:generateContent?key=${key}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      ...(tools && tools.length > 0 ? { tools } : {}),
-      ...(generationConfig ? { generationConfig } : {}),
-    }),
-  });
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  try {
+    return await fetch(`${BASE}/${model}:generateContent?key=${key}`, {
+      method: "POST",
+      signal: ctrl.signal,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        ...(tools && tools.length > 0 ? { tools } : {}),
+        ...(generationConfig ? { generationConfig } : {}),
+      }),
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Llama al modelo y trata el TIMEOUT como un 503 sintético (reintentable). */
+async function llamarConTimeout(
+  model: string,
+  prompt: string,
+  tools?: unknown[],
+  generationConfig?: Record<string, unknown>,
+): Promise<Response> {
+  try {
+    return await llamarModelo(model, prompt, tools, generationConfig);
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") {
+      return new Response(
+        JSON.stringify({ error: { message: `timeout ${TIMEOUT_MS}ms en ${model}` } }),
+        { status: 503 },
+      );
+    }
+    throw e;
+  }
 }
 
 /**
@@ -36,10 +70,10 @@ export async function gemini(
 ): Promise<string> {
   const principal = process.env.GEMINI_MODEL || MODELO_RESPALDO;
 
-  let res = await llamarModelo(principal, prompt, tools, generationConfig);
+  let res = await llamarConTimeout(principal, prompt, tools, generationConfig);
 
   if (!res.ok && [429, 500, 503].includes(res.status) && principal !== MODELO_RESPALDO) {
-    res = await llamarModelo(MODELO_RESPALDO, prompt, undefined, generationConfig);
+    res = await llamarConTimeout(MODELO_RESPALDO, prompt, undefined, generationConfig);
   }
 
   if (!res.ok) {
@@ -120,11 +154,11 @@ export async function geminiJsonConFuentes<T>(
   if (!key) throw new Error("Falta GEMINI_API_KEY");
   const principal = process.env.GEMINI_MODEL || MODELO_RESPALDO;
 
-  let res = await llamarModelo(principal, prompt, tools, generationConfig);
+  let res = await llamarConTimeout(principal, prompt, tools, generationConfig);
   if (!res.ok && [429, 500, 503].includes(res.status) && principal !== MODELO_RESPALDO) {
     // OJO: el reintento sin `tools` pierde el grounding — si pasa, el caller
     // debe interpretar fuentes=[] como "no se pudo verificar", no como dato limpio.
-    res = await llamarModelo(MODELO_RESPALDO, prompt, undefined, generationConfig);
+    res = await llamarConTimeout(MODELO_RESPALDO, prompt, undefined, generationConfig);
   }
   if (!res.ok) {
     throw new Error(`Gemini ${res.status}: ${await res.text()}`);
