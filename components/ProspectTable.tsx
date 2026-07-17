@@ -21,6 +21,15 @@ import {
   type Prospect,
 } from "@/lib/types";
 
+/** Última línea de llamada registrada en las notas (panel /llamadas). */
+function ultimaNotaLlamada(notas: string | null): string | null {
+  if (!notas) return null;
+  const lineas = notas.split("\n").filter((l) => l.includes("· llamada]"));
+  if (!lineas.length) return null;
+  // "[17-jul 15:32 · llamada] no contestó · buzón" → "17-jul no contestó · buzón"
+  return lineas[lineas.length - 1].replace(/^\[(\S+) [^\]]*\]\s*/, "$1 ");
+}
+
 function scoreCls(score: number) {
   if (score >= 70) return { text: "text-ok", bar: "bg-ok" };
   if (score >= 40) return { text: "text-warn", bar: "bg-warn" };
@@ -674,6 +683,14 @@ export default function ProspectTable({
                       <div className="mt-1 text-[11px] text-ink-dim">
                         {p.rubro} · {p.comuna}
                       </div>
+                      {ultimaNotaLlamada(p.notas) && (
+                        <div
+                          className="mt-1 truncate text-[10.5px] italic text-warn"
+                          title={p.notas ?? undefined}
+                        >
+                          ☎ {ultimaNotaLlamada(p.notas)}
+                        </div>
+                      )}
                     </td>
                     <td className="px-5 py-4 align-top">
                       <div className="flex flex-wrap gap-1">
