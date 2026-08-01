@@ -279,7 +279,7 @@ function EditClientPanel({ c }: { c: ClientStats }) {
           </div>
           <div className="grid grid-cols-2 gap-2">
             <input value={telefonoBot} onChange={(e) => setTelefonoBot(e.target.value)} placeholder="Teléfono del bot" className="input px-2 font-mono text-xs" aria-label="Teléfono del bot" />
-            <input value={workflowId} onChange={(e) => setWorkflowId(e.target.value)} placeholder="Workflow ID (n8n)" className="input px-2 font-mono text-xs" aria-label="Workflow ID" />
+            <input value={workflowId} onChange={(e) => setWorkflowId(e.target.value)} placeholder="ID de referencia (Portal o n8n)" className="input px-2 font-mono text-xs" aria-label="ID de referencia" />
           </div>
           <div className="flex items-center justify-between">
             <button onClick={eliminar} className="btn-ghost hover:border-danger/40 hover:bg-danger/10 hover:text-danger">
@@ -297,8 +297,12 @@ function EditClientPanel({ c }: { c: ClientStats }) {
 
 /**
  * Configuración operativa del bot (tabla bot_configs): tono, horarios
- * y reglas de derivación a humano. Se carga al expandir y se guarda
- * con upsert — n8n la lee vía GET /api/hooks/bot-config.
+ * y reglas de derivación a humano. Se carga al expandir y se guarda con
+ * upsert. ⚠ 1-ago-2026: GET /api/hooks/bot-config sigue funcionando, pero
+ * hoy NADIE lo consume — el prompt real del empleado se arma en
+ * respondo-portal (lib/promptEmpleado.ts), que no lee esta tabla. Este panel
+ * queda como referencia/notas hasta que se decida si vale la pena conectarlo
+ * al Portal (fuera del alcance del puente de eventos de AUDITORIA_RESPONDHQ_AGO2026.md §4).
  */
 function BotConfigPanel({ clientId }: { clientId: string }) {
   const [open, setOpen] = useState(false);
@@ -545,11 +549,11 @@ export default function Clients({ clients }: { clients: ClientStats[] }) {
             </select>
           </div>
           <div className="min-w-40">
-            <label className="lbl mb-1.5 block">Workflow ID (n8n)</label>
+            <label className="lbl mb-1.5 block">ID de referencia (Portal o n8n)</label>
             <input
               value={workflowId}
               onChange={(e) => setWorkflowId(e.target.value)}
-              placeholder="id del workflow del bot"
+              placeholder="id del cliente en respondo-portal (ed_clientes.id)"
               className="input font-mono text-xs"
             />
           </div>
@@ -566,9 +570,10 @@ export default function Clients({ clients }: { clients: ClientStats[] }) {
           </p>
           <p className="mx-auto mt-2 max-w-xl text-xs leading-relaxed text-ink-dim">
             Cuando cierres el primer piloto, agrégalo aquí con su plan, mensualidad
-            y workflow de n8n. Se creará solo el checklist de instalación (7 pasos)
-            y este módulo pasará a monitorear su bot: conversaciones, errores, costo
-            y salud en vivo. Mientras tanto, el camino al primer cliente está en{" "}
+            y el ID que le corresponde en respondo-portal. Se creará solo el checklist
+            de instalación (7 pasos) y este módulo pasará a monitorear su bot:
+            conversaciones, errores, costo y salud en vivo. Mientras tanto, el camino
+            al primer cliente está en{" "}
             <a href="/prospeccion" className="text-brand underline">Prospección</a>.
           </p>
         </div>
@@ -669,11 +674,15 @@ export default function Clients({ clients }: { clients: ClientStats[] }) {
       </div>
 
       <p className="mt-4 text-xs leading-relaxed text-ink-dim">
-        El estado se alimenta de los eventos que envía n8n a{" "}
-        <code className="rounded bg-surface-3 px-1">/api/hooks/bot-events</code>.
-        Importa los workflows de la carpeta{" "}
-        <code className="rounded bg-surface-3 px-1">n8n/</code> y asigna el
-        workflow id a cada cliente.
+        El estado se alimenta de los eventos que respondo-portal envía a{" "}
+        <code className="rounded bg-surface-3 px-1">/api/hooks/bot-events</code>{" "}
+        (puente agregado 1-ago-2026 — ver{" "}
+        <code className="rounded bg-surface-3 px-1">lib/hqBridge.ts</code> en el
+        Portal). Pega el <b>id del cliente en el Portal</b> (tabla{" "}
+        <code className="rounded bg-surface-3 px-1">ed_clientes</code>) en el campo
+        &quot;ID de referencia&quot; de cada cliente para que HQ pueda resolverlo.
+        Los workflows de la carpeta <code className="rounded bg-surface-3 px-1">n8n/</code>{" "}
+        quedaron en desuso desde que los bots dejaron de correr en n8n (21-jul-2026).
       </p>
     </div>
   );

@@ -11,7 +11,7 @@ Panel interno de operaciones de Respondo: prospección con IA, pipeline de venta
 | `/dashboard` | KPIs: calientes sin contactar, seguimientos, MRR pipeline, MRR actual, errores de bots, conversaciones |
 | `/prospeccion` | Buscar negocios por rubro+comuna (Places API) → scoring + mensaje con Gemini → tabla con estados |
 | `/pipeline` | Kanban: Contactado → Demo → Propuesta → Cliente / Perdido, con MRR proyectado |
-| `/clientes` | Salud de cada bot (eventos desde n8n), mensajes, costos, mensualidad + config del bot (tono, horarios, derivación a humano) |
+| `/clientes` | Salud de cada bot (eventos desde respondo-portal, ver nota 1-ago abajo), mensajes, costos, mensualidad + config del bot (tono, horarios, derivación a humano) |
 | `/brief` | Brief diario generado por Gemini (histórico + generar ahora) + reporte mensual en lenguaje de cliente (uso interno) |
 | `/roadmap` | Roadmap interno compartido del equipo (reemplaza Notion): kanban por Estado, texto libre en Estado/Área |
 
@@ -50,14 +50,24 @@ vercel --prod
 ```
 Agrega TODAS las variables de `.env.local` en Vercel → Settings → Environment Variables (y redeploy).
 
-### 6. n8n (3 piezas)
+### 6. n8n (3 piezas) — ⚠ 2 de 3 en desuso desde el 21-jul-2026
+
+> **Nota agregada 1-ago-2026** (ver `AUDITORIA_RESPONDHQ_AGO2026.md`): desde que
+> los bots dejaron de correr en n8n, las piezas **2 y 3** de abajo (pensadas
+> para "cada workflow de bot de cliente") no tienen a quién aplicárselas — los
+> bots corren como código dentro de `respondo-portal`. `/clientes` ahora recibe
+> sus eventos por un puente nuevo desde el Portal (`lib/hqBridge.ts` ahí,
+> mismo endpoint `/api/hooks/bot-events` de siempre). La pieza **1** (brief
+> diario) es un cron interno de HQ, no depende de bots de cliente — sigue
+> vigente tal cual si la tienen activada.
+
 1. **Brief diario:** importa `n8n/brief_diario.json`, reemplaza `TU-DOMINIO` y el token, actívalo. Te llega cada mañana a las 8:00 por WhatsApp.
-2. **Alertas de errores:** importa `n8n/alerta_errores.json` (mismo reemplazo). Luego en CADA workflow de bot de cliente: Settings → Error Workflow → selecciona este workflow.
-3. **Registro de mensajes:** importa `n8n/registro_mensajes.json` y copia su nodo HTTP al FINAL del flujo de cada bot de cliente (registra cada conversación + costo estimado).
+2. ~~**Alertas de errores:** importa `n8n/alerta_errores.json`...~~ — en desuso, ver nota arriba.
+3. ~~**Registro de mensajes:** importa `n8n/registro_mensajes.json`...~~ — en desuso, ver nota arriba.
 
-En el panel (`/clientes`), crea cada cliente con su **Workflow ID** de n8n (visible en la URL del workflow). Así HQ asocia eventos → cliente.
+En el panel (`/clientes`), crea cada cliente con su **ID de referencia** — hoy es el `id` del cliente en `ed_clientes` de respondo-portal (antes era el Workflow ID de n8n; el campo es el mismo, cambió lo que se guarda ahí). Así HQ asocia eventos → cliente.
 
-Además, cada bot puede leer su configuración (tono, horarios, derivación a humano) desde `GET /api/hooks/bot-config?workflow_id=XXX` con el header `x-hq-token`. La config se edita en `/clientes` → "config bot".
+Además, cada bot PODRÍA leer su configuración (tono, horarios, derivación a humano) desde `GET /api/hooks/bot-config?workflow_id=XXX` con el header `x-hq-token` — el endpoint sigue vivo, pero hoy nadie lo consume (el prompt real se arma en `respondo-portal/lib/promptEmpleado.ts`, que no lee esta tabla). La config se sigue pudiendo editar en `/clientes` → "config bot" a modo de notas internas.
 
 ### 7. WhatsApp (alertas y brief hacia TI)
 - `WHATSAPP_PHONE_ID` + `WHATSAPP_TOKEN`: tu app de Meta (la misma de los bots sirve).

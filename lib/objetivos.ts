@@ -2,13 +2,14 @@ import { db } from "./db";
 import { ESTADO_CONFIG } from "./types";
 
 /**
- * Objetivos comerciales del mes — versión simple para founders.
+ * Objetivos comerciales — versión simple para founders.
  *
  * Las METAS vienen del ROADMAP_COMERCIAL_30_DIAS (estrategia-comercial/,
  * jul-2026): 100 prospectos contactados, 10+ respuestas, 5+ demos,
- * 4+ propuestas, 2–3 clientes cerrados, con salida a vender el lunes 13-jul.
- * Son constantes de código a propósito: cero migraciones, y se ajustan
- * editando este archivo al cambiar de mes (documentado en GUIA_USO).
+ * 4+ propuestas, 2–3 clientes cerrados, con salida a vender el lunes 13-jul
+ * y cierre del sprint el 2-ago-2026. Son constantes de código a propósito:
+ * cero migraciones, y se ajustan editando este archivo al cambiar de sprint
+ * (documentado en GUIA_USO).
  *
  * El AVANCE se calcula desde datos reales:
  * - contactados: prospectos cuyo estado ya no es "nuevo" ni "descartado".
@@ -16,9 +17,24 @@ import { ESTADO_CONFIG } from "./types";
  * - demos: deals que llegaron a demo, propuesta o cliente.
  * - propuestas: deals en propuesta o cliente.
  * - clientes: deals cerrados como cliente.
- * Nota: son fotos del estado actual (no histórico por mes). Suficiente para
- * el primer mes de venta; si se necesita histórico real → tabla objetivos.
+ * Nota: son fotos del estado actual (no histórico por mes/sprint). Suficiente
+ * para el primer mes de venta; si se necesita histórico real → tabla objetivos.
+ *
+ * ⚠ VIGENCIA (agregado 1-ago-2026, ver AUDITORIA_RESPONDHQ_AGO2026.md §3): estas
+ * metas se escribieron para el sprint 13-jul→2-ago. `FIN_SPRINT_ACTUAL` marca
+ * esa fecha; `sprintVencido()` la compara contra hoy para que el dashboard avise
+ * en vez de seguir midiendo en silencio contra un objetivo que ya venció. Al
+ * definir las metas del siguiente sprint: actualizar METAS_MES Y mover
+ * FIN_SPRINT_ACTUAL a la nueva fecha de cierre.
  */
+
+/** Fecha de cierre del sprint de metas vigente (ver nota de vigencia arriba). */
+export const FIN_SPRINT_ACTUAL = "2026-08-02";
+
+/** true si el sprint de METAS_MES ya venció y nadie actualizó este archivo. */
+export function sprintVencido(): boolean {
+  return new Date() > new Date(`${FIN_SPRINT_ACTUAL}T23:59:59-04:00`);
+}
 
 export interface Objetivo {
   clave: string;

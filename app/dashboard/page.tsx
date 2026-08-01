@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { clp, fechaHoy, hora } from "@/lib/format";
-import { calcularObjetivos, META_DIARIA_CONTACTOS } from "@/lib/objetivos";
+import { calcularObjetivos, META_DIARIA_CONTACTOS, sprintVencido } from "@/lib/objetivos";
 import PageHeader from "@/components/PageHeader";
 import { ESTADO_CONFIG, TIPO_EVENTO_LABEL, type TipoEvento } from "@/lib/types";
 import type { Deal, Prospect } from "@/lib/types";
@@ -471,14 +471,26 @@ export default async function Dashboard() {
         </Link>
       </div>
 
-      {/* ---- Objetivos del mes ---- */}
+      {/* ---- Objetivos del sprint ---- */}
       <section className="panel mt-3 p-5">
         <div className="mb-3 flex items-center justify-between">
-          <span className="lbl">Objetivos de julio — camino al primer hito</span>
+          <span className="lbl">
+            {sprintVencido()
+              ? "Objetivos del sprint inicial — VENCIERON, faltan las de agosto"
+              : "Objetivos del sprint inicial — camino al primer hito"}
+          </span>
           <span className="font-mono text-[11px] text-ink-dim">
             metas del roadmap comercial 30 días
           </span>
         </div>
+        {sprintVencido() && (
+          <p className="mb-3 rounded-lg border border-warn/30 bg-warn/10 px-3 py-2 text-[12px] text-warn">
+            Estas metas se escribieron para el sprint que cerró el 2-ago. Nadie
+            actualizó <code className="rounded bg-surface-3 px-1">lib/objetivos.ts</code> con
+            las del siguiente — el avance de abajo sigue siendo real, pero se está
+            comparando contra un objetivo vencido.
+          </p>
+        )}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {objetivos.map((o) => {
             const pct = Math.min(100, Math.round((o.avance / o.meta) * 100));

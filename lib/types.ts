@@ -51,12 +51,23 @@ export const ETAPA_LABEL: Record<Etapa, string> = {
  * Planes comerciales. Los VALORES ('esencial','cotizador','pro') son las
  * claves históricas de la base de datos (check constraint en deals/clients)
  * y NO deben cambiarse sin migración. Los NOMBRES y PRECIOS corresponden a
- * los planes VIGENTES publicados en respon-do.com (verificados 6-jul-2026):
- *   esencial  → "Básico"   $24.990/mes + setup $150.000  (hasta 1.000 conv/mes)
+ * los planes VIGENTES publicados en respon-do.com (decisión cerrada 6-jul-2026,
+ * corregido 1-ago-2026: el setup de Básico estaba en $150.000 en el código,
+ * pero lo que rige es $99.990 — ver AUDITORIA_RESPONDHQ_AGO2026.md §5):
+ *   esencial  → "Básico"   $24.990/mes + setup $99.990   (hasta 1.000 conv/mes)
  *   cotizador → "Pro"      $39.990/mes + setup $290.000  (recomendado, hasta 4.000)
  *   pro       → "Empresa"  $69.990/mes + setup $590.000  (hasta 12.000)
  * Oferta de reversión de riesgo vigente: prueba 30 días (si no ayuda, no paga la
  * mensualidad). El "plan piloto" quedó DESCONTINUADO — no ofrecerlo.
+ *
+ * ⚠ Última revisión de precios: 1-ago-2026. Hay una PROPUESTA en discusión
+ * (25/30-jul) para reemplazar esta tabla completa por un vertical de precios
+ * ("Respondo para Clínicas": Consulta $150.000 / Clínica $250.000 / Multi-sede
+ * $400.000 + Implementación $390.000 aparte) — bloquea la salida a vender del
+ * 3er socio comercial. NO aplicado aquí a propósito: es una decisión de
+ * negocio, no de código. En cuanto se cierre, registrarla en /decisiones y
+ * actualizar esta tabla (probablemente necesite dejar de ser un enum cerrado
+ * de 3 valores — ver AUDITORIA_RESPONDHQ_AGO2026.md §5).
  */
 export const PLANES = ["esencial", "cotizador", "pro"] as const;
 export type Plan = (typeof PLANES)[number];
@@ -69,7 +80,7 @@ export const PLAN_LABEL: Record<Plan, string> = {
 
 /** Precios VIGENTES (respon-do.com, jul-2026). Ajustables por deal. */
 export const PLAN_PRECIOS: Record<Plan, { setup: number; mensual: number }> = {
-  esencial: { setup: 150000, mensual: 24990 },
+  esencial: { setup: 99990, mensual: 24990 },
   cotizador: { setup: 290000, mensual: 39990 },
   pro: { setup: 590000, mensual: 69990 },
 };
@@ -255,12 +266,18 @@ export interface OnboardingTask {
 }
 
 /** Checklist estándar que se crea con cada cliente nuevo */
+/**
+ * Actualizado 1-ago-2026 (ver AUDITORIA_RESPONDHQ_AGO2026.md): los pasos
+ * viejos ("crear workflow en n8n") describían la arquitectura anterior al
+ * 21-jul. Hoy el cliente se da de alta en respondo-portal (ed_clientes/
+ * ed_empleados), no en n8n.
+ */
 export const ONBOARDING_PASOS_DEFAULT = [
   "Kickoff con el cliente: qué vende, FAQs, tono deseado",
-  "Crear workflow del bot en n8n (duplicar plantilla)",
-  "Conectar número de WhatsApp (Cloud API)",
-  "Configurar tono, horarios y derivación en el panel",
-  "Guardar el workflow ID en la ficha del cliente",
+  "Crear el cliente y su empleado digital en respondo-portal (ed_clientes/ed_empleados)",
+  "Conectar el canal de WhatsApp (Evolution/QR u oficial Cloud API, según corresponda)",
+  "Configurar tono, horarios y derivación (en Información, dentro del Portal)",
+  "Pegar el ID del cliente del Portal en \"ID de referencia\" de esta ficha (activa el puente de eventos a HQ)",
   "Prueba end-to-end con el dueño del negocio",
   "Activar registro de mensajes y cobrar el setup",
 ] as const;
