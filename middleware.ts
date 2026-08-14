@@ -13,6 +13,15 @@ import type { NextRequest } from "next/server";
  * Las rutas /api/prospeccion/* también quedan fuera: las llama Vercel Cron
  * (que NO manda Basic Auth — sin esta excepción el agente muere en 401
  * silencioso) y todas validan su propio secreto adentro (lib/prospeccion/auth).
+ *
+ * El redirect de "/" → "/dashboard" se hace ACÁ y no en app/page.tsx.
+ * Motivo (bug real, 14-ago-2026): app/page.tsx era un `redirect("/dashboard")`
+ * que Next prerenderizaba como artefacto estático. Servido desde el caché de
+ * Vercel (x-vercel-cache: HIT) llegaba como 307 SIN header `Location`, así que
+ * el navegador se quedaba sin destino y la home aparecía en blanco. Todas las
+ * demás rutas respondían 200: solo la puerta de entrada estaba rota.
+ * Resolviéndolo en el middleware el 307 se emite en cada request, con Location,
+ * y nunca queda cacheado como archivo estático.
  */
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -23,12 +32,18 @@ export function middleware(req: NextRequest) {
   )
     return NextResponse.next();
 
+  const alDashboard = () =>
+    NextResponse.redirect(new URL("/dashboard", req.url));
+
   const cuentas = [
     { user: process.env.HQ_USER, pass: process.env.HQ_PASSWORD },
     { user: process.env.HQ_USER_2, pass: process.env.HQ_PASSWORD_2 },
   ].filter((c) => c.user && c.pass);
 
-  if (cuentas.length === 0) return NextResponse.next(); // auth no configurada aún
+  // auth no configurada aún (dev local)
+  if (cuentas.length === 0) {
+    return pathname === "/" ? alDashboard() : NextResponse.next();
+  }
 
   const auth = req.headers.get("authorization");
   if (auth?.startsWith("Basic ")) {
@@ -36,6 +51,9 @@ export function middleware(req: NextRequest) {
       const [u, p] = atob(auth.slice(6)).split(":");
       const match = cuentas.find((c) => c.user === u && c.pass === p);
       if (match) {
+        // Recién después de validar credenciales: un visitante sin auth
+        // sigue viendo 401 en "/" y no descubre que existe /dashboard.
+        if (pathname === "/") return alDashboard();
         const headers = new Headers(req.headers);
         headers.set("x-hq-user", match.user!);
         return NextResponse.next({ request: { headers } });
