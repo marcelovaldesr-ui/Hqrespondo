@@ -167,7 +167,7 @@ export default function Finanzas({
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className="metric-card px-4 py-3.5">
           <div className="lbl">MRR actual</div>
-          <div className="mt-1.5 font-mono text-2xl leading-none text-ok">{clp(mrrActual)}</div>
+          <div className="mt-1.5 font-mono text-2xl font-semibold leading-none tracking-tight text-ink">{clp(mrrActual)}</div>
           <div className="mt-1.5 text-[10.5px] text-ink-dim">
             {nClientesActivos === 0
               ? "fase inicial — sin clientes aún"
@@ -236,7 +236,7 @@ export default function Finanzas({
         <span className="ml-auto flex gap-3">
           <span className="metric-card px-4 py-2.5">
             <span className="lbl">Cobrado </span>
-            <span className="ml-2 font-mono text-lg text-ok">{clp(cobrado)}</span>
+            <span className="ml-2 font-mono text-lg font-semibold text-ink">{clp(cobrado)}</span>
           </span>
           <span className="metric-card px-4 py-2.5">
             <span className="lbl">Pendiente </span>

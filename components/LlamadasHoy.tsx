@@ -100,10 +100,20 @@ export default function LlamadasHoy({
 
   return (
     <div>
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">📞 Llamadas del día</h1>
-          <p className="mt-1 text-[13px] text-ink-mut">
+          <div className="flex items-center gap-3">
+            {/* Mismo ancla visual que PageHeader en el resto de la app */}
+            <span className="flex shrink-0 flex-col gap-[3px]" aria-hidden="true">
+              <span className="block h-[3px] w-4 rounded-full bg-brand" />
+              <span className="block h-[3px] w-2.5 rounded-full bg-coral/70" />
+            </span>
+            <h1 className="ttl text-[17px] leading-tight">Llamadas del día</h1>
+            <span className="hidden border-l border-line2 pl-3 font-mono text-[11px] uppercase tracking-[0.13em] text-ink-mut sm:inline">
+              Cola de hoy
+            </span>
+          </div>
+          <p className="mt-1.5 pl-7 text-[12.5px] text-ink-mut">
             Mejores primero. &quot;No contestó&quot; vuelve mañana solo · 4 intentos sin contacto y sale de la lista.
           </p>
         </div>

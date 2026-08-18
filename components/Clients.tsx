@@ -500,7 +500,7 @@ export default function Clients({ clients }: { clients: ClientStats[] }) {
       <div className="mb-5 flex flex-wrap items-center gap-3">
         <div className="metric-card px-5 py-4">
           <span className="lbl">MRR actual </span>
-          <span className="ml-3 font-mono text-2xl text-ok">{clp(mrr)}</span>
+          <span className="ml-3 font-mono text-2xl font-semibold tracking-tight text-ink">{clp(mrr)}</span>
         </div>
         <div className="metric-card px-5 py-4">
           <span className="lbl">Activos </span>
@@ -644,7 +644,7 @@ export default function Clients({ clients }: { clients: ClientStats[] }) {
               <div className="relative mt-4 flex items-center justify-between text-[11px]">
                 <span className="text-ink-mut">
                   Mensualidad{" "}
-                  <span className="font-mono text-ok">{clp(c.mensualidad)}</span>
+                  <span className="font-mono text-ink">{clp(c.mensualidad)}</span>
                 </span>
                 <span className="flex items-center gap-2">
                   {margen != null && (
@@ -667,7 +667,7 @@ export default function Clients({ clients }: { clients: ClientStats[] }) {
 
         <button
           onClick={() => setShowForm(true)}
-          className="flex min-h-40 items-center justify-center rounded-xl border border-dashed border-line2 bg-surface-3/30 text-xs text-ink-faint transition hover:border-brand/40 hover:bg-brand/10 hover:text-brand"
+          className="flex min-h-[6.5rem] items-center justify-center rounded-xl border border-dashed border-line2 bg-surface-3/30 text-xs text-ink-faint transition hover:border-brand/40 hover:bg-brand/10 hover:text-brand"
         >
           + Nuevo cliente
         </button>

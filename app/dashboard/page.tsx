@@ -377,7 +377,7 @@ export default async function Dashboard() {
         <div className="metric-card">
           <div className="relative">
             <div className="lbl">MRR actual</div>
-            <div className="mt-3 font-mono text-4xl font-medium leading-none text-ok">
+            <div className="mt-3 font-mono text-[2.4rem] font-semibold leading-none tracking-tight text-ink">
               {clp(mrrActual)}
             </div>
           </div>
@@ -387,15 +387,16 @@ export default async function Dashboard() {
                 ? "Fase inicial — el primer cliente está en la lista"
                 : `${activos.length} cliente${activos.length === 1 ? "" : "s"} activo${activos.length === 1 ? "" : "s"}`}
             </span>
-            <span className="flex items-end gap-[3px]" aria-hidden="true">
+            <span className="flex items-end gap-[2px]" aria-hidden="true">
               {spark.map((n, i) => (
                 <span
                   key={i}
-                  className={n > 0 ? "bg-brand" : "bg-brand/20"}
+                  className={n > 0 ? "bg-series-1" : "bg-surface-4"}
                   style={{
-                    width: 6,
-                    height: 7 + Math.round((n / sparkMax) * 20),
+                    width: 5,
+                    height: 6 + Math.round((n / sparkMax) * 22),
                     display: "inline-block",
+                    borderRadius: "3px 3px 1px 1px",
                   }}
                 />
               ))}
@@ -405,7 +406,7 @@ export default async function Dashboard() {
         <div className="metric-card">
           <div className="relative">
             <div className="lbl">MRR en pipeline</div>
-            <div className="mt-3 font-mono text-4xl font-medium leading-none">
+            <div className="mt-3 font-mono text-[2.4rem] font-semibold leading-none tracking-tight text-ink">
               {clp(mrrProyectado)}
             </div>
             <div className="mt-4 flex items-center justify-between text-sm text-ink-mut">
@@ -422,7 +423,7 @@ export default async function Dashboard() {
         <div className="metric-card">
           <div className="relative">
             <div className="lbl">Calientes sin contactar</div>
-            <div className="mt-3 font-mono text-4xl font-medium leading-none text-accent">
+            <div className="mt-3 font-mono text-[2.4rem] font-semibold leading-none tracking-tight text-ink">
               {hot.length}
             </div>
             <div className="mt-4 text-sm text-ink-mut">score ≥ 70</div>
@@ -435,23 +436,21 @@ export default async function Dashboard() {
         <Link href="/clientes" className="panel flex items-center gap-4 p-4 transition hover:border-danger/30 hover:bg-danger/[0.035]">
           <span className={`led h-2.5 w-2.5 ${errores > 0 ? "bg-danger" : "bg-ok"}`} />
           <div>
-            <div className={`font-mono text-xl ${errores > 0 ? "text-danger" : ""}`}>
-              {errores}
-            </div>
+            <div className="num text-xl font-semibold text-ink">{errores}</div>
             <div className="lbl">Errores bots 24h</div>
           </div>
         </Link>
         <Link href="/clientes" className="panel flex items-center gap-4 p-4 transition hover:border-accent/30 hover:bg-accent/[0.035]">
           <span className="led h-2.5 w-2.5 bg-accent" />
           <div>
-            <div className="font-mono text-xl">{msgRes.count ?? 0}</div>
+            <div className="num text-xl font-semibold text-ink">{msgRes.count ?? 0}</div>
             <div className="lbl">Conversaciones hoy</div>
           </div>
         </Link>
         <Link href="/finanzas" className="panel flex items-center gap-4 p-4 transition hover:border-warn/30 hover:bg-warn/[0.035]">
           <span className={`led h-2.5 w-2.5 ${cobrosPendientes > 0 ? "bg-warn" : "bg-ink-faint"}`} />
           <div>
-            <div className={`font-mono text-xl ${cobrosPendientes > 0 ? "text-warn" : ""}`}>
+            <div className="num text-xl font-semibold text-ink">
               {clp(cobrosPendientes)}
             </div>
             <div className="lbl">Por cobrar (mes)</div>
@@ -463,7 +462,7 @@ export default async function Dashboard() {
         >
           <span className={`led h-2.5 w-2.5 ${gastosMes > mrrActual ? "bg-warn" : "bg-ink-faint"}`} />
           <div>
-            <div className="font-mono text-xl text-danger">{clp(gastosMes)}</div>
+            <div className="num text-xl font-semibold text-ink">{clp(gastosMes)}</div>
             <div className="lbl">
               Gastos mes{gastosMes > mrrActual ? " · sobre MRR" : ""}
             </div>
@@ -642,19 +641,25 @@ export default async function Dashboard() {
             <div className="relative flex flex-col gap-3 text-sm">
               {hot.slice(0, 6).map((p) => (
                 <div key={p.id} className="flex items-center gap-2.5">
-                  <span
-                    className={`w-9 font-mono text-base ${p.score >= 70 ? "text-ok" : "text-warn"}`}
-                  >
+                  {/* El número va en tinta: el score no es "bueno" ni "malo", es
+                      magnitud. La severidad la carga el relleno del medidor. */}
+                  <span className="w-9 font-mono text-base font-semibold text-ink">
                     {p.score}
                   </span>
                   <span className="flex-1 truncate font-medium text-ink-soft">{p.nombre}</span>
                   <span className="hidden text-[10.5px] text-ink-dim sm:inline">
                     {p.comuna}
                   </span>
-                  <span className="h-[5px] w-16 overflow-hidden rounded-full bg-surface-3">
+                  <span className="meter w-16">
                     <span
-                      className={`block h-full ${p.score >= 70 ? "bg-ok" : "bg-warn"}`}
-                      style={{ width: `${p.score}%` }}
+                      className="meter-fill"
+                      style={{
+                        width: `${p.score}%`,
+                        backgroundImage:
+                          p.score >= 70
+                            ? "linear-gradient(90deg,#8B6BFF,#C3AEFF)"
+                            : "linear-gradient(90deg,#FFB43D,#FFD08A)",
+                      }}
                     />
                   </span>
                 </div>

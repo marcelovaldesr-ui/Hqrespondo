@@ -199,13 +199,13 @@ export default function Kanban({ deals }: { deals: Deal[] }) {
       <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.3fr_auto]">
         <div className="metric-card px-5 py-4">
           <div className="lbl">MRR proyectado</div>
-          <div className="mt-2 font-mono text-3xl leading-none text-ok">
+          <div className="mt-2 font-mono text-3xl font-semibold leading-none tracking-tight text-ink">
             {clp(mrrProyectado)}
           </div>
         </div>
         <div className="metric-card px-5 py-4">
           <div className="lbl">MRR cerrado</div>
-          <div className="mt-2 font-mono text-3xl leading-none">{clp(mrrCerrado)}</div>
+          <div className="mt-2 font-mono text-3xl font-semibold leading-none tracking-tight text-ink">{clp(mrrCerrado)}</div>
         </div>
         <div className="metric-card px-5 py-4">
           <div className="lbl mb-2.5">Avance por etapa</div>
@@ -385,7 +385,7 @@ export default function Kanban({ deals }: { deals: Deal[] }) {
                       >
                         {PLAN_LABEL[d.plan]}
                       </span>
-                      <div className="mt-3 font-mono text-[15px] text-ok">
+                      <div className="mt-3 font-mono text-[15px] font-semibold text-ink">
                         {clp(d.valor_mensual)}
                         <span className="text-ink-dim">/m</span>
                       </div>

@@ -646,11 +646,11 @@ export default function ProspectTable({
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-line bg-surface-3/60">
-              <th className="lbl px-5 py-3 font-normal">Score</th>
-              <th className="lbl px-5 py-3 font-normal">Negocio</th>
-              <th className="lbl px-5 py-3 font-normal">Señales</th>
-              <th className="lbl px-5 py-3 font-normal">Estado</th>
-              <th className="lbl px-5 py-3 font-normal">Acción</th>
+              <th className="lbl px-4 py-2.5 font-normal">Score</th>
+              <th className="lbl px-4 py-2.5 font-normal">Negocio</th>
+              <th className="lbl px-4 py-2.5 font-normal">Señales</th>
+              <th className="lbl px-4 py-2.5 font-normal">Estado</th>
+              <th className="lbl px-4 py-2.5 font-normal">Acción</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -662,25 +662,22 @@ export default function ProspectTable({
               return (
                 <Fragment key={p.id}>
                   <tr className="data-row">
-                    <td className="px-5 py-4 align-top">
-                      <span className={`font-mono text-xl ${sc.text}`}>
+                    <td className="px-4 py-2.5 align-middle">
+                      <span className="num text-[17px] font-semibold leading-none text-ink">
                         {p.score}
                       </span>
-                      <span
-                        className="mt-2 block h-[3px] w-16 overflow-hidden rounded-full bg-surface-3"
-                        title={p.razon_score ?? undefined}
-                      >
+                      <span className="meter mt-1.5 !w-12" title={p.razon_score ?? undefined}>
                         <span
-                          className={`block h-full ${sc.bar}`}
-                          style={{ width: `${p.score}%` }}
+                          className={`meter-fill ${sc.bar}`}
+                          style={{ width: `${p.score}%`, backgroundImage: "none" }}
                         />
                       </span>
                     </td>
-                    <td className="max-w-60 px-5 py-4 align-top">
-                      <div className="truncate text-[15px] font-semibold">
+                    <td className="max-w-60 px-4 py-2.5 align-middle">
+                      <div className="truncate text-[13.5px] font-semibold leading-tight text-ink">
                         {p.nombre}
                       </div>
-                      <div className="mt-1 text-[11px] text-ink-dim">
+                      <div className="mt-0.5 text-[10.5px] text-ink-dim">
                         {p.rubro} · {p.comuna}
                       </div>
                       {ultimaNotaLlamada(p.notas) && (
@@ -692,7 +689,7 @@ export default function ProspectTable({
                         </div>
                       )}
                     </td>
-                    <td className="px-5 py-4 align-top">
+                    <td className="px-4 py-2.5 align-middle">
                       <div className="flex flex-wrap gap-1">
                         {p.senales_web?.potencial === "alto" && (
                           <span className="chip border-ok/40 bg-ok/10 px-1.5 py-0 text-[10px] font-semibold text-ok">
@@ -742,7 +739,7 @@ export default function ProspectTable({
                         )}
                       </div>
                     </td>
-                    <td className="px-5 py-4 align-top">
+                    <td className="px-4 py-2.5 align-middle">
                       <select
                         value={p.estado}
                         onChange={(e) =>
@@ -757,17 +754,18 @@ export default function ProspectTable({
                         ))}
                       </select>
                     </td>
-                    <td className="px-5 py-4 align-top">
-                      <div className="flex flex-wrap gap-1.5">
+                    <td className="px-4 py-2.5 align-middle">
+                      <div className="flex flex-nowrap items-center gap-1">
                         {wa && (
                           <a
                             href={wa}
                             target="_blank"
                             rel="noreferrer"
-                            className="rounded-lg border border-ok/40 bg-ok/10 px-2.5 py-1 text-xs font-medium text-ok transition hover:bg-ok/20"
+                            className="btn-ghost gap-1.5 px-2 hover:border-ok/50 hover:text-ok"
                             title="Abre WhatsApp con el mensaje listo (envío manual)"
                           >
-                            WhatsApp
+                            <span className="led bg-ok" aria-hidden="true" />
+                            WA
                           </a>
                         )}
                         <button
@@ -775,21 +773,21 @@ export default function ProspectTable({
                           disabled={!p.mensaje}
                           className="btn-ghost"
                         >
-                          {copiado === p.id ? "Copiado ✓" : "Copiar"}
+                          {copiado === p.id ? "✓" : "Copiar"}
                         </button>
                         <button
                           onClick={() => toggleDetalle(p)}
                           className={`btn-ghost ${abierto === p.id ? "border-brand/40 text-brand" : ""}`}
                           title="Razón del score, mensaje, follow-ups, próxima acción y notas"
                         >
-                          {abierto === p.id ? "Cerrar" : "Detalle"}
+                          {abierto === p.id ? "Cerrar" : "Ver"}
                         </button>
                         {p.estado !== ESTADO_CONFIG.en_pipeline.value && (
                           <button
                             onClick={() => aPipeline(p)}
                             className="btn-ghost"
                           >
-                            → Pipeline
+                            Pipe →
                           </button>
                         )}
                         <button

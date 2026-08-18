@@ -1,80 +1,300 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   RespondoHQ — sala de control
+   Oscuro, denso, con la jerarquía puesta en el dato y no en el marco.
+   ============================================================ */
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  background: #07070e;
+}
+
 body {
   @apply bg-bg text-ink antialiased;
   min-height: 100vh;
+  font-feature-settings: "cv05" 1, "ss01" 1;
+}
+
+/* Cifras tabulares en TODO lo monoespaciado: es lo que permite escanear
+   una columna de números de arriba abajo sin que bailen. */
+.font-mono,
+code,
+pre,
+kbd {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "zero" 1;
 }
 
 @layer components {
+  /* ---------- Lienzo ---------- */
   .app-frame {
     @apply relative z-10 min-h-screen text-ink;
   }
+
+  /* Retícula de instrumento: 2% de blanco cada 34px. Casi invisible, pero
+     le da al fondo una escala y evita el "vacío plano". */
+  .grid-bg {
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+    background-size: 34px 34px;
+  }
+
+  /* Halo de marca arriba a la izquierda + contraluz frío abajo a la derecha */
+  .canvas-aura::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        620px 420px at 6% -4%,
+        rgba(139, 107, 255, 0.16),
+        transparent 68%
+      ),
+      radial-gradient(
+        520px 380px at 100% 102%,
+        rgba(52, 217, 240, 0.07),
+        transparent 70%
+      );
+  }
+
+  /* ---------- Superficies ---------- */
   .panel {
-    @apply rounded-xl border border-line bg-surface-2 shadow-card;
+    @apply relative rounded-xl border border-line bg-surface-2 shadow-card;
   }
+
+  /* Panel protagónico: hairline superior de marca. Se usa con cuentagotas —
+     si todo destaca, nada destaca. */
   .panel-hot {
-    @apply panel relative;
+    @apply panel overflow-hidden;
   }
+  .panel-hot::before {
+    content: "";
+    @apply pointer-events-none absolute inset-x-0 top-0 h-px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(139, 107, 255, 0.75) 22%,
+      rgba(255, 122, 99, 0.6) 62%,
+      transparent
+    );
+  }
+
   .metric-card {
-    @apply panel p-5 transition duration-200 hover:border-line2;
+    @apply panel p-4 transition duration-200;
   }
+  .metric-card:hover {
+    @apply border-line2 bg-surface-3;
+  }
+
   .subpanel {
-    @apply rounded-lg border border-line bg-surface-3;
+    @apply rounded-lg border border-line bg-surface-3/70;
   }
+
+  .glass {
+    @apply rounded-xl border border-line2 bg-surface-2/85 shadow-pop backdrop-blur-xl;
+  }
+
+  /* Escuadras de esquina — el detalle que dice "instrumento" sin disfraz. */
+  .brackets::after,
+  .brackets::before {
+    content: "";
+    @apply pointer-events-none absolute h-2.5 w-2.5;
+    border-color: rgba(139, 107, 255, 0.45);
+  }
+  .brackets::before {
+    @apply left-1.5 top-1.5 border-l border-t;
+    border-top-left-radius: 3px;
+  }
+  .brackets::after {
+    @apply bottom-1.5 right-1.5 border-b border-r;
+    border-bottom-right-radius: 3px;
+  }
+
+  /* ---------- Tipografía de sistema ---------- */
   .lbl {
-    @apply text-[11px] uppercase tracking-[0.14em] text-ink-dim;
+    @apply font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-ink-dim;
   }
+  .ttl {
+    @apply font-display font-semibold tracking-tight text-ink;
+  }
+  /* Un número que se lee de lejos. Uno por vista, no más. */
+  .hero-num {
+    @apply font-mono text-[2.6rem] font-semibold leading-none tracking-tight text-ink;
+  }
+  .num {
+    @apply font-mono tabular-nums;
+  }
+
+  .hairline {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.13),
+      transparent
+    );
+  }
+
+  /* ---------- Controles ---------- */
   .chip {
-    @apply inline-flex items-center gap-1 rounded-full border border-line2 bg-surface-3 px-2.5 py-0.5 text-[11px] text-ink-mut;
+    @apply inline-flex items-center gap-1.5 rounded-md border border-line2 bg-surface-3 px-2 py-0.5 font-mono text-[10.5px] uppercase tracking-wider text-ink-mut;
   }
+
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white transition disabled:opacity-40;
-    background-image: linear-gradient(135deg, #7b5bf0, #ec6a56);
+    @apply relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-lg px-4 py-2 text-sm font-semibold text-white transition disabled:opacity-40;
+    background-image: linear-gradient(135deg, #8b6bff, #ff7a63);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      0 0 22px -8px rgba(139, 107, 255, 0.75);
   }
   .btn-primary:hover:not(:disabled) {
-    filter: brightness(0.94);
+    filter: brightness(1.1);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.28),
+      0 0 30px -6px rgba(139, 107, 255, 0.9);
   }
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-line2 bg-surface-2 px-2.5 py-1 text-xs text-ink-mut transition hover:bg-surface-3 hover:text-ink disabled:opacity-30;
+    @apply inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-line2 bg-surface-3 px-2.5 py-1 text-xs text-ink-mut transition hover:border-brand/45 hover:bg-surface-4 hover:text-ink disabled:opacity-30;
   }
+
   .input {
-    @apply w-full rounded-lg border border-line2 bg-surface-2 px-3 py-2 text-sm text-ink outline-none transition placeholder:text-ink-faint focus:border-brand;
+    @apply w-full rounded-lg border border-line2 bg-surface-4/80 px-3 py-2 text-sm text-ink outline-none transition placeholder:text-ink-faint;
   }
+  .input:focus {
+    @apply border-brand/70;
+    box-shadow: 0 0 0 3px rgba(139, 107, 255, 0.16);
+  }
+
+  .kbd {
+    @apply inline-flex h-[18px] min-w-[18px] items-center justify-center rounded border border-line2 bg-surface-4 px-1 font-mono text-[10px] text-ink-dim;
+  }
+
+  /* ---------- Estado ---------- */
   .led {
     @apply inline-block h-[7px] w-[7px] shrink-0 rounded-full;
   }
-  .scanline {
-    @apply relative;
+  .led-glow-green {
+    box-shadow: 0 0 0 2px rgba(47, 217, 140, 0.14), 0 0 10px rgba(47, 217, 140, 0.8);
   }
+  .led-glow-cyan {
+    box-shadow: 0 0 0 2px rgba(52, 217, 240, 0.14), 0 0 10px rgba(52, 217, 240, 0.8);
+  }
+  .led-glow-red {
+    box-shadow: 0 0 0 2px rgba(255, 92, 110, 0.14), 0 0 10px rgba(255, 92, 110, 0.85);
+  }
+  .led-glow-amber {
+    box-shadow: 0 0 0 2px rgba(255, 180, 61, 0.14), 0 0 10px rgba(255, 180, 61, 0.8);
+  }
+  .led-pulse {
+    animation: breathe 2.4s ease-in-out infinite;
+  }
+
+  /* Medidor: el relleno lleva la severidad, el track es el mismo tono apagado. */
+  .meter {
+    @apply relative block h-1 w-full overflow-hidden rounded-full bg-surface-4;
+  }
+  .meter-fill {
+    @apply absolute inset-y-0 left-0 rounded-full;
+    background-image: linear-gradient(90deg, #8b6bff, #b39dff);
+  }
+
+  /* ---------- Datos ---------- */
   .data-row {
-    @apply transition duration-150 hover:bg-surface-3/60;
+    @apply transition duration-150;
+  }
+  .data-row:hover {
+    @apply bg-surface-3;
+  }
+
+
+  /* Los <select> nativos en oscuro se ven de otro sistema operativo.
+     Se les quita la flecha del sistema y se dibuja una propia. */
+  select {
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%23979CAF' stroke-width='1.5'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.6rem center;
+    padding-right: 1.75rem !important;
+  }
+  select option {
+    background: #16161f;
+    color: #f3f4f8;
+  }
+
+  /* Las tablas heredan el ritmo del sistema sin tocar cada página. */
+  table {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  tbody tr + tr > td {
+    border-top: 1px solid rgba(255, 255, 255, 0.055);
+  }
+
+  /* Barrido de escáner: SOLO en lo que está vivo ahora. */
+  .scanline {
+    @apply relative overflow-hidden;
+  }
+  .scanline::after {
+    content: "";
+    @apply pointer-events-none absolute inset-y-0 w-1/3;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(139, 107, 255, 0.055),
+      transparent
+    );
+    animation: sweep 3.4s ease-in-out infinite;
   }
 }
 
-/* Efectos heredados del tema oscuro — neutralizados a propósito.
-   Se mantienen las clases para no tocar cada componente. */
-.led-glow-green,
-.led-glow-cyan,
-.led-glow-red,
-.led-glow-amber {
-  box-shadow: none;
-}
-.led-pulse {
-  animation: none;
+/* ---------- Cromo del navegador ---------- */
+::selection {
+  background: rgba(139, 107, 255, 0.32);
 }
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #0b0b14;
 }
 ::-webkit-scrollbar-thumb {
-  background: #d3d9df;
-  border-radius: 4px;
+  background: #2a2a38;
+  border: 2px solid #0b0b14;
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3b3b4d;
+}
+
+:focus-visible {
+  outline: 2px solid rgba(52, 217, 240, 0.75);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scanline::after,
+  .led-pulse,
+  .animate-sweep,
+  .animate-breathe,
+  .animate-rise {
+    animation: none !important;
+  }
 }

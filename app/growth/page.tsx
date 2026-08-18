@@ -98,14 +98,21 @@ export default async function GrowthDashboard() {
       {/* Métricas de producción */}
       <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
         {[
-          { n: pendientes, l: "Ideas pendientes", href: "/growth/ideas", c: "" },
-          { n: borradores, l: "En borrador", href: "/growth/ideas", c: "text-warn" },
-          { n: listos, l: "Listas para publicar", href: "/growth/ideas", c: "text-ok" },
-          { n: publicadosMes, l: "Publicadas este mes", href: "/growth/calendario", c: "text-brand" },
+          { n: pendientes, l: "Ideas pendientes", href: "/growth/ideas", c: "bg-ink-faint" },
+          { n: borradores, l: "En borrador", href: "/growth/ideas", c: "bg-warn" },
+          { n: listos, l: "Listas para publicar", href: "/growth/ideas", c: "bg-ok" },
+          { n: publicadosMes, l: "Publicadas este mes", href: "/growth/calendario", c: "bg-brand" },
         ].map((m) => (
           <Link key={m.l} href={m.href} className="metric-card">
-            <div className={`font-mono text-3xl font-medium leading-none ${m.c}`}>{m.n}</div>
-            <div className="lbl mt-3">{m.l}</div>
+            {/* El número va en tinta. La identidad la carga el punto de color
+                al lado de la etiqueta, nunca el valor. */}
+            <div className="num text-3xl font-semibold leading-none tracking-tight text-ink">
+              {m.n}
+            </div>
+            <div className="lbl mt-2.5 flex items-center gap-1.5">
+              <span className={`led ${m.c}`} aria-hidden="true" />
+              {m.l}
+            </div>
           </Link>
         ))}
       </div>

@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import Sidebar from "@/components/Sidebar";
+import CommandPalette from "@/components/CommandPalette";
 
 export const metadata: Metadata = {
   title: "Respondo HQ",
@@ -14,13 +15,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body>
+      <body className="grid-bg canvas-aura">
         <div className="app-frame flex">
           <Sidebar />
-          <main className="relative flex-1 overflow-x-auto px-4 py-4 sm:px-5 lg:px-8 lg:py-6">
+          <main className="relative flex-1 overflow-x-auto px-4 py-5 sm:px-5 lg:px-7">
             {children}
           </main>
         </div>
+        <CommandPalette />
       </body>
     </html>
   );
