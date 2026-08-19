@@ -13,6 +13,7 @@
  *    NO se marca al mirarla ni al exportarla.
  */
 import { db } from "./db";
+import { normalizarTelefono, telefonosSuprimidos } from "./actividades";
 import type { SenalesWeb } from "./enriquecimiento";
 
 export interface FilaLlamada {
@@ -68,10 +69,14 @@ export async function listaLlamadasDelDia(opts?: {
     .limit(limit * 2); // holgura para el dedupe
   if (error) throw new Error(error.message);
 
+  // Supresión: quien dijo que no por cualquier canal no vuelve a la cola.
+  const suprimidos = await telefonosSuprimidos();
+
   // Dedupe por dominio (cadenas → una llamada cubre todas las sucursales).
   const porDominio = new Map<string, FilaLlamada>();
   const sinWeb: FilaLlamada[] = [];
   for (const p of (data ?? []) as any[]) {
+    if (p.telefono && suprimidos.has(normalizarTelefono(p.telefono))) continue;
     const fila: FilaLlamada = { ...p, ids_grupo: [p.id], sucursales: 1 };
     let host: string | null = null;
     try {

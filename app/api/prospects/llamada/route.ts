@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { normalizarTelefono, registrarActividad, type Resultado as ResActividad } from "@/lib/actividades";
 
 /**
  * POST /api/prospects/llamada — registra el RESULTADO de una llamada.
@@ -25,6 +26,10 @@ import { db } from "@/lib/db";
 
 const RESULTADOS = {
   no_contesto: { estado: null, etiqueta: "no contestó" },
+  // Llegar al portero NO es conectar. Se separa de "no contestó" para poder
+  // calcular la tasa de conexión real: mezclarlos la infla y esconde si el
+  // problema es el número o el filtro.
+  gatekeeper: { estado: null, etiqueta: "quedó en el portero" },
   recado: { estado: null, etiqueta: "dejé recado" },
   numero_malo: { estado: "descartado", etiqueta: "número malo" },
   interesado: { estado: "respondio", etiqueta: "CONTESTÓ — interesado" },
@@ -33,6 +38,17 @@ const RESULTADOS = {
 } as const;
 
 type Resultado = keyof typeof RESULTADOS;
+
+/** Disposición cerrada equivalente, para la bitácora de actividad. */
+const A_BITACORA: Record<Resultado, ResActividad> = {
+  no_contesto: "no_contesto",
+  gatekeeper: "gatekeeper",
+  recado: "no_contesto",
+  numero_malo: "numero_malo",
+  interesado: "interesado",
+  seguimiento: "seguimiento",
+  no_interesa: "no_interesa",
+};
 
 export async function POST(req: Request) {
   try {
@@ -91,6 +107,39 @@ export async function POST(req: Request) {
       }
       const { error: upErr } = await s.from("prospects").update(update).eq("id", p.id);
       if (upErr) throw new Error(upErr.message);
+    }
+
+    // Bitácora: una línea por prospecto tocado. De acá salen la tasa de
+    // conexión y las cohortes; nunca lanza, para no tumbar el registro.
+    const { data: datos } = await s
+      .from("prospects")
+      .select("id,telefono")
+      .in("id", ids);
+    for (const p of datos ?? []) {
+      await registrarActividad({
+        prospect_id: p.id,
+        contacto: p.telefono ?? "",
+        canal: "llamada",
+        tipo: "toque",
+        resultado: A_BITACORA[resultado],
+        nota,
+      });
+    }
+
+    // Oposición explícita: si dijo que no, se suprime el número para que no
+    // le llegue contacto por otro canal. Es lo que exige la Ley 21.719 y
+    // además protege el quality rating del WhatsApp.
+    if (resultado === "no_interesa") {
+      for (const p of datos ?? []) {
+        const val = normalizarTelefono(p.telefono ?? "");
+        if (!val) continue;
+        await s
+          .from("supresiones")
+          .upsert(
+            { valor: val, tipo: "telefono", motivo: "Dijo que no en llamada", origen: "llamada" },
+            { onConflict: "valor", ignoreDuplicates: true },
+          );
+      }
     }
 
     return NextResponse.json({ ok: true, actualizados: filas?.length ?? 0 });

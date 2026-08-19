@@ -5,13 +5,16 @@ import type { FilaLlamada } from "@/lib/llamadas";
 
 /**
  * Lista de llamadas del día — flujo de UNA mano:
- *  · "No contestó" y "Recado" = 1 clic, la fila se cierra y vuelve MAÑANA.
+ *  · "No contestó", "Portero" y "Recado" = 1 clic, la fila se cierra y vuelve MAÑANA.
+ *  · "Portero" se registra aparte de "no contestó" a propósito: llegar al
+ *    filtro no es conectar, y mezclarlos infla la tasa de conexión.
  *  · "Contestó" abre el mini-formulario (resultado + dueño + contacto + nota).
  *  · Todo queda en la base al instante; nada que descargar ni traspasar.
  */
 
 type Resultado =
   | "no_contesto"
+  | "gatekeeper"
   | "recado"
   | "numero_malo"
   | "interesado"
@@ -20,6 +23,7 @@ type Resultado =
 
 const ETIQUETA: Record<Resultado, string> = {
   no_contesto: "No contestó — mañana de nuevo",
+  gatekeeper: "Quedó en el portero — mañana de nuevo",
   recado: "Recado dejado — mañana de nuevo",
   numero_malo: "Número malo — descartado",
   interesado: "🔥 Interesado — al pipeline",
@@ -215,12 +219,22 @@ export default function LlamadasHoy({
                 <span className="w-6 shrink-0 text-right font-mono text-[12px] text-ink-faint">
                   {i + 1}
                 </span>
-                <span
-                  className={`w-10 shrink-0 text-center font-mono text-lg font-bold ${
-                    f.score >= 85 ? "text-ok" : "text-ink-soft"
-                  }`}
-                >
-                  {f.score}
+                {/* El score va en tinta: es magnitud, no estado. La severidad
+                    la carga el medidor de abajo, igual que en Prospección. */}
+                <span className="w-10 shrink-0 text-center">
+                  <span className="num text-lg font-semibold text-ink">{f.score}</span>
+                  <span className="meter mt-1">
+                    <span
+                      className="meter-fill"
+                      style={{
+                        width: `${f.score}%`,
+                        backgroundImage:
+                          f.score >= 85
+                            ? "linear-gradient(90deg,#8B6BFF,#C3AEFF)"
+                            : "linear-gradient(90deg,#4C5163,#70768B)",
+                      }}
+                    />
+                  </span>
                 </span>
 
                 <div className="min-w-0 flex-1">
@@ -292,6 +306,14 @@ export default function LlamadasHoy({
                       title="Se registra y vuelve a la lista mañana"
                     >
                       ☎ No contestó
+                    </button>
+                    <button
+                      onClick={() => registrar(f, "gatekeeper")}
+                      disabled={guardando === f.id}
+                      className="btn-ghost px-2.5 py-1.5 text-[12px]"
+                      title="Contestaron, pero no te pasaron con quien decide. Se cuenta aparte de 'no contestó' para poder medir la tasa de conexión real"
+                    >
+                      🚧 Portero
                     </button>
                     <button
                       onClick={() => registrar(f, "recado")}

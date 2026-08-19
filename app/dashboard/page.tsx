@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { clp, fechaHoy, hora } from "@/lib/format";
 import { calcularObjetivos, META_DIARIA_CONTACTOS, sprintVencido } from "@/lib/objetivos";
 import PageHeader from "@/components/PageHeader";
+import Cohortes from "@/components/Cohortes";
+import { cohortesSemanales, type Cohorte } from "@/lib/actividades";
 import { ESTADO_CONFIG, TIPO_EVENTO_LABEL, type TipoEvento } from "@/lib/types";
 import type { Deal, Prospect } from "@/lib/types";
 
@@ -49,6 +51,15 @@ function faseActual(clientesActivos: number): {
 }
 
 export default async function Dashboard() {
+  // Nunca debe tumbar el dashboard: si la bitácora falla, el resto del
+  // centro de mando tiene que seguir cargando.
+  let cohortes: Cohorte[] = [];
+  try {
+    cohortes = await cohortesSemanales(6);
+  } catch (e) {
+    console.error("[dashboard] cohortes:", e);
+  }
+
   const s = db();
   const hoy = new Date().toISOString().slice(0, 10);
   const inicioMes = `${hoy.slice(0, 7)}-01`;
@@ -527,6 +538,11 @@ export default async function Dashboard() {
           </p>
         )}
       </section>
+
+      {/* ---- Cohortes semanales ---- */}
+      <div className="mt-3">
+        <Cohortes filas={cohortes} />
+      </div>
 
       {/* ---- Hoy — lo accionable ---- */}
       <section className="panel mt-3 p-5">
