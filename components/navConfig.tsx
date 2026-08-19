@@ -33,6 +33,7 @@ export const NAV_GROUPS: NavGroup[] = [
     titulo: "Gestión",
     links: [
       { href: "/finanzas", label: "Finanzas", icon: "money", hint: "Cobros y gastos" },
+      { href: "/proyeccion", label: "Proyección", icon: "curva", hint: "En qué mes esto le paga a cada socio" },
       { href: "/roadmap", label: "Roadmap", icon: "map", hint: "Qué se construye" },
       { href: "/decisiones", label: "Decisiones", icon: "check", hint: "Bitácora de acuerdos" },
     ],
@@ -157,6 +158,14 @@ export function NavIcon({ name, size = 14 }: { name: string; size?: number }) {
           <circle cx="6.6" cy="5.2" r="2.5" />
           <path d="M1.9 13.6c0-2.3 2.1-3.9 4.7-3.9 1.1 0 2.1.3 2.9.8" />
           <path d="M11.4 8.6v4.8M9 11h4.8" />
+        </svg>
+      );
+    case "curva":
+      return (
+        <svg {...p}>
+          <path d="M2 13.4h12" />
+          <path d="M2.6 11.6c2.6 0 3.4-2.6 5.1-5.1 1.2-1.8 2.6-3 5.3-3.4" />
+          <path d="M10.6 3.1h2.6v2.6" />
         </svg>
       );
     case "phone":

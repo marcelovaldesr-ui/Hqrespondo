@@ -29,6 +29,33 @@ function limpiar(s: string): string {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
+/**
+ * ¿La hora es indivisible? — el criterio que más pesa desde que existe la agenda.
+ *
+ * Viene de Marcelo (19-ago-2026): "cosas que se pueda agendar y tengan solo un
+ * cupo, ya que nuestro sistema de agenda funciona mejor así".
+ *
+ * Un box dental, un sillón de peluquería, una cabina de depilación: una hora,
+ * un profesional, un cupo. Ahí la garantía de que "dos personas no pueden tomar
+ * la misma hora" ES el producto, y una inasistencia cuesta el cupo entero
+ * (OdontoAndrauss: −38% de horas perdidas). En un gimnasio la clase de las
+ * 19:00 tiene 20 lugares: el sistema igual controla el cupo, pero perder uno
+ * no duele parecido.
+ *
+ * Por eso el mismo rubro "wellness" se parte en dos: la clínica estética entra
+ * arriba y el gimnasio queda un escalón abajo.
+ */
+export const HORA_INDIVIDUAL =
+  /dental|odontolog|\boral\b|ortodon|implant|endodon|periodon|kinesiolog|kinesic|fisioterap|podolog|fonoaudiolog|psicolog|psiquiatr|nutricion|oftalmolog|otorrino|dermatolog|estetic|esthetic|depilacion|laser|veterinari|peluqueria|barberia|masaje|consulta|policlinic/;
+
+export function agendaDeCupoUnico(entrada: { empresa?: string; industria?: string }): boolean {
+  const t = `${entrada.empresa ?? ""} ${entrada.industria ?? ""}`
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  return HORA_INDIVIDUAL.test(t);
+}
+
 export const NIVELES_ENCAJE = ["alto", "medio", "bajo", "nulo", "sin_evaluar"] as const;
 export type NivelEncaje = (typeof NIVELES_ENCAJE)[number];
 
@@ -205,11 +232,11 @@ const POSITIVOS: Regla[] = [
     nivel: "alto",
     motivo:
       "Centro de salud mental: agenda por profesional, preguntas de previsión y valores todo el día, y alta inasistencia — que es justo lo que baja el recordatorio automático. El asistente nunca da indicación clínica ni evalúa un caso: automatiza la hora, el valor y el recordatorio, y deriva todo lo demás al profesional.",
-    minEmpleados: 10,
+    minEmpleados: 4,
     /** Bajo el mínimo, cae a esto en vez de descartarse del todo. */
     nivelChico: "bajo",
     motivoChico:
-      "Consulta psicológica individual: la guía la pone en «dónde se pierde el tiempo», y es por VOLUMEN, no por rubro — 6 a 8 pacientes al día no llegan a las 15 consultas diarias que pide el ICP. Si resulta que recibe muchas más consultas de las que atiende, vuelve a ser cliente: el dolor de agenda y recordatorio es el mismo.",
+      "Consulta individual, no centro: bajo 4 trabajadores en planilla es un profesional solo con secretaria, y el problema ahí es de volumen, no de rubro — no llega a las consultas diarias que justifican un plan. Desde 4 en planilla ya son varios profesionales con agenda propia y vuelve a nivel alto. Si igual recibe muchas más consultas de las que alcanza a atender, es cliente: el dolor de agenda y recordatorio es el mismo.",
   },
   {
     // Rubro nuevo que no existía en las reglas: la agenda con control de cupo
@@ -311,10 +338,18 @@ const POSITIVOS: Regla[] = [
       "Educación: la temporada de admisión y matrícula concentra cientos de consultas idénticas sobre vacantes, aranceles y documentos.",
   },
   {
-    patron: /\b(gimnasio|centro deportivo|centro de estetica|day spa|estetica|peluqueria|barberia|masaje|pilates|yoga|wellness)/,
+    // Hora individual: una silla, un profesional. Va antes que el gimnasio.
+    patron: /\b(centro de estetica|day spa|estetica|esthetic|peluqueria|barberia|masaje|depilacion|podolog|manicur)/,
     nivel: "alto",
     motivo:
-      "Gimnasios y centros boutique: es una de las verticales con MÁS clientes reales (+20: Ytororō, Infinity Pilates, Fit Wise, Qanttum Sport) y tiene secuencia de correos propia escrita. Planes, horarios, clases de prueba e inscripciones preguntados sin parar mientras el equipo atiende socios.",
+      "Servicio de hora individual (una silla, una cabina, un profesional): es donde la agenda rinde más, porque el cupo es indivisible y la inasistencia cuesta la hora completa. Vertical con clientes reales y secuencia propia escrita.",
+  },
+  {
+    patron: /\b(gimnasio|centro deportivo|crossfit|pilates|yoga|wellness)/,
+    nivel: "medio",
+    motivo:
+      "Gimnasio o centro con clases: hay clientes reales y secuencia escrita (+20: Ytororō, Infinity Pilates, Fit Wise, Qanttum), pero el cupo es GRUPAL —la clase de las 19:00 tiene 20 lugares— así que perder uno duele mucho menos que perder un box. Encaja, pero después de los de hora individual.",
+    noPromover: true,
   },
   {
     patron: /\b(inmobiliaria|corretaje|corredora de propiedades|arriendo de propiedades)/,
@@ -515,6 +550,15 @@ export function evaluarEncaje(e: EntradaEncaje): Encaje {
   }
 
   if (!base) {
+    // Sin rubro reconocible, pero si el nombre dice que la hora es indivisible
+    // ya hay algo: el negocio agenda de a uno, que es donde la agenda rinde.
+    if (agendaDeCupoUnico({ empresa: e.empresa, industria: e.industria })) {
+      return {
+        nivel: "medio",
+        motivo:
+          "El rubro no lo clasifica, pero el nombre dice que agenda de a uno (un box, una silla, un profesional). Ahí la agenda rinde al máximo y una inasistencia cuesta la hora completa. Vale mirar el sitio antes de descartarlo.",
+      };
+    }
     return {
       nivel: "sin_evaluar",
       motivo:
@@ -540,6 +584,11 @@ export function evaluarEncaje(e: EntradaEncaje): Encaje {
   // para ordenar la lista antes de marcar.
   if (!base.noPromover && nivel === "medio" && enContra.length === 0 && (deGuia.length >= 1 || aFavor.length >= 2))
     nivel = "alto";
+
+  // Y la hora indivisible promueve por sí sola: es el criterio donde la agenda
+  // —lo más nuevo del producto— rinde al máximo.
+  const cupoUnico = agendaDeCupoUnico({ empresa: e.empresa, industria: e.industria });
+  if (!base.noPromover && nivel === "medio" && enContra.length === 0 && cupoUnico) nivel = "alto";
   if (nivel === "alto" && enContra.length >= 2) nivel = "medio";
   if (nivel === "medio" && enContra.length >= 2) nivel = "bajo";
 
