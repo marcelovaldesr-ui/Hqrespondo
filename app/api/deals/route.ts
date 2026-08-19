@@ -25,7 +25,7 @@ export async function POST(req: Request) {
         );
       }
 
-      const plan: Plan = body.plan ?? "cotizador";
+      const plan: Plan = body.plan ?? "crecimiento";
       const precios = PLAN_PRECIOS[plan];
       const { error } = await s.from("deals").insert({
         prospect_id: p.id,
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const plan: Plan = body.plan ?? "cotizador";
+    const plan: Plan = body.plan ?? "crecimiento";
     const precios = PLAN_PRECIOS[plan];
     const { error } = await s.from("deals").insert({
       nombre_negocio: body.nombre_negocio,

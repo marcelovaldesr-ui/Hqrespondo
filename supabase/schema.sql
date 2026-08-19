@@ -35,8 +35,8 @@ create table if not exists deals (
   prospect_id uuid references prospects(id) on delete set null,
   nombre_negocio text not null,
   rubro text,
-  plan text not null default 'cotizador'
-    check (plan in ('esencial','cotizador','pro')),
+  plan text not null default 'crecimiento'
+    check (plan in ('inicial','crecimiento','empresa')),
   valor_setup int not null default 0,
   valor_mensual int not null default 0,
   etapa text not null default 'contactado'
@@ -55,8 +55,8 @@ create table if not exists clients (
   id uuid primary key default gen_random_uuid(),
   nombre text not null,
   rubro text,
-  plan text not null default 'cotizador'
-    check (plan in ('esencial','cotizador','pro')),
+  plan text not null default 'crecimiento'
+    check (plan in ('inicial','crecimiento','empresa')),
   mensualidad int not null default 0,
   telefono_bot text,
   workflow_id text,          -- id del workflow n8n del bot de este cliente

@@ -138,7 +138,7 @@ export const PILARES: ContentPillar[] = [
       "Chatbot de botones vs asistente de ventas",
       "Por qué no necesitas un CRM completo al inicio",
       "Automatizar respuestas vs automatizar ventas",
-      "Persona ($650.000+) vs asistente (desde $24.990)",
+      "Persona ($650.000+) vs asistente (desde $149.990 neto)",
       "Por qué publicamos precios cuando nadie lo hace",
     ],
     cta: "Compara en la demo",

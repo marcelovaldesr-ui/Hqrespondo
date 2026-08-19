@@ -452,7 +452,7 @@ export default function Clients({ clients }: { clients: ClientStats[] }) {
   const [showForm, setShowForm] = useState(false);
   const [nombre, setNombre] = useState("");
   const [rubro, setRubro] = useState("");
-  const [plan, setPlan] = useState<Plan>("cotizador");
+  const [plan, setPlan] = useState<Plan>("crecimiento");
   const [workflowId, setWorkflowId] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -501,6 +501,7 @@ export default function Clients({ clients }: { clients: ClientStats[] }) {
         <div className="metric-card px-5 py-4">
           <span className="lbl">MRR actual </span>
           <span className="ml-3 font-mono text-2xl font-semibold tracking-tight text-ink">{clp(mrr)}</span>
+          <span className="ml-1.5 font-mono text-[10px] uppercase tracking-wider text-ink-faint">neto</span>
         </div>
         <div className="metric-card px-5 py-4">
           <span className="lbl">Activos </span>
@@ -543,7 +544,7 @@ export default function Clients({ clients }: { clients: ClientStats[] }) {
             >
               {PLANES.map((p) => (
                 <option key={p} value={p}>
-                  {PLAN_LABEL[p]} — {clp(PLAN_PRECIOS[p].mensual)}/mes
+                  {PLAN_LABEL[p]} — {clp(PLAN_PRECIOS[p].mensual)}/mes neto
                 </option>
               ))}
             </select>

@@ -17,10 +17,10 @@ import type { CarouselInput, ScriptInput } from "./generators";
  * siempre a la misma fórmula).
  */
 
-const PLANES_ORD: Plan[] = ["esencial", "cotizador", "pro"];
+const PLANES_ORD: Plan[] = ["inicial", "crecimiento", "empresa"];
 const PRECIOS = PLANES_ORD.map(
   (k) => `${PLAN_LABEL[k]} $${PLAN_PRECIOS[k].mensual.toLocaleString("es-CL")}/mes`,
-).join(", ") + ", Empresa a medida";
+).join(", ") + " (netos, más IVA)";
 
 const REGLAS = `Eres el copywriter de Respondo, una startup chilena que implementa asistentes de ventas con IA para el WhatsApp de pymes.
 TONO: habla del dolor y del resultado, nunca de la tecnología. Frases cortas, una idea por línea, 2ª persona, máximo 1–2 emojis funcionales. Español de Chile/LATAM neutro.

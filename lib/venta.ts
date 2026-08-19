@@ -1,10 +1,14 @@
 /**
  * KIT DE VENTA — material de conversación a mano dentro de HQ.
  * Fuente: estrategia-comercial/OBJECIONES_RESPONDO.md, SCRIPTS_DE_VENTA_RESPONDO.md
- * e ICP_RESPONDO.md. Alineado a los precios/oferta VIGENTES (jul-2026):
- * Básico $24.990 · Pro $39.990 · Empresa $69.990 · primer mes de servicio gratis,
- * setup normal. Sin "plan piloto". Objetivo: que al conversar con un prospecto
- * tengas la respuesta correcta a un clic, sin salir de HQ.
+ * e ICP_RESPONDO.md. Alineado a los precios/oferta VIGENTES (12-ago-2026):
+ * Inicial $149.990 · Crecimiento $269.990 · Empresa $449.990 — todos NETOS,
+ * más IVA. Instalación GRATIS · 14 días de prueba · bot extra +$20.000.
+ * Cupos 1.200 / 3.000 / 6.000 conversaciones; excedente $80 / $60 / $50 por
+ * conversación, y NUNCA se corta el servicio al pasarse.
+ * Sin "plan piloto" y sin "primer mes gratis" (eran de julio).
+ * Objetivo: que al conversar con un prospecto tengas la respuesta correcta a
+ * un clic, sin salir de HQ.
  */
 
 export interface Objecion {
@@ -16,7 +20,7 @@ export const OBJECIONES: Objecion[] = [
   {
     gatillo: "Está caro",
     respuesta:
-      "Te entiendo. ¿Cuánto vale una venta promedio tuya? Si se te escapan 2–3 al mes por contestar tarde, esto ya se pagó solo — el 78% le compra al primero que responde. Y si hoy no da para el plan completo, partimos con el Básico ($24.990) y subes cuando el volumen lo pida. ¿Cuál te acomoda más? (Regla interna: nunca bajar el precio del plan; ofrecer bajar de plan.)",
+      "Te entiendo. ¿Cuánto vale una venta promedio tuya? Si se te escapan 2–3 al mes por contestar tarde, esto ya se pagó solo — el 78% le compra al primero que responde. Y si hoy no da para el plan completo, partimos con el Inicial ($149.990 neto) y subes cuando el volumen lo pida. ¿Cuál te acomoda más? (Regla interna: nunca bajar el precio del plan; ofrecer bajar de plan.)",
   },
   {
     gatillo: "Ya respondo yo",
@@ -36,7 +40,7 @@ export const OBJECIONES: Objecion[] = [
   {
     gatillo: "¿Y si responde mal?",
     respuesta:
-      "Es LA pregunta. Tres capas de protección: solo responde con la información que tú nos das; lo probamos contigo antes de encenderlo, hasta que digas 'así hablaría yo'; y el primer mes lo ajustamos sin costo todas las veces que haga falta. ¿Qué tipo de respuesta te daría más susto que diera mal?",
+      "Es LA pregunta. Tres capas de protección: solo responde con la información que tú nos das; lo probamos contigo antes de encenderlo, hasta que digas 'así hablaría yo'; y durante los 14 días de prueba lo ajustamos sin costo todas las veces que haga falta. ¿Qué tipo de respuesta te daría más susto que diera mal?",
   },
   {
     gatillo: "¿Puede inventar precios?",
@@ -51,7 +55,7 @@ export const OBJECIONES: Objecion[] = [
   {
     gatillo: "Lo vemos más adelante",
     respuesta:
-      "Va. Solo una pregunta antes de agendar eso: ¿qué cambia de aquí a entonces? Cada mes que pasa son consultas sin responder que no vuelven. Y ahora el primer mes de servicio va gratis: lo pruebas funcionando sin pagar la mensualidad. ¿Te escribo el [fecha] y lo retomamos?",
+      "Va. Solo una pregunta antes de agendar eso: ¿qué cambia de aquí a entonces? Cada mes que pasa son consultas sin responder que no vuelven. Y tienes 14 días de prueba: lo ves funcionando con tus propios mensajes antes de pagar nada. ¿Te escribo el [fecha] y lo retomamos?",
   },
   {
     gatillo: "Tengo que hablarlo con mi socio",
@@ -86,7 +90,7 @@ export const OBJECIONES: Objecion[] = [
   {
     gatillo: "Vi otros precios en su página",
     respuesta:
-      "Buen ojo. Esos eran precios de pre-lanzamiento y estamos actualizando la web. Los vigentes son los que te compartí: Básico $24.990, Pro $39.990, Empresa $69.990 al mes (desde el mes 2; el primer mes de servicio va gratis) + la implementación una vez.",
+      "Buen ojo. Esos eran precios de pre-lanzamiento y estamos actualizando la web. Los vigentes son los que te compartí: Inicial $149.990, Crecimiento $269.990 y Empresa $449.990 al mes, netos más IVA, con la instalación incluida y 14 días de prueba.",
   },
   {
     gatillo: "Soy malo para la tecnología",

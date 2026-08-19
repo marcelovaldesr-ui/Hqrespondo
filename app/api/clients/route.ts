@@ -13,7 +13,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const plan: Plan = body.plan ?? "cotizador";
+    const plan: Plan = body.plan ?? "crecimiento";
     const s = db();
     const { data: nuevo, error } = await s
       .from("clients")

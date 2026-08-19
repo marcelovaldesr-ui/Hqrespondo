@@ -45,7 +45,7 @@ export const COPIES: CopySnippet[] = [
   c("hook", "Terminas atendiendo el WhatsApp tú mismo, a las 11 de la noche.", { funnel: "descubrimiento" }),
   c("hook", "Responder al tiro no es tener suerte. Es tener un sistema.", { funnel: "consideracion" }),
   c("hook", "Publicamos nuestros precios. Nadie en el rubro lo hace. Por eso lo hacemos.", { funnel: "consideracion", fuente: "transparencia" }),
-  c("hook", "Una persona en el WhatsApp: $650.000+ al mes. Un asistente: desde $24.990.", { funnel: "consideracion", fuente: "anclaje" }),
+  c("hook", "Una persona en el WhatsApp: $650.000+ al mes. Un asistente: desde $149.990 neto.", { funnel: "consideracion", fuente: "anclaje" }),
   c("hook", "Tu vendedor perdiendo el día en '¿cuánto vale?' es plata en el suelo.", { funnel: "descubrimiento" }),
   c("hook", "No te dejamos solo: lo implementamos y lo acompañamos nosotros.", { funnel: "consideracion", fuente: "diferenciador" }),
   c("hook", "La IA no reemplaza a tu vendedor. Le saca lo aburrido.", { funnel: "consideracion" }),

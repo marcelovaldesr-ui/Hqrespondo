@@ -22,10 +22,11 @@ const CATEGORIAS_SUGERIDAS = [
   "Otros",
 ];
 
-/** Mensualidad de referencia para "clientes que faltan": plan recomendado
- *  Pro ($39.990, precios vigentes respon-do.com jul-2026). Si ya hay clientes,
- *  se usa el promedio real de sus mensualidades. */
-const MENSUALIDAD_REFERENCIA = 39990;
+/** Mensualidad NETA de referencia para "clientes que faltan": plan
+ *  Crecimiento ($269.990, tabla aprobada el 12-ago-2026), que es el que se
+ *  ancla contra Vambe. Si ya hay clientes, se usa el promedio real de sus
+ *  mensualidades. */
+const MENSUALIDAD_REFERENCIA = 269990;
 
 export default function Finanzas({
   gastosIniciales,
@@ -167,7 +168,10 @@ export default function Finanzas({
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className="metric-card px-4 py-3.5">
           <div className="lbl">MRR actual</div>
-          <div className="mt-1.5 font-mono text-2xl font-semibold leading-none tracking-tight text-ink">{clp(mrrActual)}</div>
+          <div className="mt-1.5 flex items-baseline gap-1.5">
+            <span className="font-mono text-2xl font-semibold leading-none tracking-tight text-ink">{clp(mrrActual)}</span>
+            <span className="font-mono text-[10px] uppercase tracking-wider text-ink-faint">neto</span>
+          </div>
           <div className="mt-1.5 text-[10.5px] text-ink-dim">
             {nClientesActivos === 0
               ? "fase inicial — sin clientes aún"

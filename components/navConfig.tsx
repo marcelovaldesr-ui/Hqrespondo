@@ -11,6 +11,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/dashboard", label: "Centro de mando", icon: "dashboard", hint: "Estado general y prioridades" },
       { href: "/llamadas", label: "Llamadas del día", icon: "phone", hint: "Lista para marcar" },
       { href: "/brief", label: "Brief del día", icon: "file", hint: "Resumen generado" },
+      { href: "/equipo", label: "Objetivos del equipo", icon: "equipo", hint: "Qué se comprometió cada socio esta semana" },
     ],
   },
   {
@@ -118,6 +119,15 @@ export function NavIcon({ name, size = 14 }: { name: string; size?: number }) {
       return (
         <svg {...p}>
           <path d="M8 1.6l1.45 3.95L13.4 7l-3.95 1.45L8 12.4 6.55 8.45 2.6 7l3.95-1.45L8 1.6z" />
+        </svg>
+      );
+    case "equipo":
+      return (
+        <svg {...p}>
+          <circle cx="5.4" cy="5" r="2.2" />
+          <circle cx="11" cy="4.4" r="1.7" />
+          <path d="M1.8 13.4c0-2 1.6-3.4 3.6-3.4s3.6 1.4 3.6 3.4" />
+          <path d="M10.4 9.6c1.9 0 3.4 1.3 3.4 3.2" />
         </svg>
       );
     case "phone":

@@ -10,6 +10,7 @@ import {
   ETAPA_LABEL,
   PLANES,
   PLAN_LABEL,
+  PLAN_LIMITES,
   PLAN_PRECIOS,
   type Deal,
   type Etapa,
@@ -86,7 +87,7 @@ export default function Kanban({ deals }: { deals: Deal[] }) {
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [nombre, setNombre] = useState("");
-  const [plan, setPlan] = useState<Plan>("cotizador");
+  const [plan, setPlan] = useState<Plan>("crecimiento");
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DealDraft | null>(null);
@@ -198,13 +199,13 @@ export default function Kanban({ deals }: { deals: Deal[] }) {
     <div>
       <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.3fr_auto]">
         <div className="metric-card px-5 py-4">
-          <div className="lbl">MRR proyectado</div>
+          <div className="lbl">MRR proyectado · neto</div>
           <div className="mt-2 font-mono text-3xl font-semibold leading-none tracking-tight text-ink">
             {clp(mrrProyectado)}
           </div>
         </div>
         <div className="metric-card px-5 py-4">
-          <div className="lbl">MRR cerrado</div>
+          <div className="lbl">MRR cerrado · neto</div>
           <div className="mt-2 font-mono text-3xl font-semibold leading-none tracking-tight text-ink">{clp(mrrCerrado)}</div>
         </div>
         <div className="metric-card px-5 py-4">
@@ -258,8 +259,8 @@ export default function Kanban({ deals }: { deals: Deal[] }) {
             >
               {PLANES.map((p) => (
                 <option key={p} value={p}>
-                  {PLAN_LABEL[p]} — {clp(PLAN_PRECIOS[p].setup)} +{" "}
-                  {clp(PLAN_PRECIOS[p].mensual)}/mes
+                  {PLAN_LABEL[p]} — {clp(PLAN_PRECIOS[p].mensual)}/mes neto ·{" "}
+                  {PLAN_LIMITES[p].toLocaleString("es-CL")} conv
                 </option>
               ))}
             </select>
@@ -387,7 +388,10 @@ export default function Kanban({ deals }: { deals: Deal[] }) {
                       </span>
                       <div className="mt-3 font-mono text-[15px] font-semibold text-ink">
                         {clp(d.valor_mensual)}
-                        <span className="text-ink-dim">/m</span>
+                        <span className="text-ink-dim">/mes</span>
+                        <span className="ml-1 text-[9px] uppercase tracking-wider text-ink-faint">
+                          neto
+                        </span>
                       </div>
                       <div className="font-mono text-[9.5px] text-ink-faint">
                         Setup {clp(d.valor_setup)}

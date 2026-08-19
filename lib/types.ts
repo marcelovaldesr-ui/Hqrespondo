@@ -48,49 +48,65 @@ export const ETAPA_LABEL: Record<Etapa, string> = {
 };
 
 /**
- * Planes comerciales. Los VALORES ('esencial','cotizador','pro') son las
- * claves históricas de la base de datos (check constraint en deals/clients)
- * y NO deben cambiarse sin migración. Los NOMBRES y PRECIOS corresponden a
- * los planes VIGENTES publicados en respon-do.com (decisión cerrada 6-jul-2026,
- * corregido 1-ago-2026: el setup de Básico estaba en $150.000 en el código,
- * pero lo que rige es $99.990 — ver AUDITORIA_RESPONDHQ_AGO2026.md §5):
- *   esencial  → "Básico"   $24.990/mes + setup $99.990   (hasta 1.000 conv/mes)
- *   cotizador → "Pro"      $39.990/mes + setup $290.000  (recomendado, hasta 4.000)
- *   pro       → "Empresa"  $69.990/mes + setup $590.000  (hasta 12.000)
- * Oferta de reversión de riesgo vigente: prueba 30 días (si no ayuda, no paga la
- * mensualidad). El "plan piloto" quedó DESCONTINUADO — no ofrecerlo.
+ * Planes comerciales VIGENTES — tabla aprobada por Marcelo el 12-ago-2026.
  *
- * ⚠ Última revisión de precios: 1-ago-2026. Hay una PROPUESTA en discusión
- * (25/30-jul) para reemplazar esta tabla completa por un vertical de precios
- * ("Respondo para Clínicas": Consulta $150.000 / Clínica $250.000 / Multi-sede
- * $400.000 + Implementación $390.000 aparte) — bloquea la salida a vender del
- * 3er socio comercial. NO aplicado aquí a propósito: es una decisión de
- * negocio, no de código. En cuanto se cierre, registrarla en /decisiones y
- * actualizar esta tabla (probablemente necesite dejar de ser un enum cerrado
- * de 3 valores — ver AUDITORIA_RESPONDHQ_AGO2026.md §5).
+ * ⚠ TODOS LOS VALORES SON NETOS, MÁS IVA (decisión del 14-ago-2026). En la UI
+ * se marcan con "+ IVA" a propósito: sin esa marca alguien cotiza de memoria
+ * un número con IVA incluido y se pierde el margen en la reunión.
+ *
+ *   inicial     → "Inicial"      $149.990/mes · 1.200 conv · excedente $80/conv
+ *   crecimiento → "Crecimiento"  $269.990/mes · 3.000 conv · excedente $60/conv
+ *   empresa     → "Empresa"      $449.990/mes · 6.000 conv · excedente $50/conv
+ *
+ * Instalación GRATIS · 14 días de prueba · bot extra +$20.000/mes.
+ *
+ * "Tino solo" ($120.000/mes, 800 conv, excedente $90) existe como oferta pero
+ * NO entra al CRM por decisión de Marcelo (19-ago-2026): es una venta distinta
+ * que no pasa por pipeline.
+ *
+ * Conversación = todo el contacto con un mismo cliente en 24 h corridas. Si
+ * nadie respondió, no se cuenta.
+ *
+ * Reemplaza el esquema anterior de 'esencial/cotizador/pro' con setup + mensual
+ * ($24.990/$39.990/$69.990 + setup $99.990/$290.000/$590.000), que venía de
+ * los precios de julio y quedó anulado. Migración 018.
  */
-export const PLANES = ["esencial", "cotizador", "pro"] as const;
+export const PLANES = ["inicial", "crecimiento", "empresa"] as const;
 export type Plan = (typeof PLANES)[number];
 
 export const PLAN_LABEL: Record<Plan, string> = {
-  esencial: "Básico",
-  cotizador: "Pro",
-  pro: "Empresa",
+  inicial: "Inicial",
+  crecimiento: "Crecimiento",
+  empresa: "Empresa",
 };
 
-/** Precios VIGENTES (respon-do.com, jul-2026). Ajustables por deal. */
+/** Mensualidad NETA. El setup es 0: la instalación va incluida. */
 export const PLAN_PRECIOS: Record<Plan, { setup: number; mensual: number }> = {
-  esencial: { setup: 99990, mensual: 24990 },
-  cotizador: { setup: 290000, mensual: 39990 },
-  pro: { setup: 590000, mensual: 69990 },
+  inicial: { setup: 0, mensual: 149990 },
+  crecimiento: { setup: 0, mensual: 269990 },
+  empresa: { setup: 0, mensual: 449990 },
 };
 
-/** Límites de conversaciones/mes por plan (para propuestas). */
+/** Conversaciones incluidas al mes. */
 export const PLAN_LIMITES: Record<Plan, number> = {
-  esencial: 1000,
-  cotizador: 4000,
-  pro: 12000,
+  inicial: 1200,
+  crecimiento: 3000,
+  empresa: 6000,
 };
+
+/** Precio NETO por conversación pasada del cupo. Nunca se corta el servicio:
+ *  se avisa al 80% y al 100% del cupo. */
+export const PLAN_EXCEDENTE: Record<Plan, number> = {
+  inicial: 80,
+  crecimiento: 60,
+  empresa: 50,
+};
+
+/** Costo NETO de cada bot adicional sobre el plan contratado. */
+export const PRECIO_BOT_EXTRA = 20000;
+
+/** Días de prueba sin costo (reemplaza el "primer mes gratis" de julio). */
+export const DIAS_PRUEBA = 14;
 
 export interface Prospect {
   id: string;

@@ -18,7 +18,7 @@ export const BATTLECARDS: Battlecard[] = [
     fuertes_para:
       "Empresas más grandes, con equipo y presupuesto, que quieren una plataforma robusta.",
     donde_diferenciarnos:
-      "Precio de entrada mucho menor con implementación INCLUIDA hecha por nosotros; acompañamiento real post-venta. Estamos en el 'medio justo' para una pyme chilena (desde $24.990/mes con todo hecho).",
+      "Precio de entrada mucho menor con implementación INCLUIDA hecha por nosotros; acompañamiento real post-venta. Estamos en el 'medio justo' para una pyme chilena (desde $149.990/mes neto, con instalación incluida y 14 días de prueba).",
     no_copiar:
       "No apuntar a enterprise ni a la amplitud de features. No competir por cantidad de integraciones.",
     angulos_contenido: [
@@ -28,7 +28,7 @@ export const BATTLECARDS: Battlecard[] = [
     ],
     objecion_tipica: "'¿Qué diferencia tienen con Vambe?'",
     respuesta_comercial:
-      "Buenas plataformas. Vambe apunta a empresas más grandes: su plan de entrada está sobre los $380.000 + implementación aparte. Nosotros estamos en el medio justo para una pyme: desde $24.990/mes con implementación completa hecha por nosotros, en español, y con acompañamiento real después de vender.",
+      "Buenas plataformas. Vambe apunta a empresas más grandes: su plan de entrada está sobre los $380.000 + ~$570.000 de implementación aparte. Nosotros damos las mismas 3.000 conversaciones que su plan Advanced (~$545.000) por $269.990 netos, con la IA incluida, en español, sin cobrar implementación y con acompañamiento real después de vender.",
     contenido_recomendado:
       "Carrusel de comparación honesta (categorías, no marcas) + Reel 'no te dejamos solo'.",
     riesgo:
