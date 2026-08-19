@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -40,6 +40,23 @@ export default function EquipoSemanal({
 }) {
   const router = useRouter();
   const [objetivos, setObjetivos] = useState(objetivosIniciales);
+
+  /**
+   * BUG (19-ago-2026): los objetivos se guardaban en la base y NO aparecían
+   * en pantalla.
+   *
+   * `useState(objetivosIniciales)` toma la prop UNA sola vez, en el primer
+   * render. Después `router.refresh()` volvía a ejecutar el server component
+   * y llegaba una prop nueva… que el estado ignoraba para siempre. El dato
+   * estaba bien guardado; la pantalla se quedaba congelada en la primera
+   * lectura. También rompía cambiar de semana con las flechas.
+   *
+   * Este efecto vuelve a sincronizar cada vez que el servidor manda datos
+   * nuevos.
+   */
+  useEffect(() => {
+    setObjetivos(objetivosIniciales);
+  }, [objetivosIniciales]);
   const [guardando, setGuardando] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [nuevo, setNuevo] = useState<Record<string, { objetivo: string; medida: string }>>({});
@@ -89,11 +106,11 @@ export default function EquipoSemanal({
       method: metodo,
       headers: { "Content-Type": "application/json" },
       body: metodo === "DELETE" ? undefined : JSON.stringify(body),
+      cache: "no-store",
     });
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      throw new Error(d?.error ?? `HTTP ${res.status}`);
-    }
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(d?.error ?? `HTTP ${res.status}`);
+    return d;
   }
 
   async function crear(socio: string) {
@@ -101,12 +118,19 @@ export default function EquipoSemanal({
     if (!draft?.objetivo?.trim() || guardando) return;
     setGuardando(socio);
     try {
-      await api("POST", {
+      const creado = await api("POST", {
         semana,
         socio,
         objetivo: draft.objetivo,
         como_se_mide: draft.medida ?? "",
       });
+      // Se pinta al instante con la fila que devolvió el servidor; el refresh
+      // queda solo para traer lo que hayan cargado los demás.
+      if (creado?.objetivo) {
+        setObjetivos((prev) =>
+          prev.some((o) => o.id === creado.objetivo.id) ? prev : [...prev, creado.objetivo],
+        );
+      }
       setNuevo((n) => ({ ...n, [socio]: { objetivo: "", medida: "" } }));
       router.refresh();
     } catch (e) {

@@ -22,13 +22,20 @@ export async function POST(req: Request) {
     if (!cfg) return NextResponse.json({ error: "socio desconocido" }, { status: 400 });
     if (!objetivo) return NextResponse.json({ error: "el objetivo va vacío" }, { status: 400 });
 
-    const { error } = await db().from("objetivos_semana").insert({
-      semana,
-      socio,
-      rol: cfg.rol,
-      objetivo,
-      como_se_mide: String(b.como_se_mide ?? "").trim(),
-    });
+    // Se devuelve la fila creada para que la UI la pinte al instante, sin
+    // depender de una recarga: el objetivo tiene que aparecer apenas se
+    // aprieta Agregar.
+    const { data: creado, error } = await db()
+      .from("objetivos_semana")
+      .insert({
+        semana,
+        socio,
+        rol: cfg.rol,
+        objetivo,
+        como_se_mide: String(b.como_se_mide ?? "").trim(),
+      })
+      .select("id,semana,socio,rol,objetivo,como_se_mide,estado,motivo,hablado_reunion")
+      .single();
     if (error) {
       // Índice único: mismo objetivo, mismo socio, misma semana.
       if (error.code === "23505") {
@@ -39,7 +46,7 @@ export async function POST(req: Request) {
       }
       throw new Error(error.message);
     }
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, objetivo: creado });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
