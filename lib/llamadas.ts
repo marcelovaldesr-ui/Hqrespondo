@@ -99,6 +99,25 @@ export async function listaLlamadasDelDia(opts?: {
 }
 
 /** Resumen del avance de HOY (para el encabezado de la página). */
+/**
+ * Cuántos prospectos son elegibles HOY en total, sin el tope de la tanda.
+ * Se usa para poder decir "viendo 40 de 148" en vez de dejar creer que la
+ * lista de 40 es todo lo que hay.
+ */
+export async function contarElegiblesHoy(scoreMin = 70): Promise<number> {
+  const hoy = hoyChile().toISOString();
+  const { count, error } = await db()
+    .from("prospects")
+    .select("id", { count: "exact", head: true })
+    .eq("estado", "nuevo")
+    .gte("score", scoreMin)
+    .not("telefono", "is", null)
+    .lt("intentos_llamada", 4)
+    .or(`ultimo_intento_llamada.is.null,ultimo_intento_llamada.lt.${hoy}`);
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
 export async function resumenHoy(): Promise<{ llamadas_hoy: number }> {
   const hoy = hoyChile().toISOString();
   const { count } = await db()

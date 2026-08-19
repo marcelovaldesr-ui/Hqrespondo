@@ -53,9 +53,15 @@ function telLink(t: string): string {
 export default function LlamadasHoy({
   filasIniciales,
   llamadasHoy,
+  elegiblesHoy,
+  limite,
 }: {
   filasIniciales: FilaLlamada[];
   llamadasHoy: number;
+  /** Total de elegibles hoy, sin el tope de la tanda. */
+  elegiblesHoy: number;
+  /** Tamaño de la tanda que se está mostrando. */
+  limite: number;
 }) {
   const [filas, setFilas] = useState(filasIniciales);
   const [hechas, setHechas] = useState<Record<string, Resultado>>({});
@@ -64,6 +70,7 @@ export default function LlamadasHoy({
   const [form, setForm] = useState({ resultado: "interesado" as Resultado, dueno: "", contacto: "", nota: "" });
   const [guardando, setGuardando] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [avisoRefresco, setAvisoRefresco] = useState(false);
 
   const pendientes = useMemo(
     () => filas.filter((f) => !hechas[f.id]).length,
@@ -118,19 +125,34 @@ export default function LlamadasHoy({
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="rounded-lg border border-line bg-surface-1 px-3 py-1.5 font-mono text-[12px]">
-            Hoy: <b>{contadorHoy}</b> llamadas · quedan <b>{pendientes}</b>
+          <span className="rounded-lg border border-line bg-surface-1 px-3 py-1.5 font-mono text-[12px] text-ink-soft">
+            Hoy: <b className="text-ink">{contadorHoy}</b> llamadas · quedan{" "}
+            <b className="text-ink">{pendientes}</b>
+            <span className="text-ink-dim">
+              {" "}
+              · viendo {filas.length} de {elegiblesHoy}
+            </span>
           </span>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => {
+              // La lista solo cambia si algo salió de ella: es decir, si se
+              // registró un resultado. Recargar sin haber registrado nada
+              // devuelve exactamente los mismos 40 y parece que el botón
+              // está roto — así que lo decimos en vez de recargar en vano.
+              if (Object.keys(hechas).length === 0) {
+                setAvisoRefresco(true);
+                return;
+              }
+              window.location.reload();
+            }}
             className={`px-3 py-1.5 text-[12px] ${
-              pendientes === 0
+              Object.keys(hechas).length > 0
                 ? "rounded-lg bg-brand font-medium text-white hover:opacity-90"
                 : "btn-ghost"
             }`}
-            title="Trae la siguiente tanda de elegibles (los ya registrados salen solos)"
+            title="Saca de la lista los que ya registraste y sube los siguientes"
           >
-            🔄 Actualizar lista
+            ↻ Actualizar lista
           </button>
           <a
             href="/api/prospects/csv-llamadas?preview=1"
@@ -152,6 +174,29 @@ export default function LlamadasHoy({
         <p className="mb-3 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
           {error}
         </p>
+      )}
+
+      {avisoRefresco && (
+        <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border border-warn/30 bg-warn/10 px-3 py-2 text-xs text-warn">
+          <span>
+            La lista es la misma porque todavía no registraste ningún resultado.
+            Un prospecto sale de aquí recién cuando marcas cómo te fue.
+          </span>
+          {elegiblesHoy > filas.length && (
+            <a
+              href={`/llamadas?n=${Math.min(elegiblesHoy, 150)}`}
+              className="btn-ghost border-warn/40 text-warn hover:border-warn hover:text-warn"
+            >
+              Ver los {Math.min(elegiblesHoy, 150)} elegibles
+            </a>
+          )}
+          <button
+            onClick={() => setAvisoRefresco(false)}
+            className="btn-ghost border-warn/40 text-warn hover:border-warn hover:text-warn"
+          >
+            Entendido
+          </button>
+        </div>
       )}
 
       <div className="flex flex-col gap-2">

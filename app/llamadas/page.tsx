@@ -1,4 +1,4 @@
-import { listaLlamadasDelDia, resumenHoy } from "@/lib/llamadas";
+import { contarElegiblesHoy, listaLlamadasDelDia, resumenHoy } from "@/lib/llamadas";
 import LlamadasHoy from "@/components/LlamadasHoy";
 
 export const dynamic = "force-dynamic";
@@ -17,14 +17,20 @@ export default async function PaginaLlamadas({
 }) {
   // /llamadas?n=80 para tandas más grandes (default 40, máx 150)
   const limit = Math.min(Math.max(Number(searchParams?.n) || 40, 10), 150);
-  const [filas, resumen] = await Promise.all([
+  const [filas, resumen, elegibles] = await Promise.all([
     listaLlamadasDelDia({ limit }),
     resumenHoy(),
+    contarElegiblesHoy(),
   ]);
 
   return (
     <div className="mx-auto max-w-5xl">
-      <LlamadasHoy filasIniciales={filas} llamadasHoy={resumen.llamadas_hoy} />
+      <LlamadasHoy
+        filasIniciales={filas}
+        llamadasHoy={resumen.llamadas_hoy}
+        elegiblesHoy={elegibles}
+        limite={limit}
+      />
     </div>
   );
 }
