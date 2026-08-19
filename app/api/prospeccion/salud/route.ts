@@ -12,13 +12,21 @@ export const maxDuration = 60;
  * cuántas leads de oro hay y —con ping=1— si cada servicio externo responde.
  * chatid=1 lista los chat_id que le escribieron al bot de Telegram.
  *
- * Acceso: mientras PROS_CRON_SECRET NO esté definido, queda abierto (para poder
- * diagnosticar durante el setup). Una vez definido el secreto, exige ?key=.
+ * Acceso: SIEMPRE exige el secreto.
+ *
+ * Antes quedaba abierto mientras PROS_CRON_SECRET no estuviera definido, para
+ * facilitar el setup. Eso ya pasó, y era un fail-open: bastaba con que alguien
+ * renombrara o borrara esa variable en Vercel para que este endpoint quedara
+ * público — y lo que devuelve es el inventario de QUÉ secretos existen, que es
+ * justo lo que uno no quiere regalar. Ahora, sin secreto configurado, no
+ * responde: `autorizado()` ya es fail-closed.
  */
 export async function GET(req: Request) {
-  const secretoDefinido = Boolean(process.env.PROS_CRON_SECRET || process.env.CRON_SECRET);
-  if (secretoDefinido && !autorizado(req)) {
-    return NextResponse.json({ error: "no autorizado (agrega ?key=PROS_CRON_SECRET)" }, { status: 401 });
+  if (!autorizado(req)) {
+    return NextResponse.json(
+      { error: "no autorizado (agrega ?key=PROS_CRON_SECRET)" },
+      { status: 401 },
+    );
   }
   const sp = new URL(req.url).searchParams;
   const ping = sp.get("ping") === "1";

@@ -71,9 +71,10 @@ const config: Config = {
         pop: "0 24px 60px -20px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.06)",
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
-        display: ["'Space Grotesk'", "Inter", "system-ui", "sans-serif"],
-        mono: ["'JetBrains Mono'", "ui-monospace", "monospace"],
+        // Las variables las define next/font en app/layout.tsx.
+        sans: ["var(--fuente-sans)", "system-ui", "sans-serif"],
+        display: ["var(--fuente-display)", "var(--fuente-sans)", "sans-serif"],
+        mono: ["var(--fuente-mono)", "ui-monospace", "monospace"],
       },
       keyframes: {
         sweep: {
