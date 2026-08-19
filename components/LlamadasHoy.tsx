@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FilaLlamada } from "@/lib/llamadas";
+import { EQUIPO } from "@/lib/equipo";
 
 /**
  * Lista de llamadas del día — flujo de UNA mano:
@@ -55,11 +56,14 @@ function telLink(t: string): string {
 }
 
 export default function LlamadasHoy({
+  yo,
   filasIniciales,
   llamadasHoy,
   elegiblesHoy,
   limite,
 }: {
+  /** Quién está conectado, resuelto del login en el servidor. */
+  yo: string;
   filasIniciales: FilaLlamada[];
   llamadasHoy: number;
   /** Total de elegibles hoy, sin el tope de la tanda. */
@@ -75,6 +79,22 @@ export default function LlamadasHoy({
   const [guardando, setGuardando] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [avisoRefresco, setAvisoRefresco] = useState(false);
+  // Quién está marcando. Se recuerda por navegador (cada uno trabaja desde su
+  // sesión), y alimenta el marcador por persona de /metricas. Sin esto todas
+  // las llamadas de este motor quedaban huérfanas de autor en la bitácora.
+  // Por defecto, quien inició sesión. La elección manual solo existe para el
+  // caso de un login compartido, o para registrar en nombre de otro.
+  const [quien, setQuien] = useState(
+    EQUIPO.some((e) => e.nombre === yo) ? yo : EQUIPO[0].nombre,
+  );
+  useEffect(() => {
+    const g = window.localStorage.getItem("hq_quien_llama");
+    if (g && EQUIPO.some((e) => e.nombre === g)) setQuien(g);
+  }, []);
+  function cambiarQuien(n: string) {
+    setQuien(n);
+    window.localStorage.setItem("hq_quien_llama", n);
+  }
 
   const pendientes = useMemo(
     () => filas.filter((f) => !hechas[f.id]).length,
@@ -93,6 +113,7 @@ export default function LlamadasHoy({
           id: f.id,
           ids_grupo: f.ids_grupo,
           resultado,
+          actor: quien,
           dueno: extra?.dueno ?? "",
           contacto: extra?.contacto ?? "",
           nota: extra?.nota || notasRapidas[f.id] || "",
@@ -129,6 +150,27 @@ export default function LlamadasHoy({
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <label
+            className="flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-wider text-ink-dim"
+            title={
+              yo
+                ? `Sale de tu sesión (${yo}). Cámbialo solo si estás registrando por otra persona.`
+                : "Elige tu nombre para que las llamadas queden a tu nombre en el marcador."
+            }
+          >
+            ¿Quién llama?
+            <select
+              className="input !w-auto !py-1 text-xs normal-case tracking-normal"
+              value={quien}
+              onChange={(e) => cambiarQuien(e.target.value)}
+            >
+              {EQUIPO.map((e) => (
+                <option key={e.nombre} value={e.nombre}>
+                  {e.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
           <span className="rounded-lg border border-line bg-surface-1 px-3 py-1.5 font-mono text-[12px] text-ink-soft">
             Hoy: <b className="text-ink">{contadorHoy}</b> llamadas · quedan{" "}
             <b className="text-ink">{pendientes}</b>

@@ -1,4 +1,6 @@
+import { headers } from "next/headers";
 import { contarElegiblesHoy, listaLlamadasDelDia, resumenHoy } from "@/lib/llamadas";
+import { personaDeLogin } from "@/lib/equipo";
 import LlamadasHoy from "@/components/LlamadasHoy";
 
 export const dynamic = "force-dynamic";
@@ -23,9 +25,13 @@ export default async function PaginaLlamadas({
     contarElegiblesHoy(),
   ]);
 
+  // Quién está conectado, según el login. El selector ya viene con su nombre.
+  const yo = personaDeLogin(headers().get("x-hq-user"));
+
   return (
     <div className="mx-auto max-w-5xl">
       <LlamadasHoy
+        yo={yo}
         filasIniciales={filas}
         llamadasHoy={resumen.llamadas_hoy}
         elegiblesHoy={elegibles}

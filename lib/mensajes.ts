@@ -1,12 +1,17 @@
-import type { Prospect } from "./types";
+import { DIAS_PRUEBA, type Prospect } from "./types";
 
 /**
  * Plantillas de mensajes comerciales — vienen del paquete
  * estrategia-comercial/MENSAJES_PROSPECCION_RESPONDO.md (jul-2026).
  * Reglas vigentes: el primer mensaje NO vende, máximo 3–4 toques,
- * nunca "¿viste mi mensaje?", y NO se ofrece piloto gratis (se ofrece
- * la demo pública y el primer mes de servicio gratis: el cliente prueba el mes 1
- * sin pagar la mensualidad; el setup se cobra normal).
+ * nunca "¿viste mi mensaje?", y NO se ofrece piloto gratis (se ofrece la demo
+ * pública y los 14 días de prueba sin costo).
+ *
+ * OJO — corregido 19-ago-2026: estas plantillas seguían ofreciendo "el primer
+ * mes de servicio gratis" y cobro de implementación. Las dos cosas cambiaron en
+ * agosto (setup $0 y 14 días de prueba, ver lib/types.ts) y el resto del código
+ * ya lo reflejaba; acá quedó vivo el texto de julio, que es el que llegaba al
+ * cliente. Si cambian las condiciones, ESTE archivo hay que revisarlo también.
  *
  * El link de la demo se toma de NEXT_PUBLIC_DEMO_LINK (Vercel). Si no
  * está configurado queda el marcador [link demo] para reemplazar a mano.
@@ -49,14 +54,14 @@ export const PLANTILLAS: PlantillaMensaje[] = [
     label: "Post-demo / reunión (mismo día)",
     sugeridaEn: ["reunion"],
     genera: () =>
-      `Gracias por el tiempo de hoy. Te resumo lo que vimos: el asistente respondería tus consultas 24/7, cotizaría con tu lista de precios y te dejaría registrado cada interesado. Plan recomendado: [plan] — implementación $[Y] (única vez) y el primer mes de servicio va sin costo: lo pruebas funcionando y desde el mes 2 pagas $[X]/mes, solo si te sirve. Si me mandas tu lista de precios y preguntas frecuentes esta semana, lo tienes andando antes de [fecha]. ¿Partimos?`,
+      `Gracias por el tiempo de hoy. Te resumo lo que vimos: el asistente respondería tus consultas 24/7, cotizaría con tu lista de precios y te dejaría registrado cada interesado. Plan recomendado: [plan] — sin costo de implementación, y parte con ${DIAS_PRUEBA} días de prueba: lo dejamos funcionando con tu información real y recién después decides. Si me mandas tu lista de precios y preguntas frecuentes esta semana, lo tienes andando antes de [fecha]. ¿Partimos?`,
   },
   {
     id: "reactivacion",
     label: "Reactivación (2–4 semanas frío)",
     sugeridaEn: ["contactado", "respondio"],
     genera: () =>
-      `Hola 👋 Hace unas semanas conversamos sobre responder al tiro los WhatsApp de tu negocio. Te cuento que ahora el primer mes de servicio va gratis: lo dejamos funcionando y solo sigues si te sirve. Si todavía está en tu radar, retomamos donde quedamos — y si ya no, dime y no te molesto más 🙂`,
+      `Hola 👋 Hace unas semanas conversamos sobre responder al tiro los WhatsApp de tu negocio. Te cuento que ahora parte con ${DIAS_PRUEBA} días de prueba sin costo y sin cobro de implementación: lo dejamos funcionando y solo sigues si te sirve. Si todavía está en tu radar, retomamos donde quedamos — y si ya no, dime y no te molesto más 🙂`,
   },
 ];
 

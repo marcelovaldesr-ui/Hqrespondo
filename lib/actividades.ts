@@ -73,7 +73,12 @@ export interface NuevaActividad {
  */
 export async function registrarActividad(a: NuevaActividad): Promise<void> {
   try {
-    await db().from("actividades").insert({
+    // OJO: supabase-js NO lanza cuando la base rechaza el insert — devuelve
+    // { error } y sigue como si nada. Con solo try/catch, una restricción rota
+    // o un permiso faltante hacía desaparecer la línea de bitácora en silencio
+    // (detectado 19-ago-2026 probando Leads Foco: el lead se actualizaba y la
+    // actividad no quedaba, sin un solo error en el log).
+    const { error } = await db().from("actividades").insert({
       prospect_id: a.prospect_id ?? null,
       contacto: a.contacto ?? "",
       actor: a.actor ?? "",
@@ -82,6 +87,7 @@ export async function registrarActividad(a: NuevaActividad): Promise<void> {
       resultado: a.resultado,
       nota: (a.nota ?? "").slice(0, 500),
     });
+    if (error) console.error("[actividades] la base rechazó el registro:", error.message, error.details ?? "");
   } catch (e) {
     console.error("[actividades] no se pudo registrar:", e);
   }

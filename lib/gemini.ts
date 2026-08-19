@@ -1,5 +1,9 @@
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 const MODELO_RESPALDO = "gemini-2.5-flash";
+// Segundo respaldo. Existe porque GEMINI_MODEL suele SER gemini-2.5-flash:
+// en ese caso el "failover" anterior reintentaba contra el mismo modelo
+// saturado y el 503 llegaba igual al usuario (visto 19-ago probando Isabel).
+const MODELO_RESPALDO_2 = "gemini-2.5-flash-lite";
 
 // Un modelo saturado a veces NO responde 503: simplemente se queda colgado.
 // Sin timeout, ese cuelgue congela la función serverless completa hasta que
@@ -74,6 +78,9 @@ export async function gemini(
 
   if (!res.ok && [429, 500, 503].includes(res.status) && principal !== MODELO_RESPALDO) {
     res = await llamarConTimeout(MODELO_RESPALDO, prompt, undefined, generationConfig);
+  }
+  if (!res.ok && [429, 500, 503].includes(res.status)) {
+    res = await llamarConTimeout(MODELO_RESPALDO_2, prompt, undefined, generationConfig);
   }
 
   if (!res.ok) {

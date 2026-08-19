@@ -16,12 +16,14 @@ import {
   type Etapa,
   type Plan,
 } from "@/lib/types";
+import ProtocoloReunion from "./ProtocoloReunion";
+import { DIAS_DEMO, RESULTADO_DEMO_LABEL, type ResultadoDemo } from "@/lib/types";
 
 const ETAPAS_ACTIVAS: Etapa[] = ["contactado", "demo", "propuesta"];
 
 /**
  * Señales de atención de una oportunidad (reglas simples):
- * follow-up vencido > detenida 5+ días > demo sin fecha > propuesta sin respuesta.
+ * follow-up vencido > detenida 5+ días > reunión sin fecha > propuesta sin respuesta.
  */
 function seniales(d: Deal): { texto: string; cls: string } | null {
   if (!ETAPAS_ACTIVAS.includes(d.etapa)) return null;
@@ -42,9 +44,18 @@ function seniales(d: Deal): { texto: string; cls: string } | null {
           : `Sin movimiento hace ${diasQuieta} d`,
       cls: "border-warn/35 bg-warn/[0.08] text-warn",
     };
+  // La demo de 2 semanas es el centro del pitch: si vence sin resultado, el
+  // prospecto se enfría solo y nadie se entera.
+  if (d.demo_resultado === "en_curso" && d.demo_termino) {
+    const dias = Math.ceil((new Date(d.demo_termino).getTime() - Date.now()) / 86400000);
+    if (dias < 0)
+      return { texto: `Demo terminó hace ${Math.abs(dias)}d — pedir el cierre`, cls: "border-danger/40 bg-danger/10 text-danger" };
+    if (dias <= 3)
+      return { texto: `Demo termina en ${dias}d — preparar el cierre`, cls: "border-warn/40 bg-warn/10 text-warn" };
+  }
   if (d.etapa === "demo" && !d.fecha_proxima)
     return {
-      texto: "Demo sin fecha — agendar",
+      texto: "Reunión sin fecha — agendar",
       cls: "border-accent/35 bg-accent/[0.06] text-accent",
     };
   return null;
@@ -81,6 +92,9 @@ interface DealDraft {
   proxima_accion: string;
   fecha_proxima: string;
   notas: string;
+  demo_inicio: string;
+  demo_termino: string;
+  demo_resultado: ResultadoDemo;
 }
 
 export default function Kanban({ deals }: { deals: Deal[] }) {
@@ -91,6 +105,7 @@ export default function Kanban({ deals }: { deals: Deal[] }) {
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DealDraft | null>(null);
+  const [protocolo, setProtocolo] = useState<Deal | null>(null);
   const [copiado, setCopiado] = useState<string | null>(null);
 
   const activos = deals.filter((d) =>
@@ -158,6 +173,9 @@ export default function Kanban({ deals }: { deals: Deal[] }) {
       proxima_accion: d.proxima_accion ?? "",
       fecha_proxima: d.fecha_proxima ?? "",
       notas: d.notas ?? "",
+      demo_inicio: d.demo_inicio ?? "",
+      demo_termino: d.demo_termino ?? "",
+      demo_resultado: d.demo_resultado ?? "",
     });
   }
 
@@ -174,6 +192,9 @@ export default function Kanban({ deals }: { deals: Deal[] }) {
         proxima_accion: draft.proxima_accion || null,
         fecha_proxima: draft.fecha_proxima || null,
         notas: draft.notas || null,
+        demo_inicio: draft.demo_inicio || null,
+        demo_termino: draft.demo_termino || null,
+        demo_resultado: draft.demo_resultado ?? "",
       }),
     });
     setSaving(false);
@@ -354,6 +375,48 @@ export default function Kanban({ deals }: { deals: Deal[] }) {
                             Eliminar
                           </button>
                           <span className="flex gap-2">
+                            <span className="mb-1.5 block w-full">
+                              <span className="lbl mb-1 block">Prueba de concepto (2 semanas)</span>
+                              <span className="flex flex-wrap gap-1.5">
+                                <input
+                                  type="date"
+                                  className="input !w-auto !py-1 text-[11px]"
+                                  value={draft.demo_inicio ?? ""}
+                                  onChange={(e) => {
+                                    const ini = e.target.value;
+                                    // El término se calcula solo: son 2 semanas
+                                    // en los 18 correos, no un campo a criterio.
+                                    const fin = ini
+                                      ? new Date(new Date(ini).getTime() + DIAS_DEMO * 86400000)
+                                          .toISOString()
+                                          .slice(0, 10)
+                                      : "";
+                                    setDraft({
+                                      ...draft,
+                                      demo_inicio: ini,
+                                      demo_termino: fin,
+                                      demo_resultado: draft.demo_resultado || (ini ? "en_curso" : ""),
+                                    });
+                                  }}
+                                />
+                                <span className="self-center font-mono text-[10px] text-ink-dim">
+                                  {draft.demo_termino ? `→ ${draft.demo_termino}` : "→ +14 días"}
+                                </span>
+                                <select
+                                  className="input !w-auto !py-1 text-[11px]"
+                                  value={draft.demo_resultado ?? ""}
+                                  onChange={(e) =>
+                                    setDraft({ ...draft, demo_resultado: e.target.value as typeof draft.demo_resultado })
+                                  }
+                                >
+                                  {(Object.keys(RESULTADO_DEMO_LABEL) as (keyof typeof RESULTADO_DEMO_LABEL)[]).map((k) => (
+                                    <option key={k} value={k}>
+                                      {RESULTADO_DEMO_LABEL[k]}
+                                    </option>
+                                  ))}
+                                </select>
+                              </span>
+                            </span>
                             <button onClick={() => setEditId(null)} className="btn-ghost px-2.5 py-1">
                               Cancelar
                             </button>
@@ -396,6 +459,18 @@ export default function Kanban({ deals }: { deals: Deal[] }) {
                       <div className="font-mono text-[9.5px] text-ink-faint">
                         Setup {clp(d.valor_setup)}
                       </div>
+                      {d.demo_resultado && (
+                        <div className="mt-1.5 flex items-center gap-1.5">
+                          <span className="chip !text-[9.5px]">
+                            {RESULTADO_DEMO_LABEL[d.demo_resultado]}
+                          </span>
+                          {d.demo_termino && d.demo_resultado === "en_curso" && (
+                            <span className="font-mono text-[9.5px] text-ink-dim">
+                              hasta {d.demo_termino}
+                            </span>
+                          )}
+                        </div>
+                      )}
                       {alerta && (
                         <div
                           className={`mt-2.5 rounded-lg border px-2 py-1.5 text-[10.5px] font-medium ${alerta.cls}`}
@@ -428,6 +503,15 @@ export default function Kanban({ deals }: { deals: Deal[] }) {
                         >
                           Editar
                         </button>
+                        {d.etapa === "demo" && (
+                          <button
+                            onClick={() => setProtocolo(d)}
+                            className="btn-ghost px-2 py-0.5"
+                            title="Protocolo de la Guía de Agendamiento: pasos al agendar y los 4 recordatorios listos para copiar."
+                          >
+                            Reunión
+                          </button>
+                        )}
                         <button
                           onClick={() => copiarPropuesta(d)}
                           className="btn-ghost px-2 py-0.5"
@@ -466,6 +550,13 @@ export default function Kanban({ deals }: { deals: Deal[] }) {
         </a>{" "}
         para monitorear su bot y su mensualidad.
       </p>
+      {protocolo && (
+        <ProtocoloReunion
+          empresa={protocolo.nombre_negocio}
+          onCerrar={() => setProtocolo(null)}
+        />
+      )}
+
     </div>
   );
 }

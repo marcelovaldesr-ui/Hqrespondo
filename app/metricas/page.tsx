@@ -5,6 +5,8 @@ import {
   calibracionScore,
   capacidadInversa,
   embudoPropio,
+  marcadorLlamadas,
+  saludBase,
 } from "@/lib/metricas";
 import { estadoCadencia } from "@/lib/cadencia";
 
@@ -16,15 +18,18 @@ const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
 export default async function MetricasPage({
   searchParams,
 }: {
-  searchParams?: { meta?: string };
+  searchParams?: { meta?: string; dias?: string };
 }) {
   const meta = Math.min(Math.max(Number(searchParams?.meta) || 5, 1), 50);
+  const dias = [7, 30, 90].includes(Number(searchParams?.dias)) ? Number(searchParams?.dias) : 7;
 
-  const [cal, embudo, cap, cad] = await Promise.all([
+  const [cal, embudo, cap, cad, marcador, salud] = await Promise.all([
     calibracionScore(),
     embudoPropio(),
     capacidadInversa(meta),
     estadoCadencia(10),
+    marcadorLlamadas(dias),
+    saludBase(),
   ]);
 
   const maxTasa = Math.max(...cal.tramos.map((t) => t.tasa), 0.01);
@@ -47,6 +52,147 @@ export default async function MetricasPage({
         con qué incentivo. La única vara que sirve es la serie propia — por eso cada
         porcentaje viene con su <b className="text-ink-soft">n</b>.
       </p>
+
+      {/* -------------------------------------------- MARCADOR POR PERSONA */}
+      <section className="panel-hot brackets mb-3 p-5">
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+          <p className="lbl">Marcador de llamadas · por persona</p>
+          <span className="flex gap-1">
+            {[7, 30, 90].map((n) => (
+              <Link
+                key={n}
+                href={`/metricas?dias=${n}${meta !== 5 ? `&meta=${meta}` : ""}`}
+                className={`btn-ghost px-2 py-0.5 ${n === dias ? "border-brand/50 text-brand" : ""}`}
+              >
+                {n}d
+              </Link>
+            ))}
+          </span>
+        </div>
+        <p className="mb-4 max-w-3xl text-[12.5px] leading-relaxed text-ink-mut">
+          Todo sale de la bitácora: cada llamada registrada en Llamadas del día o en
+          Leads Foco suma acá, con la persona que la marcó. &quot;Reuniones&quot; cuenta
+          los <b className="text-ink-soft">Interesado</b> / <b className="text-ink-soft">Éxito</b> —
+          la moneda de avance de los dos motores.
+        </p>
+
+        <table className="w-full text-sm">
+          <thead>
+            <tr>
+              <th className="lbl py-2 text-left font-normal">Persona</th>
+              <th className="lbl py-2 text-right font-normal">Llamadas</th>
+              <th className="lbl py-2 text-right font-normal">Contestaron</th>
+              <th className="lbl py-2 text-right font-normal">Conexión</th>
+              <th className="lbl py-2 text-right font-normal">Reuniones</th>
+              <th className="lbl w-1/3 py-2 pl-4 text-left font-normal">&nbsp;</th>
+            </tr>
+          </thead>
+          <tbody>
+            {marcador.filas.map((f) => {
+              const maxLlam = Math.max(1, ...marcador.filas.map((x) => x.llamadas));
+              return (
+                <tr key={f.persona} className="data-row">
+                  <td className="py-2 text-[13px] text-ink">{f.persona}</td>
+                  <td className="num py-2 text-right font-semibold text-ink">{f.llamadas}</td>
+                  <td className="num py-2 text-right text-ink-soft">{f.contestaron}</td>
+                  <td className="num py-2 text-right text-ink-soft">
+                    {f.tasa === null ? "—" : pct(f.tasa)}
+                    {f.llamadas > 0 && f.llamadas < N_MINIMO_CONFIABLE && (
+                      <span className="ml-1.5 text-[10px] uppercase text-warn">n bajo</span>
+                    )}
+                  </td>
+                  <td className="num py-2 text-right font-semibold text-ok">{f.reuniones}</td>
+                  <td className="py-2 pl-4">
+                    <span className="meter">
+                      <span
+                        className="meter-fill"
+                        style={{ width: `${(f.llamadas / maxLlam) * 100}%` }}
+                      />
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        {marcador.filas.every((f) => f.llamadas === 0) && (
+          <p className="mt-3 rounded-lg border border-line bg-surface-3/60 p-3 text-[12px] text-ink-dim">
+            Sin llamadas registradas con persona en los últimos {dias} días. El contador
+            parte cuando cada uno elige su nombre en el selector &quot;¿Quién llama?&quot;
+            de Llamadas del día o de Leads Foco.
+          </p>
+        )}
+        {marcador.sinPersona > 0 && (
+          <p className="mt-2 text-[11px] text-ink-dim">
+            Hay {marcador.sinPersona} llamada{marcador.sinPersona === 1 ? "" : "s"} del
+            período sin persona registrada (anteriores al selector). Se cuentan en el
+            embudo, no acá.
+          </p>
+        )}
+      </section>
+
+      {/* --------------------------------------------------- SALUD DE LA BASE */}
+      <section className="panel mb-3 p-5">
+        <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
+          <p className="lbl">Salud de la base</p>
+          <span className="font-mono text-[10.5px] text-ink-dim">
+            {salud.suprimidos} números en supresión (no se tocan nunca)
+          </span>
+        </div>
+        <p className="mb-4 max-w-3xl text-[12.5px] leading-relaxed text-ink-mut">
+          La base es un activo que se deprecia: los números se queman, los leads se
+          duermen, las tandas se agotan. Estos contadores existen para verlo venir con
+          semanas de anticipación — no cuando la cola amanezca vacía.
+        </p>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <p className="mb-2 text-[12.5px] font-semibold text-ink">
+              Llamadas del día <span className="font-normal text-ink-dim">· Google Maps · {salud.llamadas.total} prospectos</span>
+            </p>
+            <ul className="space-y-1.5">
+              {[
+                { n: salud.llamadas.elegibles, t: "elegibles hoy", d: "la cola viva; si baja de ~80 hay que cargar tanda nueva", warn: salud.llamadas.elegibles < 80 },
+                { n: salud.llamadas.dormidos, t: "dormidos 14+ días", d: "elegibles que nadie ha tocado — se enfrían", warn: salud.llamadas.dormidos > 20 },
+                { n: salud.llamadas.quemados, t: "quemados (4 intentos)", d: "salieron solos; candidatos a reciclar en 90 días", warn: false },
+                { n: salud.llamadas.descartados, t: "descartados", d: "número malo o dijeron que no", warn: false },
+                { n: salud.llamadas.sinTelefono, t: "sin teléfono", d: "no se pueden marcar", warn: false },
+              ].map((f) => (
+                <li key={f.t} className="flex items-baseline gap-2.5 rounded-lg border border-line bg-surface-3/50 px-3 py-1.5">
+                  <span className={`num w-10 shrink-0 text-right text-[14px] font-semibold ${f.warn ? "text-warn" : "text-ink"}`}>{f.n}</span>
+                  <span className="text-[12px] text-ink-soft">{f.t}</span>
+                  <span className="ml-auto text-right text-[10.5px] leading-tight text-ink-dim">{f.d}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="mb-2 text-[12.5px] font-semibold text-ink">
+              Leads Foco <span className="font-normal text-ink-dim">· decisores · {salud.foco.total} leads</span>
+            </p>
+            <ul className="space-y-1.5">
+              {[
+                { n: salud.foco.trabajables, t: "trabajables", d: "teléfono + persona + encaje: el oro", warn: salud.foco.trabajables < 15 },
+                { n: salud.foco.porInvestigar, t: "por investigar", d: "encajan; falta conseguir persona o número", warn: false },
+                { n: salud.foco.retirados, t: "retirados (3 sin contestar)", d: "vuelven solo con número nuevo", warn: false },
+                { n: salud.foco.noEncajan, t: "no encajan", d: "rubro o forma de operar incompatible", warn: false },
+              ].map((f) => (
+                <li key={f.t} className="flex items-baseline gap-2.5 rounded-lg border border-line bg-surface-3/50 px-3 py-1.5">
+                  <span className={`num w-10 shrink-0 text-right text-[14px] font-semibold ${f.warn ? "text-warn" : "text-ink"}`}>{f.n}</span>
+                  <span className="text-[12px] text-ink-soft">{f.t}</span>
+                  <span className="ml-auto text-right text-[10.5px] leading-tight text-ink-dim">{f.d}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-[11px] leading-relaxed text-ink-dim">
+              Cuando &quot;trabajables&quot; baja de ~15, toca investigar la cola de
+              escritorio (<Link href="/foco?cola=investigar" className="underline">Por investigar</Link>)
+              o importar la próxima tanda de la cantera.
+            </p>
+          </div>
+        </div>
+      </section>
 
       {/* ---------------------------------------------- CALIBRACIÓN DEL SCORE */}
       <section className="panel-hot brackets mb-3 p-5">

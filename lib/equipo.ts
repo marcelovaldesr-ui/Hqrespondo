@@ -44,6 +44,42 @@ export const SOCIOS: Socio[] = [
   { nombre: "Tomás", rol: "Comercial y Ventas" },
 ];
 
+/** No socios, pero sí del equipo. Amaro es el vendedor: su día es llamar y
+ *  prospectar, y sus números viven en el marcador de /metricas. */
+export const VENDEDORES: Socio[] = [
+  { nombre: "Amaro", rol: "Ventas y Prospección" },
+];
+
+/** Los 4 que descuelgan el teléfono. Es la lista de los selectores de
+ *  "¿quién llama?" y de las filas del marcador. Los objetivos semanales
+ *  siguen siendo por socio a propósito: son compromisos de dirección,
+ *  no de operación. */
+export const EQUIPO: Socio[] = [...SOCIOS, ...VENDEDORES];
+
+/**
+ * Traduce el usuario del login al nombre del equipo.
+ *
+ * El middleware ya pone en `x-hq-user` quién se autenticó, y media docena de
+ * endpoints (roadmap, decisiones, gastos, growth) lo venían usando para firmar
+ * lo que cada uno crea. El registro de llamadas era el único que NO lo usaba:
+ * pedía el nombre a mano en un selector, cuando el sistema ya lo sabía. Un
+ * paso manual que se puede olvidar es un paso que se va a olvidar — y una
+ * llamada sin autor no aparece en el marcador de nadie.
+ *
+ * La comparación ignora mayúsculas y tildes porque el login suele ser "tomas"
+ * y el nombre del equipo es "Tomás".
+ */
+export function personaDeLogin(login?: string | null): string {
+  const l = (login ?? "").trim();
+  if (!l) return "";
+  const norm = (x: string) =>
+    x.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const encontrado = EQUIPO.find((e) => norm(e.nombre) === norm(l));
+  // Si el login no calza con nadie del equipo se devuelve tal cual: es mejor
+  // firmar "hq_admin" que dejar la llamada sin autor.
+  return encontrado ? encontrado.nombre : l;
+}
+
 export interface ObjetivoSemana {
   id: string;
   semana: string; // YYYY-MM-DD (lunes)

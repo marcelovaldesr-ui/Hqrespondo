@@ -250,3 +250,150 @@ export async function capacidadInversa(clientesMeta = 5): Promise<Capacidad> {
 
   return { clientesMeta, pasos: pasos.reverse(), algunaEstimada };
 }
+
+// ------------------------------------------------------------------ MARCADOR
+
+import { EQUIPO } from "@/lib/equipo";
+
+export interface FilaMarcador {
+  persona: string;
+  llamadas: number;
+  contestaron: number;
+  /** contestaron / llamadas, null si no hay llamadas. */
+  tasa: number | null;
+  reuniones: number;
+}
+
+export interface Marcador {
+  desde: string;
+  filas: FilaMarcador[];
+  /** Llamadas viejas sin persona registrada (antes del selector de actor). */
+  sinPersona: number;
+}
+
+/**
+ * Marcador de llamadas por persona: "Amaro hizo 100 llamadas, contestaron 30,
+ * agendó 3". Sale ENTERO de la bitácora — los dos motores escriben ahí — así
+ * que un número de esta tabla y uno del embudo nunca pueden discrepar.
+ *
+ * "Reuniones" cuenta los resultados `interesado`: es donde caen el "Éxito" de
+ * Leads Foco y el "Interesado" de Llamadas del día. Es la moneda de avance de
+ * los dos motores, no una métrica nueva.
+ */
+export async function marcadorLlamadas(dias = 7): Promise<Marcador> {
+  const desde = new Date(Date.now() - dias * 86400_000).toISOString();
+  const { data, error } = await db()
+    .from("actividades")
+    .select("actor,resultado")
+    .eq("canal", "llamada")
+    .gte("created_at", desde);
+  if (error) throw new Error(error.message);
+
+  const filasRaw = (data ?? []) as { actor: string; resultado: Resultado }[];
+  const por = new Map<string, FilaMarcador>();
+  for (const s of EQUIPO) {
+    por.set(s.nombre, { persona: s.nombre, llamadas: 0, contestaron: 0, tasa: null, reuniones: 0 });
+  }
+  let sinPersona = 0;
+  for (const a of filasRaw) {
+    const actor = (a.actor ?? "").trim();
+    const fila = por.get(actor);
+    if (!fila) {
+      // Actor vacío o un nombre que no está en el equipo: se cuenta aparte en
+      // vez de perderse, para que el total siempre cuadre con la bitácora.
+      sinPersona++;
+      continue;
+    }
+    fila.llamadas++;
+    if (CONECTADOS.includes(a.resultado)) fila.contestaron++;
+    if (a.resultado === "interesado") fila.reuniones++;
+  }
+  for (const f of por.values()) f.tasa = f.llamadas ? f.contestaron / f.llamadas : null;
+
+  return {
+    desde,
+    // El que más llama arriba. Amaro debería vivir ahí.
+    filas: [...por.values()].sort((a, b) => b.llamadas - a.llamadas),
+    sinPersona,
+  };
+}
+
+// -------------------------------------------------------------- SALUD BASE
+
+import { ENCAJE_RANK } from "@/lib/encaje";
+
+export interface SaludBase {
+  llamadas: {
+    total: number;
+    elegibles: number;      // nuevos, score>=70, <4 intentos: la cola viva
+    quemados: number;       // 4 intentos sin contacto: se retiraron solos
+    descartados: number;
+    sinTelefono: number;
+    dormidos: number;       // elegibles que nadie toca hace 14+ días
+  };
+  foco: {
+    total: number;
+    trabajables: number;    // teléfono + persona + encaje
+    porInvestigar: number;  // encajan, falta el dato
+    retirados: number;
+    noEncajan: number;
+  };
+  suprimidos: number;
+}
+
+/**
+ * Salud de la base — la foto honesta del activo comercial.
+ *
+ * La base de datos ES un activo que se deprecia: los números se queman, los
+ * leads se duermen y las tandas se agotan. Este panel existe para que eso se
+ * vea venir con semanas de anticipación, no cuando la cola amanece vacía.
+ * Cada número trae al lado la acción que lo mueve.
+ */
+export async function saludBase(): Promise<SaludBase> {
+  const s = db();
+  const hace14d = new Date(Date.now() - 14 * 86400_000).toISOString();
+
+  const [pros, foco, sup] = await Promise.all([
+    s.from("prospects").select("estado,score,telefono,intentos_llamada,ultimo_intento_llamada"),
+    s.from("leads_foco").select("estado,telefono,contacto,encaje,nota"),
+    s.from("supresiones").select("id", { count: "exact", head: true }),
+  ]);
+
+  const P = (pros.data ?? []) as {
+    estado: string; score: number | null; telefono: string | null;
+    intentos_llamada: number | null; ultimo_intento_llamada: string | null;
+  }[];
+  const F = (foco.data ?? []) as {
+    estado: string; telefono: string; contacto: string; encaje: keyof typeof ENCAJE_RANK; nota: string;
+  }[];
+
+  const elegible = (p: (typeof P)[number]) =>
+    p.estado === "nuevo" && (p.score ?? 0) >= 70 && !!p.telefono?.trim() && (p.intentos_llamada ?? 0) < 4;
+
+  const activo = (f: (typeof F)[number]) => ["nuevo", "contactando"].includes(f.estado);
+
+  return {
+    llamadas: {
+      total: P.length,
+      elegibles: P.filter(elegible).length,
+      quemados: P.filter((p) => p.estado === "nuevo" && (p.intentos_llamada ?? 0) >= 4).length,
+      descartados: P.filter((p) => p.estado === "descartado").length,
+      sinTelefono: P.filter((p) => !p.telefono?.trim()).length,
+      dormidos: P.filter(
+        (p) => elegible(p) && (!p.ultimo_intento_llamada || p.ultimo_intento_llamada < hace14d),
+      ).length,
+    },
+    foco: {
+      total: F.length,
+      trabajables: F.filter(
+        (f) => activo(f) && f.telefono.trim() && f.contacto.trim() && ENCAJE_RANK[f.encaje] >= 3,
+      ).length,
+      porInvestigar: F.filter(
+        (f) => activo(f) && ENCAJE_RANK[f.encaje] >= 2 && !(f.telefono.trim() && f.contacto.trim()),
+      ).length,
+      retirados: F.filter((f) => f.estado === "descartado" && f.nota.includes("Retirado:")).length,
+      noEncajan: F.filter((f) => ENCAJE_RANK[f.encaje] < 2).length,
+    },
+    suprimidos: sup.count ?? 0,
+  };
+}

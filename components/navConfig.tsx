@@ -10,9 +10,11 @@ export const NAV_GROUPS: NavGroup[] = [
     links: [
       { href: "/dashboard", label: "Centro de mando", icon: "dashboard", hint: "Estado general y prioridades" },
       { href: "/llamadas", label: "Llamadas del día", icon: "phone", hint: "Lista para marcar" },
+      { href: "/foco", label: "Leads Foco", icon: "foco", hint: "Decisores en empresas medianas" },
       { href: "/brief", label: "Brief del día", icon: "file", hint: "Resumen generado" },
       { href: "/metricas", label: "Métricas propias", icon: "metricas", hint: "Calibración, embudo y capacidad" },
       { href: "/equipo", label: "Objetivos del equipo", icon: "equipo", hint: "Qué se comprometió cada socio esta semana" },
+      { href: "/isabel", label: "Isabel", icon: "isabel", hint: "La 4ª del equipo — pregúntale lo que sea del negocio" },
     ],
   },
   {
@@ -138,6 +140,23 @@ export function NavIcon({ name, size = 14 }: { name: string; size?: number }) {
           <circle cx="11" cy="4.4" r="1.7" />
           <path d="M1.8 13.4c0-2 1.6-3.4 3.6-3.4s3.6 1.4 3.6 3.4" />
           <path d="M10.4 9.6c1.9 0 3.4 1.3 3.4 3.2" />
+        </svg>
+      );
+    case "isabel":
+      return (
+        <svg {...p}>
+          <path d="M2.2 8a5.8 5.8 0 0 1 5.8-5.8A5.8 5.8 0 0 1 13.8 8c0 3.2-2.6 5.2-5.8 5.2-.6 0-1.2-.07-1.75-.2L3.4 14l.55-2.4A5.55 5.55 0 0 1 2.2 8z" />
+          <circle cx="5.7" cy="8" r="0.7" fill="currentColor" stroke="none" />
+          <circle cx="8" cy="8" r="0.7" fill="currentColor" stroke="none" />
+          <circle cx="10.3" cy="8" r="0.7" fill="currentColor" stroke="none" />
+        </svg>
+      );
+    case "foco":
+      return (
+        <svg {...p}>
+          <circle cx="6.6" cy="5.2" r="2.5" />
+          <path d="M1.9 13.6c0-2.3 2.1-3.9 4.7-3.9 1.1 0 2.1.3 2.9.8" />
+          <path d="M11.4 8.6v4.8M9 11h4.8" />
         </svg>
       );
     case "phone":

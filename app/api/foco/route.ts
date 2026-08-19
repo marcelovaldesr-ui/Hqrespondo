@@ -1,0 +1,226 @@
+import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { CONECTA_FOCO, ESTADOS_FOCO, MAX_SIN_CONTESTAR, RESULTADO_CFG, RESULTADOS_FOCO, type ResultadoFoco } from "@/lib/foco";
+import { NIVELES_ENCAJE } from "@/lib/encaje";
+import { personaDeLogin } from "@/lib/equipo";
+import { PLAN_PRECIOS } from "@/lib/types";
+import { normalizarTelefono, registrarActividad } from "@/lib/actividades";
+
+/**
+ * /api/foco
+ *
+ *  POST  { id, resultado, nota?, actor? }  → registra el desenlace de un toque
+ *  PATCH { id, nota?, tags?, recordatorio?, estado? } → edición manual
+ *
+ * El POST hace TODO lo que implica una disposición, en un solo lugar:
+ * cambia el estado, reagenda si corresponde, suma el intento, escribe en la
+ * bitácora y suprime el número si la persona dijo que no. Repartir eso entre
+ * la UI y varios endpoints es la receta para que un día algo quede a medias.
+ */
+
+export async function POST(req: Request) {
+  try {
+    const b = await req.json();
+    const id = String(b.id ?? "");
+    const resultado = String(b.resultado ?? "") as ResultadoFoco;
+    if (!id) return NextResponse.json({ error: "falta id" }, { status: 400 });
+    if (!RESULTADOS_FOCO.includes(resultado)) {
+      return NextResponse.json({ error: "resultado inválido" }, { status: 400 });
+    }
+
+    const s = db();
+    const { data: lead, error: e1 } = await s
+      .from("leads_foco")
+      .select("id,empresa,contacto,cargo,telefono,industria,intentos,sin_contestar,nota")
+      .eq("id", id)
+      .single();
+    if (e1 || !lead) return NextResponse.json({ error: "lead no encontrado" }, { status: 404 });
+
+    const cfg = RESULTADO_CFG[resultado];
+    const ahora = new Date();
+    const nota = String(b.nota ?? "").trim();
+    const actor =
+      String(b.actor ?? "").trim() || personaDeLogin(req.headers.get("x-hq-user"));
+
+    const upd: Record<string, unknown> = {
+      ultimo_resultado: resultado,
+      ultimo_intento: ahora.toISOString(),
+      updated_at: ahora.toISOString(),
+    };
+    if (cfg.estado) upd.estado = cfg.estado;
+    if (cfg.cuentaIntento) upd.intentos = (lead.intentos ?? 0) + 1;
+
+    // Regla TGP: 3 sin contestar seguidas y el lead sale solo de la base.
+    // Cualquier respuesta humana —portero incluido— reinicia el contador,
+    // porque prueba que el número funciona; lo que retira es el número muerto.
+    let retirado = false;
+    if (resultado === "no_contesta") {
+      const seguidas = (lead.sin_contestar ?? 0) + 1;
+      upd.sin_contestar = seguidas;
+      if (seguidas >= MAX_SIN_CONTESTAR) {
+        retirado = true;
+        upd.estado = "descartado";
+        upd.recordatorio = null;
+      }
+    } else if (CONECTA_FOCO.includes(resultado) || resultado === "gatekeeper" || resultado === "derivo") {
+      upd.sin_contestar = 0;
+    }
+    if (retirado) {
+      // nada: el retiro ya fijó estado y recordatorio
+    } else if (cfg.reagendaDias !== null) {
+      const r = new Date(ahora);
+      r.setDate(r.getDate() + cfg.reagendaDias);
+      r.setHours(9, 0, 0, 0);
+      upd.recordatorio = r.toISOString();
+    } else {
+      // Un desenlace definitivo no debe dejar un recordatorio colgando: la
+      // fila volvería sola a una cola de la que ya salió.
+      upd.recordatorio = null;
+    }
+    let notaAcum = lead.nota ?? "";
+    if (nota) {
+      const linea = `[${ahora.toLocaleDateString("es-CL")} · ${cfg.label}] ${nota}`;
+      notaAcum = notaAcum ? `${notaAcum}\n${linea}` : linea;
+    }
+
+    // Número equivocado: el teléfono se saca de la ficha y se preserva en la
+    // nota. Dejarlo puesto era peor que borrarlo: el lead seguía encabezando
+    // la cola de hoy con un número que ya se sabía malo, para siempre.
+    // Al vaciarlo, `contactabilidad` (columna generada) se recalcula sola y el
+    // lead baja hasta que alguien consiga el número bueno.
+    if (resultado === "equivocado" && lead.telefono) {
+      upd.telefono = "";
+      const marca = `[${ahora.toLocaleDateString("es-CL")}] Número equivocado: ${lead.telefono} (se quitó de la ficha)`;
+      notaAcum = notaAcum ? `${notaAcum}\n${marca}` : marca;
+    }
+    if (retirado) {
+      const marca = `[${ahora.toLocaleDateString("es-CL")}] Retirado: ${MAX_SIN_CONTESTAR} llamadas sin contestar (regla de la base). Vuelve solo si se consigue otro número.`;
+      notaAcum = notaAcum ? `${notaAcum}\n${marca}` : marca;
+    }
+    if (notaAcum !== (lead.nota ?? "")) upd.nota = notaAcum;
+
+    const { error: e2 } = await s.from("leads_foco").update(upd).eq("id", id);
+    if (e2) throw new Error(e2.message);
+
+    await registrarActividad({
+      contacto: lead.telefono ?? "",
+      actor,
+      canal: "llamada",
+      tipo: "toque",
+      // La bitácora tiene su propio vocabulario, más chico. Se mapea lo que
+      // calza y el resto entra como "contactado" para no perder el toque.
+      resultado:
+        resultado === "no_contesta" ? "no_contesto"
+        : resultado === "gatekeeper" ? "gatekeeper"
+        : resultado === "exito" ? "interesado"
+        : resultado === "rechazo" || resultado === "no_contactar" ? "no_interesa"
+        : resultado === "equivocado" || resultado === "no_existe" ? "numero_malo"
+        : resultado === "no_aplica" || resultado === "duplicado" ? "fuera_icp"
+        : resultado === "llamar_mas_tarde" ? "seguimiento"
+        : "contactado",
+      nota: `${lead.empresa} · ${lead.contacto} — ${cfg.label}${nota ? ` · ${nota}` : ""}`,
+    });
+
+    if (cfg.suprime && lead.telefono) {
+      const valor = normalizarTelefono(lead.telefono);
+      if (valor) {
+        await s.from("supresiones").upsert(
+          { valor, tipo: "telefono", motivo: `Leads Foco — ${cfg.label}`, origen: "foco" },
+          { onConflict: "valor", ignoreDuplicates: true },
+        );
+      }
+    }
+
+    // Éxito = reunión agendada. Eso tiene que aparecer en el Pipeline, no
+    // quedarse viviendo dentro de Foco: el Kanban tiene una columna que se
+    // llama exactamente "Reunión agendada". Si ya existe un deal con ese nombre
+    // no se duplica (pudo haberse creado a mano).
+    let dealCreado = false;
+    if (resultado === "exito") {
+      try {
+        const { data: existe } = await s
+          .from("deals")
+          .select("id")
+          .ilike("nombre_negocio", lead.empresa)
+          .limit(1);
+        if (!existe?.length) {
+          const precios = PLAN_PRECIOS.crecimiento;
+          const { error: eDeal } = await s.from("deals").insert({
+            nombre_negocio: lead.empresa,
+            rubro: lead.industria || null,
+            plan: "crecimiento",
+            valor_setup: precios.setup,
+            valor_mensual: precios.mensual,
+            etapa: "demo",
+            proxima_accion: "Preparar la reunión agendada desde Leads Foco",
+            notas: [
+              `Origen: Leads Foco.`,
+              lead.contacto ? `Contacto: ${lead.contacto}${lead.cargo ? ` (${lead.cargo})` : ""}.` : "",
+              lead.telefono ? `Teléfono: ${lead.telefono}.` : "",
+              nota ? `Nota de la llamada: ${nota}` : "",
+            ].filter(Boolean).join(" "),
+          });
+          if (eDeal) console.error("[foco] no se pudo crear el deal:", eDeal.message);
+          else dealCreado = true;
+        }
+      } catch (e) {
+        // Si el deal falla, el registro del éxito NO se pierde: ya quedó en el
+        // lead y en la bitácora. Se avisa en la respuesta para que la UI lo diga.
+        console.error("[foco] error creando deal:", e);
+      }
+    }
+
+    return NextResponse.json({
+      ok: true,
+      estado: cfg.estado,
+      reagenda: retirado ? null : cfg.reagendaDias,
+      retirado,
+      dealCreado,
+    });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: Request) {
+  try {
+    const b = await req.json();
+    const id = String(b.id ?? "");
+    if (!id) return NextResponse.json({ error: "falta id" }, { status: 400 });
+
+    const upd: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (b.nota !== undefined) upd.nota = String(b.nota).slice(0, 4000);
+    // Validado contra la lista cerrada: un estado inventado rebotaría en el
+    // CHECK de la tabla como un 500 críptico en vez de un 400 que explica.
+    if (b.estado !== undefined) {
+      if (!ESTADOS_FOCO.includes(b.estado)) {
+        return NextResponse.json({ error: `estado inválido: ${b.estado}` }, { status: 400 });
+      }
+      upd.estado = b.estado;
+    }
+    // Campos de contacto editables desde la ficha. Existen porque la cola
+    // "Por investigar" produce exactamente esto —un nombre, un cargo, un
+    // número encontrados a mano— y sin esta puerta el hallazgo no tenía
+    // dónde anotarse más que en la nota, donde no ordena ninguna cola.
+    const EDITABLES = ["empresa", "contacto", "cargo", "telefono", "email", "web", "linkedin_contacto"] as const;
+    for (const campo of EDITABLES) {
+      if (b[campo] !== undefined) upd[campo] = String(b[campo]).trim().slice(0, 300);
+    }
+    if (upd.empresa === "") delete upd.empresa; // la empresa nunca queda vacía
+    if (b.recordatorio !== undefined) upd.recordatorio = b.recordatorio || null;
+    if (Array.isArray(b.tags)) upd.tags = b.tags.map(String).slice(0, 12);
+    // Corregir el encaje a mano lo deja marcado como manual, para que una
+    // reimportación no vuelva a pisarlo con lo que dice la regla.
+    if (b.encaje !== undefined && NIVELES_ENCAJE.includes(b.encaje)) {
+      upd.encaje = b.encaje;
+      upd.encaje_manual = true;
+      upd.encaje_motivo = String(b.encaje_motivo ?? "Corregido a mano por el equipo.").slice(0, 600);
+    }
+
+    const { error } = await db().from("leads_foco").update(upd).eq("id", id);
+    if (error) throw new Error(error.message);
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}

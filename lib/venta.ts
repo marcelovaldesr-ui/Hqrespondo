@@ -11,6 +11,113 @@
  * un clic, sin salir de HQ.
  */
 
+
+// ---------------------------------------------------------------- PRODUCTO
+
+/**
+ * Qué es Respondo HOY (ago-2026). Está acá porque HQ se escribió cuando
+ * Respondo era "un chatbot que contesta WhatsApp", y dejó de serlo: hoy son
+ * cuatro asistentes con oficios distintos y una plataforma donde el cliente
+ * ve, controla y mide lo que hacen.
+ *
+ * La guía interna lo dice con todas sus letras: la categoría importa más que
+ * la tecnología. "Es un chatbot para WhatsApp" hace que te comparen con un bot
+ * de $15.000 y con la función gratis de WhatsApp — y ahí ya perdiste.
+ */
+export const FRASE_CATEGORIA = {
+  mal: "Es un chatbot para WhatsApp.",
+  bien: "Es el turno de atención que hoy no tienes.",
+};
+
+export interface Asistente {
+  nombre: string;
+  oficio: string;
+  hace: string;
+  /** Cuál de los 4 momentos de dolor resuelve. */
+  resuelve: string;
+}
+
+export const ASISTENTES: Asistente[] = [
+  {
+    nombre: "Tino",
+    oficio: "Ventas y atención",
+    hace: "Contesta al instante, cotiza con los precios reales del negocio, ofrece horas concretas de la agenda y confirma la reserva. Deja anotado nombre, necesidad y clasificación de cada interesado. Deriva cuando hay duda, molestia o venta grande.",
+    resuelve: "Nadie contesta a las 22:00 del domingo y el cliente compra en otro lado.",
+  },
+  {
+    nombre: "Beto",
+    oficio: "Seguimiento y reactivación",
+    hace: "Retoma las cotizaciones que quedaron sin respuesta, ofrece alternativa cuando el precio fue la traba y despierta clientes que hace meses no vuelven. Máximo dos mensajes por motivo, solo en horario hábil, y quien pide no ser contactado no recibe nada más.",
+    resuelve: "La cotización muere callada: mandaste el precio y nadie volvió a escribir.",
+  },
+  {
+    nombre: "Vera",
+    oficio: "Postventa y satisfacción",
+    hace: "Pregunta cómo estuvo, una sola vez, después de cada venta o atención. Si quedó contento lo invita a dejar reseña en Google; si algo salió mal avisa al tiro con el caso resumido.",
+    resuelve: "El molesto se va sin decir nada y te enteras con la reseña de una estrella.",
+  },
+  {
+    nombre: "Isabel",
+    oficio: "Memoria interna (puertas adentro)",
+    hace: "NO habla con clientes: responde las preguntas internas del equipo con los documentos del propio negocio, citando el documento y la versión exacta. Dice que no sabe cuando algo no está escrito. Es complemento opcional, no viene por defecto — se vende como upsell del plan Empresa.",
+    resuelve: "Todo depende de preguntarle siempre a la misma persona.",
+  },
+];
+
+/** Lo que trae la plataforma. Se vende junto con los asistentes, no aparte. */
+export const PLATAFORMA: { modulo: string; que: string }[] = [
+  { modulo: "Bandeja", que: "WhatsApp e Instagram en un solo lugar, con lo urgente arriba. El dueño entra al chat y el asistente se calla ahí; se lo devuelve cuando termina y el cliente nunca nota el cambio." },
+  { modulo: "Agenda y reservas", que: "Lo más nuevo y lo que más cambia el día a día. Horas por profesional, bloqueos, sincroniza con Google Calendar, y una página de reservas propia para el Instagram o la web. Dos personas no pueden tomar la misma hora: lo impide la base de datos." },
+  { modulo: "Oportunidades", que: "Embudo que avanza solo según lo que detecta el asistente (nuevo → interesado → cotizado → ganado/perdido) y ficha por cliente. Las que llevan una semana sin respuesta se cierran solas." },
+  { modulo: "Resultados", que: "Cuánto ahorró en tiempo y plata (calculado con el sueldo mínimo legal, a propósito: es el piso público), qué parte contestó el asistente y un mapa de cuándo escriben — que muestra cuántos mensajes llegan con el local cerrado." },
+  { modulo: "Informe semanal", que: "Cada lunes, la IA lee las conversaciones de la semana y escribe qué pidieron los clientes, dónde se perdieron ventas y qué conviene ajustar. Frases, no gráficos." },
+];
+
+/** Canales vigentes. Instagram dejó de ser una promesa: está andando. */
+export const CANALES = {
+  whatsapp: "Canal principal, con el número oficial de Meta. Todo el equipo trabaja acá.",
+  instagram:
+    "Instagram Direct llega a la misma bandeja. Tino responde, cotiza y deriva igual. " +
+    "LÍMITE REAL: Instagram no deja reabrir una conversación pasadas 24 h sin que el cliente " +
+    "escriba primero, así que Beto trabaja hoy solo por WhatsApp. Es límite de Meta, no de Respondo.",
+};
+
+/** Resultados de clientes reales. Se dicen con la salvedad, siempre. */
+export const CASOS_REALES: { cliente: string; rubro: string; dato: string }[] = [
+  { cliente: "OdontoAndrauss", rubro: "clínica dental", dato: "-38% de horas perdidas por inasistencia" },
+  { cliente: "Qanttum Sport Club", rubro: "gimnasio", dato: "34% de contactos inactivos reactivados el primer mes" },
+  { cliente: "Propiver", rubro: "inmobiliaria", dato: "+45% más visitas a propiedades agendadas" },
+];
+
+export const SALVEDAD_CASOS =
+  "Cifras entregadas por cada negocio, medidas después de implementar. No son promedio garantizado: " +
+  "dependen del rubro, el volumen y el punto de partida.";
+
+/** Dónde NO conviene que el asistente cotice. Es criterio, no limitación. */
+export const NO_COTIZA =
+  "Si los precios cambian según medidas, materiales o cantidad —imprenta, maestranza— el asistente " +
+  "NO cotiza: se configura para tomar bien los datos y derivar. Prometer cotización ahí es la forma " +
+  "más rápida de que el piloto salga mal.";
+
+/** Competencia, con la respuesta lista. */
+export const COMPETENCIA: { quien: string; que: string; respuesta: string }[] = [
+  {
+    quien: "Vambe",
+    que: "Plataforma chilena para empresas grandes. Su plan comparable ronda $545.000/mes por 3.000 conversaciones, más implementación aparte.",
+    respuesta: "Los mismos cupos, por menos de la mitad, con la IA incluida y sin cobrar implementación.",
+  },
+  {
+    quien: "Wazaut y similares",
+    que: "Se contrata solo y se configura solo. Sin implementación incluida.",
+    respuesta: "Si tienes equipo técnico y tiempo, te sirven. Si quieres que funcione sin armarlo tú, eso es lo nuestro.",
+  },
+  {
+    quien: "Bots de $15.000",
+    que: "Menús de botones. El cliente termina apretando 3 para volver al menú.",
+    respuesta: "No competimos con eso. Competimos con lo que te cuestan las ventas que hoy se pierden.",
+  },
+];
+
 export interface Objecion {
   gatillo: string;
   respuesta: string;
@@ -133,21 +240,21 @@ export interface CriterioICP {
 export const CALIFICACION_ICP: CriterioICP[] = [
   {
     clave: "volumen",
-    pregunta: "¿Recibe 15+ consultas al día por WhatsApp?",
+    pregunta: "¿Recibe 15+ consultas al día por WhatsApp o Instagram?",
     bueno: "Sí — hay dolor real y volumen que justifica el servicio.",
     malo: "Menos de 15/día → todavía no le conviene. Anotar y seguir.",
   },
   {
     clave: "software",
-    pregunta: "¿Ya usa un software que resuelve la conversación? (AgendaPro, Reservo, Dentalink, MasterCar…)",
-    bueno: "No / lo usa mal → hay espacio para entrar.",
-    malo: "Sí y contento → el dolor ya está resuelto. Descartar.",
+    pregunta: "¿Ya usa un software que resuelve la conversación Y está contento? (AgendaPro, Reservo, Dentalink, MasterCar…)",
+    bueno: "No, o lo tiene pero igual contesta los mensajes a mano → hay espacio: Respondo trae bandeja, agenda y embudo propios.",
+    malo: "Sí y contento, con el WhatsApp atendido → el dolor ya está resuelto. Descartar.",
   },
   {
     clave: "repetitivo",
     pregunta: "¿Cotiza o agenda seguido, con preguntas repetidas?",
-    bueno: "Sí — es exactamente lo que el asistente automatiza mejor.",
-    malo: "Cada consulta es única y compleja → encaja menos.",
+    bueno: "Sí — y si además AGENDA HORAS, mejor todavía: la agenda es lo más nuevo y lo que más cambia el día a día.",
+    malo: "Cada consulta es única, o el precio depende de medidas/materiales (imprenta, maestranza) → ahí el asistente no cotiza, solo toma datos.",
   },
   {
     clave: "pago",

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { normalizarTelefono, registrarActividad, type Resultado as ResActividad } from "@/lib/actividades";
+import { personaDeLogin } from "@/lib/equipo";
 
 /**
  * POST /api/prospects/llamada — registra el RESULTADO de una llamada.
@@ -78,6 +79,11 @@ export async function POST(req: Request) {
       hour: "2-digit", minute: "2-digit", timeZone: "America/Santiago",
     });
 
+    // Quién llamó: lo que mande la pantalla, y si no, quién está conectado.
+    // El login es la fuente por defecto para que ninguna llamada quede sin autor.
+    const actor =
+      String(body.actor ?? "").trim().slice(0, 40) ||
+      personaDeLogin(req.headers.get("x-hq-user"));
     const dueno = String(body.dueno ?? "").trim();
     const contacto = String(body.contacto ?? "").trim();
     const nota = String(body.nota ?? "").trim();
@@ -119,6 +125,7 @@ export async function POST(req: Request) {
       await registrarActividad({
         prospect_id: p.id,
         contacto: p.telefono ?? "",
+        actor,
         canal: "llamada",
         tipo: "toque",
         resultado: A_BITACORA[resultado],

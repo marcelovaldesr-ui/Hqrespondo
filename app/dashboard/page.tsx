@@ -68,6 +68,23 @@ export default async function Dashboard() {
     console.error("[dashboard] cadencia:", e);
   }
 
+  // Leads Foco pendientes de hoy: activos, con teléfono y persona, con encaje,
+  // y sin recordatorio a futuro. Tolerante a que las migraciones 021/022 no
+  // estén aplicadas todavía: el dashboard no se cae por un motor nuevo.
+  let focoPendientes = 0;
+  try {
+    const { count } = await db()
+      .from("leads_foco")
+      .select("id", { count: "exact", head: true })
+      .in("estado", ["nuevo", "contactando"])
+      .in("encaje", ["alto", "medio"])
+      .gte("contactabilidad", 3)
+      .or(`recordatorio.is.null,recordatorio.lte.${new Date().toISOString()}`);
+    focoPendientes = count ?? 0;
+  } catch (e) {
+    console.error("[dashboard] leads_foco:", e);
+  }
+
   const s = db();
   const hoy = new Date().toISOString().slice(0, 10);
   const inicioMes = `${hoy.slice(0, 7)}-01`;
@@ -249,6 +266,12 @@ export default async function Dashboard() {
       texto: `Mover ${detenidas.length} oportunidad${detenidas.length === 1 ? "" : "es"} sin movimiento hace 5+ días`,
       href: "/pipeline",
       nivel: "warn",
+    });
+  if (focoPendientes > 0)
+    prioridades.push({
+      texto: `Trabajar ${focoPendientes} lead${focoPendientes === 1 ? "" : "s"} Foco con decisor y encaje (cola de hoy)`,
+      href: "/foco",
+      nivel: "brand",
     });
   if (hot.length > 0)
     prioridades.push({

@@ -39,9 +39,13 @@ export const ETAPAS = [
 ] as const;
 export type Etapa = (typeof ETAPAS)[number];
 
+// La clave interna sigue siendo "demo" (así está guardada en los deals de la
+// base); lo que cambia es cómo se LEE. El equipo habla de "reuniones", no de
+// "demos" — la reunión es donde se muestra la demo, pero lo que se agenda y
+// se celebra es la reunión. El tablero habla el idioma del equipo.
 export const ETAPA_LABEL: Record<Etapa, string> = {
   contactado: "Contactado",
-  demo: "Demo agendada",
+  demo: "Reunión agendada",
   propuesta: "Propuesta enviada",
   cliente: "Cliente 🎉",
   perdido: "Perdido",
@@ -71,10 +75,16 @@ export const ETAPA_LABEL: Record<Etapa, string> = {
  * ($24.990/$39.990/$69.990 + setup $99.990/$290.000/$590.000), que venía de
  * los precios de julio y quedó anulado. Migración 018.
  */
-export const PLANES = ["inicial", "crecimiento", "empresa"] as const;
+// "tino_solo" es un plan REAL que faltaba en HQ: un solo asistente, 800
+// conversaciones. Está en la tabla de la Guía interna de prospección
+// (ago-2026), que dice de sí misma: "esta tabla es la única versión válida".
+// Sin él no se podía cotizar al negocio chico que solo quiere a Tino, ni usar
+// el argumento que más mueve al plan Inicial (ver ARGUMENTO_INICIAL abajo).
+export const PLANES = ["tino_solo", "inicial", "crecimiento", "empresa"] as const;
 export type Plan = (typeof PLANES)[number];
 
 export const PLAN_LABEL: Record<Plan, string> = {
+  tino_solo: "Tino solo",
   inicial: "Inicial",
   crecimiento: "Crecimiento",
   empresa: "Empresa",
@@ -82,6 +92,7 @@ export const PLAN_LABEL: Record<Plan, string> = {
 
 /** Mensualidad NETA. El setup es 0: la instalación va incluida. */
 export const PLAN_PRECIOS: Record<Plan, { setup: number; mensual: number }> = {
+  tino_solo: { setup: 0, mensual: 120000 },
   inicial: { setup: 0, mensual: 149990 },
   crecimiento: { setup: 0, mensual: 269990 },
   empresa: { setup: 0, mensual: 449990 },
@@ -89,6 +100,7 @@ export const PLAN_PRECIOS: Record<Plan, { setup: number; mensual: number }> = {
 
 /** Conversaciones incluidas al mes. */
 export const PLAN_LIMITES: Record<Plan, number> = {
+  tino_solo: 800,
   inicial: 1200,
   crecimiento: 3000,
   empresa: 6000,
@@ -97,6 +109,7 @@ export const PLAN_LIMITES: Record<Plan, number> = {
 /** Precio NETO por conversación pasada del cupo. Nunca se corta el servicio:
  *  se avisa al 80% y al 100% del cupo. */
 export const PLAN_EXCEDENTE: Record<Plan, number> = {
+  tino_solo: 90,
   inicial: 80,
   crecimiento: 60,
   empresa: 50,
@@ -104,6 +117,40 @@ export const PLAN_EXCEDENTE: Record<Plan, number> = {
 
 /** Costo NETO de cada bot adicional sobre el plan contratado. */
 export const PRECIO_BOT_EXTRA = 20000;
+
+/** Qué asistentes incluye cada plan. Los nombres son producto, no apodos. */
+export const PLAN_ASISTENTES: Record<Plan, string> = {
+  tino_solo: "Solo Tino",
+  inicial: "Los 3 (Tino, Beto y Vera)",
+  crecimiento: "Todos",
+  empresa: "Todos + analítica especializada",
+};
+
+/** Canales por plan. La agenda entra recién en Crecimiento. */
+export const PLAN_CANALES: Record<Plan, string> = {
+  tino_solo: "WhatsApp",
+  inicial: "WhatsApp",
+  crecimiento: "WhatsApp + Instagram + agenda",
+  empresa: "Todo + analítica especializada",
+};
+
+/**
+ * El argumento que más mueve gente al plan Inicial, tal como está escrito en
+ * la guía: Tino solo más dos asistentes adicionales cuesta MÁS que el Inicial.
+ */
+export const ARGUMENTO_INICIAL =
+  `Los tres asistentes juntos cuestan menos que Tino solo más dos adicionales: ` +
+  `$120.000 + $20.000 + $20.000 = $160.000, contra $149.990 del plan Inicial.`;
+
+/** Qué cuenta como una conversación (la pregunta que sale en toda reunión). */
+export const DEFINICION_CONVERSACION =
+  "Todo el contacto con una misma persona dentro de 24 horas cuenta como UNA conversación.";
+
+/** El servicio no se corta al pasarse del cupo: se avisa al 80% y al 100%. */
+export const POLITICA_EXCEDENTE =
+  "El servicio nunca se corta si se pasan del cupo. Se avisa al 80% y al 100%, y el excedente " +
+  "se cobra POR CONVERSACIÓN — nunca en paquetes: \"$80 la conversación adicional\" suena mucho " +
+  "más barato que \"cada 300 más por $24.000\", y es exactamente lo mismo.";
 
 /** Días de prueba sin costo (reemplaza el "primer mes gratis" de julio). */
 export const DIAS_PRUEBA = 14;
@@ -139,6 +186,22 @@ export interface Prospect {
   updated_at: string;
 }
 
+/** La prueba de concepto de 2 semanas que promete la secuencia de correos. */
+export const RESULTADOS_DEMO = ["", "en_curso", "exitosa", "sin_uso", "no_convencio", "cancelada"] as const;
+export type ResultadoDemo = (typeof RESULTADOS_DEMO)[number];
+
+export const RESULTADO_DEMO_LABEL: Record<ResultadoDemo, string> = {
+  "": "Sin demo",
+  en_curso: "Demo en curso",
+  exitosa: "Demo exitosa",
+  sin_uso: "No la usaron",
+  no_convencio: "No convenció",
+  cancelada: "Cancelada",
+};
+
+/** Duración estándar de la prueba de concepto, en días. */
+export const DIAS_DEMO = 14;
+
 export interface Deal {
   id: string;
   prospect_id: string | null;
@@ -151,6 +214,9 @@ export interface Deal {
   proxima_accion: string | null;
   fecha_proxima: string | null;
   notas: string | null;
+  demo_inicio: string | null;
+  demo_termino: string | null;
+  demo_resultado: ResultadoDemo;
   created_at: string;
   updated_at: string;
 }

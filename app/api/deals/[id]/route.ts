@@ -10,6 +10,10 @@ const CAMPOS_EDITABLES = [
   "fecha_proxima",
   "notas",
   "nombre_negocio",
+  // Prueba de concepto de 2 semanas (migración 024)
+  "demo_inicio",
+  "demo_termino",
+  "demo_resultado",
 ] as const;
 
 /** PATCH /api/deals/:id */
