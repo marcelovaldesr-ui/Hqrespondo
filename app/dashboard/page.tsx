@@ -5,6 +5,7 @@ import { calcularObjetivos, META_DIARIA_CONTACTOS, sprintVencido } from "@/lib/o
 import PageHeader from "@/components/PageHeader";
 import Cohortes from "@/components/Cohortes";
 import { cohortesSemanales, type Cohorte } from "@/lib/actividades";
+import { conteosCadencia } from "@/lib/cadencia";
 import { ESTADO_CONFIG, TIPO_EVENTO_LABEL, type TipoEvento } from "@/lib/types";
 import type { Deal, Prospect } from "@/lib/types";
 
@@ -58,6 +59,13 @@ export default async function Dashboard() {
     cohortes = await cohortesSemanales(6);
   } catch (e) {
     console.error("[dashboard] cohortes:", e);
+  }
+
+  let cad = { vencidos: 0, huerfanos: 0, agotados: 0 };
+  try {
+    cad = await conteosCadencia();
+  } catch (e) {
+    console.error("[dashboard] cadencia:", e);
   }
 
   const s = db();
@@ -538,6 +546,25 @@ export default async function Dashboard() {
           </p>
         )}
       </section>
+
+      {/* ---- Higiene de cadencia ---- */}
+      {(cad.vencidos > 0 || cad.huerfanos > 0) && (
+        <Link
+          href="/metricas"
+          className="panel mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-warn/25 bg-warn/[0.05] px-4 py-3 transition hover:border-warn/45"
+        >
+          <span className="led led-glow-amber bg-warn" aria-hidden="true" />
+          <span className="text-[13px] text-ink">
+            <b className="num">{cad.huerfanos}</b> prospectos calificados nunca se
+            tocaron y <b className="num">{cad.vencidos}</b> tienen el siguiente toque
+            vencido.
+          </span>
+          <span className="text-[12px] text-ink-mut">
+            No es falta de prospectos: es cobertura.
+          </span>
+          <span className="ml-auto font-mono text-[11px] text-warn">Ver métricas →</span>
+        </Link>
+      )}
 
       {/* ---- Cohortes semanales ---- */}
       <div className="mt-3">

@@ -11,6 +11,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/dashboard", label: "Centro de mando", icon: "dashboard", hint: "Estado general y prioridades" },
       { href: "/llamadas", label: "Llamadas del día", icon: "phone", hint: "Lista para marcar" },
       { href: "/brief", label: "Brief del día", icon: "file", hint: "Resumen generado" },
+      { href: "/metricas", label: "Métricas propias", icon: "metricas", hint: "Calibración, embudo y capacidad" },
       { href: "/equipo", label: "Objetivos del equipo", icon: "equipo", hint: "Qué se comprometió cada socio esta semana" },
     ],
   },
@@ -119,6 +120,15 @@ export function NavIcon({ name, size = 14 }: { name: string; size?: number }) {
       return (
         <svg {...p}>
           <path d="M8 1.6l1.45 3.95L13.4 7l-3.95 1.45L8 12.4 6.55 8.45 2.6 7l3.95-1.45L8 1.6z" />
+        </svg>
+      );
+    case "metricas":
+      return (
+        <svg {...p}>
+          <path d="M2 13.6h12" />
+          <rect x="3" y="8.4" width="2.6" height="5.2" rx="0.8" />
+          <rect x="6.9" y="5.4" width="2.6" height="8.2" rx="0.8" />
+          <rect x="10.8" y="2.6" width="2.6" height="11" rx="0.8" />
         </svg>
       );
     case "equipo":

@@ -49,6 +49,28 @@ export default function EquipoSemanal({
     () => SOCIOS.map((s) => resumirSocio(s, objetivos)),
     [objetivos],
   );
+  /**
+   * Promedio propio de las 4 semanas ANTERIORES (excluida la actual).
+   * La comparación es contra uno mismo, nunca entre socios: hay evidencia
+   * experimental de que el feedback relativo entre pares sube el esfuerzo del
+   * que va arriba y lo baja en el que va abajo, ampliando la brecha. Con 3
+   * personas, un ranking garantiza que alguien sea siempre último.
+   */
+  const promedioPropio = useMemo(() => {
+    const out: Record<string, number | null> = {};
+    for (const soc of SOCIOS) {
+      const previas = serie
+        .filter((s) => s.semana < semana)
+        .slice(-4)
+        .map((s) => s.porSocio[soc.nombre])
+        .filter((v): v is number => v !== null && v !== undefined);
+      out[soc.nombre] = previas.length
+        ? previas.reduce((a, b) => a + b, 0) / previas.length
+        : null;
+    }
+    return out;
+  }, [serie, semana]);
+
   const mudosTotal = resumenes.reduce((a, r) => a + r.mudos, 0);
   const totalObj = resumenes.reduce((a, r) => a + r.total, 0);
   const evaluados = resumenes.reduce((a, r) => a + (r.total - r.pendientes), 0);
@@ -188,6 +210,19 @@ export default function EquipoSemanal({
             <p className="mt-0.5 truncate font-mono text-[10px] uppercase tracking-wider text-ink-dim">
               {r.rol}
             </p>
+            {(() => {
+              const base = promedioPropio[r.socio];
+              if (base === null || r.total - r.pendientes === 0) return null;
+              const d = r.cumplimiento - base;
+              const signo = d > 0 ? "+" : "";
+              return (
+                <p className="mt-1 font-mono text-[10.5px] text-ink-dim">
+                  {signo}
+                  {Math.round(d * 100)} pts vs tu promedio de 4 semanas (
+                  {Math.round(base * 100)}%)
+                </p>
+              );
+            })()}
             <span className="meter mt-2.5">
               <span className="meter-fill" style={{ width: pct(r.cumplimiento) }} />
             </span>
