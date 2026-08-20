@@ -17,7 +17,7 @@
  * pedido explícito de una persona, uno por uno, nunca en lote automático.
  */
 
-import { APOLLO_BASE, cuentasApollo, esFaltaDeCupo } from "./apolloCuentas";
+import { APOLLO_BASE, cuentasApollo, esFaltaDeCupo, urlWebhookApollo } from "./apolloCuentas";
 
 const LUSHA = "https://api.lusha.com/v3";
 
@@ -64,10 +64,23 @@ async function porApollo(
   const cuentas = cuentasApollo();
   if (!cuentas.length) return { ok: false, detalle: "sin APOLLO_API_KEY configurada" };
 
-  const params = new URLSearchParams({
-    reveal_personal_emails: "true",
-    reveal_phone_number: "true",
-  });
+  // OJO con el teléfono en Apollo. La documentación es explícita: si se manda
+  // `reveal_phone_number=true` hay que mandar TAMBIÉN un `webhook_url`, y el
+  // número NO viene en esta respuesta — Apollo lo verifica aparte y lo envía
+  // a ese webhook minutos después. Pedirlo sin webhook devuelve la ficha de
+  // la persona sin teléfono, que se lee igual que "no lo tiene": un error
+  // silencioso que haría gastar créditos para nada.
+  //
+  // Por eso el teléfono solo se pide cuando hay webhook configurado
+  // (APOLLO_WEBHOOK_URL + HQ_API_TOKEN). Sin eso, a Apollo se le pide lo que
+  // sí sabe devolver al momento —persona, cargo, empresa y correo— y el
+  // teléfono se busca por Lusha, que sí responde sincrónico.
+  const webhook = urlWebhookApollo();
+  const params = new URLSearchParams({ reveal_personal_emails: "true" });
+  if (webhook) {
+    params.set("reveal_phone_number", "true");
+    params.set("webhook_url", webhook);
+  }
 
   let ultimo = "";
   for (const cuenta of cuentas) {
@@ -112,10 +125,15 @@ async function porApollo(
       telefonoUtil(p.sanitized_phone) ??
       null;
 
+    const detalleTel = telefono
+      ? "teléfono encontrado"
+      : webhook
+        ? "tiene la persona; el teléfono lo manda Apollo al webhook en unos minutos"
+        : "tiene la persona, pero el teléfono de Apollo necesita webhook configurado";
     return {
       ok: !!telefono,
       cuenta: cuenta.nombre,
-      detalle: `${cuenta.nombre}: ${telefono ? "teléfono encontrado" : "tiene la persona, pero sin teléfono"}`,
+      detalle: `${cuenta.nombre}: ${detalleTel}`,
       telefono,
       email: p.email ?? p.contact?.email ?? null,
       nombre: p.name ?? ([p.first_name, p.last_name].filter(Boolean).join(" ") || null),

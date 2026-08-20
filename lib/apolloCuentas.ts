@@ -105,3 +105,28 @@ export async function verificarCuentasApollo(): Promise<EstadoCuenta[]> {
     }),
   );
 }
+
+/**
+ * URL pública del webhook donde Apollo deja los teléfonos.
+ *
+ * Apollo no devuelve el teléfono en la respuesta de `people/match`: lo
+ * verifica de forma asíncrona y lo POSTea a esta dirección. Sin webhook no
+ * hay teléfono por Apollo, por mucho crédito que quede.
+ *
+ * Se arma sola en Vercel con VERCEL_URL; se puede fijar a mano con
+ * APOLLO_WEBHOOK_URL si el dominio es otro. El token viaja en la query
+ * porque Apollo no permite mandar headers propios al webhook.
+ */
+export function urlWebhookApollo(): string | null {
+  const token = process.env.HQ_API_TOKEN?.trim();
+  if (!token) return null;
+  const explicita = process.env.APOLLO_WEBHOOK_URL?.trim();
+  const base =
+    explicita ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "") ||
+    process.env.HQ_BASE_URL?.trim() ||
+    "";
+  if (!base) return null;
+  const raiz = base.replace(/\/+$/, "");
+  return `${raiz}/api/hooks/apollo-telefono?token=${encodeURIComponent(token)}`;
+}
