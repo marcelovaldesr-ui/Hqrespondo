@@ -7,13 +7,33 @@ import type { IndustryContent } from "./types";
  * pedida, en prioridad menor. La fórmula "sin" viene de INSTAGRAM_RESPONDO.md.
  * mensaje_prospeccion resume MENSAJES_PROSPECCION_RESPONDO.md por rubro.
  */
+/**
+ * PRIORIDAD Y ORDEN DE ATAQUE — revisados el 19-ago-2026 contra la tracción
+ * real, no contra la intuición de julio.
+ *
+ * La fuente es el doc de secuencias del propio equipo, que trae los clientes
+ * cerrados por vertical: gimnasios y centros boutique +20, automotoras +18,
+ * clínicas dentales +17, inmobiliarias +15, clínicas estéticas +12.
+ *
+ * Qué cambió y por qué:
+ *  · FERRETERÍAS pasó de "alta / orden 1" a "media". No aparece en ningún
+ *    vertical con clientes cerrados, y no es un negocio de cupo único: no
+ *    tiene agenda que llenar ni inasistencias que recuperar, que es donde
+ *    Respondo rinde desde que existe el módulo de agendamiento.
+ *  · ESTÉTICA subió a "alta". Es uno de los dos rubros del foco comercial y
+ *    tiene 12 clientes cerrados; estaba en "media" desde antes de la agenda.
+ *  · AGENDA-RESERVAS subió a "alta" y ahora incluye gimnasios, canchas de
+ *    pádel y centros deportivos, que son la vertical con MÁS clientes del
+ *    equipo y no estaban en esta tabla por ningún lado.
+ *  · TALLERES subió a "alta": ahí caen las automotoras, con 18 clientes.
+ */
 export const RUBROS: IndustryContent[] = [
   {
     slug: "ferreterias",
     nombre: "Ferreterías y distribuidoras",
     emoji: "🔩",
-    prioridad_comercial: "alta",
-    orden_ataque: 1,
+    prioridad_comercial: "media",
+    orden_ataque: 7,
     dolores: [
       "Cotizan el mismo precio + stock + despacho 30 veces al día por WhatsApp.",
       "El vendedor de mesón deja de atender la fila para contestar el teléfono.",
@@ -56,7 +76,7 @@ export const RUBROS: IndustryContent[] = [
     nombre: "Corredoras e inmobiliarias",
     emoji: "🏠",
     prioridad_comercial: "alta",
-    orden_ataque: 2,
+    orden_ataque: 4,
     dolores: [
       "El lead de portal escribe y si no contestas en minutos, ya habla con otro corredor.",
       "Responder <5 min multiplica ~100x la probabilidad de contacto; el corredor está en visitas medio día.",
@@ -99,7 +119,7 @@ export const RUBROS: IndustryContent[] = [
     nombre: "Clínicas y centros médicos",
     emoji: "🩺",
     prioridad_comercial: "alta",
-    orden_ataque: 3,
+    orden_ataque: 1,
     dolores: [
       "La secretaria no da abasto: valores, previsión, horarios y agendamiento manual.",
       "Fuera de horario no contesta nadie y el paciente reserva en otro centro.",
@@ -141,8 +161,8 @@ export const RUBROS: IndustryContent[] = [
     slug: "estetica",
     nombre: "Centros de estética y belleza",
     emoji: "💅",
-    prioridad_comercial: "media",
-    orden_ataque: 4,
+    prioridad_comercial: "alta",
+    orden_ataque: 5,
     dolores: [
       "Responden DMs e historias entre cliente y cliente, con las manos ocupadas.",
       "Preguntas repetidas de precios, promos y horas disponibles.",
@@ -184,8 +204,8 @@ export const RUBROS: IndustryContent[] = [
     slug: "talleres",
     nombre: "Talleres y servicios técnicos",
     emoji: "🔧",
-    prioridad_comercial: "media",
-    orden_ataque: 5,
+    prioridad_comercial: "alta",
+    orden_ataque: 3,
     dolores: [
       "Cotizan con las manos con grasa: el cliente manda foto/audio y contestan horas después.",
       "El cliente ya fue a otro taller mientras esperaba respuesta.",
@@ -228,7 +248,7 @@ export const RUBROS: IndustryContent[] = [
     nombre: "Constructoras pequeñas",
     emoji: "🏗️",
     prioridad_comercial: "media",
-    orden_ataque: 6,
+    orden_ataque: 10,
     dolores: [
       "Consultas de presupuesto y disponibilidad que llegan y se pierden entre obras.",
       "Seguimiento comercial manual e inconsistente.",
@@ -271,7 +291,7 @@ export const RUBROS: IndustryContent[] = [
     nombre: "Servicios técnicos",
     emoji: "🛠️",
     prioridad_comercial: "media",
-    orden_ataque: 7,
+    orden_ataque: 8,
     dolores: [
       "Consultas de '¿reparan X?' y '¿cuánto sale?' que llegan a toda hora.",
       "Diagnóstico y presupuesto requieren datos que el cliente no da de entrada.",
@@ -314,7 +334,7 @@ export const RUBROS: IndustryContent[] = [
     nombre: "Veterinarias",
     emoji: "🐾",
     prioridad_comercial: "media",
-    orden_ataque: 8,
+    orden_ataque: 6,
     dolores: [
       "Consultas de horas, vacunas, precios y urgencias mezcladas en el WhatsApp.",
       "Fuera de horario el tutor angustiado no recibe respuesta.",
@@ -399,8 +419,8 @@ export const RUBROS: IndustryContent[] = [
     slug: "agenda-reservas",
     nombre: "Negocios con agenda o reservas",
     emoji: "📅",
-    prioridad_comercial: "media",
-    orden_ataque: 10,
+    prioridad_comercial: "alta",
+    orden_ataque: 2,
     dolores: [
       "Reservar una hora es un ping-pong de mensajes que consume el día.",
       "Fuera de horario nadie confirma y la reserva se pierde.",
@@ -443,7 +463,7 @@ export const RUBROS: IndustryContent[] = [
     nombre: "Educación y cursos",
     emoji: "🎓",
     prioridad_comercial: "baja",
-    orden_ataque: 11,
+    orden_ataque: 12,
     dolores: [
       "Consultas de fechas, precios, cupos y modalidad que se repiten sin fin.",
       "Interesados que preguntan y se enfrían antes de matricularse.",
@@ -486,7 +506,7 @@ export const RUBROS: IndustryContent[] = [
     nombre: "Distribuidoras B2B",
     emoji: "📦",
     prioridad_comercial: "media",
-    orden_ataque: 12,
+    orden_ataque: 11,
     dolores: [
       "Pedidos y cotizaciones B2B que llegan por WhatsApp y se traspapelan.",
       "Clientes recurrentes que piden lo mismo y esperan precio al tiro.",

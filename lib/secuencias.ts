@@ -73,7 +73,17 @@ export const VERTICALES: Vertical[] = [
   {
     clave: "estetica",
     label: "Clínicas estéticas",
-    test: /estetic|clinica|medic|dermatolog|kinesiolog|salud|laboratorio|oftalmolog/i,
+    /**
+     * Solo términos de estética real. La versión anterior incluía
+     * `clinica|medic|salud|laboratorio|oftalmolog` y se tragaba cualquier
+     * centro de salud: medido sobre la base, 16 centros médicos, 9 clínicas
+     * dentales y 4 veterinarias recibían la secuencia de estética —con
+     * referencias a Velours, Renuva y Biolaser, que a un veterinario no le
+     * dicen nada. Un centro médico general no tiene vertical, y eso está
+     * bien: sin vertical no se manda secuencia, en vez de mandar la
+     * equivocada.
+     */
+    test: /estetic|estétic|dermatolog|depilacion|depilación|\blaser\b|láser|cosmetolog|rejuvenecimiento|medicina estetica/i,
     rol: "la operación comercial y atención de pacientes",
     consultas: "tratamientos, precios, disponibilidad y evaluaciones, muchas veces fuera de horario o mientras recepción está ocupada",
     hace: "atienden 24/7, responden con información real de la clínica, califican pacientes, agendan evaluaciones, envían recordatorios y hacen seguimiento a quienes consultaron pero no reservaron. Todo se integra con el calendario, planilla o CRM de la clínica y el equipo humano puede tomar la conversación cuando corresponda",
@@ -109,7 +119,7 @@ export const VERTICALES: Vertical[] = [
   {
     clave: "gimnasio",
     label: "Gimnasios",
-    test: /gimnasio|centro deportivo|crossfit|fitness|actividades deportivas/i,
+    test: /gimnasio|centro deportivo|crossfit|fitness|actividades deportivas|padel|pádel|cancha|futbolito|complejo deportivo|club deportivo/i,
     rol: "la operación comercial del centro",
     consultas: "planes, horarios, clases de prueba e inscripciones, mientras el equipo está atendiendo a socios y operando el gimnasio",
     hace: "responden 24/7, explican planes y horarios, agendan clases de prueba, confirman la asistencia y hacen seguimiento a quienes consultaron pero no se inscribieron. También pueden reactivar antiguos interesados o socios, sin cambiar las herramientas que el centro ya utiliza",
@@ -121,7 +131,7 @@ export const VERTICALES: Vertical[] = [
   {
     clave: "boutique",
     label: "Centros boutique",
-    test: /pilates|yoga|wellness|depilacion|nutricion|masaje|\bspa\b|peluqueria|barberia/i,
+    test: /pilates|yoga|wellness|nutricion|nutrición|masaje|\bspa\b|peluqueria|peluquería|barberia|barbería|kinesiolog|kinesic|fisioterap|podolog/i,
     rol: "la operación comercial y reservas del centro",
     consultas: "precios, horarios, disponibilidad, clases, sesiones y reservas, al mismo tiempo que el equipo entrega una experiencia presencial personalizada",
     hace: "atienden 24/7, responden con la información real del centro, agendan reservas o clases de prueba, envían recordatorios y hacen seguimiento a quienes consultaron pero no reservaron. La solución se adapta a pilates, yoga, wellness, depilación, nutrición, masajes, spa y servicios relacionados",
@@ -137,10 +147,29 @@ export const VERTICALES: Vertical[] = [
  * genérico: mandar copy sin prueba social ni métricas del rubro es peor que
  * no mandar nada, y además inventaría referencias que no existen.
  */
-export function verticalDe(lead: Pick<LeadFoco, "industria" | "empresa">): Vertical | null {
+export function verticalDe(
+  lead: Pick<LeadFoco, "industria" | "empresa">,
+  opciones?: {
+    /**
+     * El rubro viene de una fuente precisa y se puede confiar en él.
+     *
+     * `soloNombre` existe por el rubro del SII, que agrupa toda la medicina
+     * ambulatoria bajo "MEDICOS Y ODONTOLOGOS". Pero en Prospección el rubro
+     * es el término exacto que se buscó en Google Maps ("Clínica dental"), y
+     * ahí ignorarlo es peor: 25 clínicas dentales de la base se quedaban sin
+     * vertical solo porque su nombre comercial es "Total Sonrisa" o
+     * "Clínica Ichtus" y no dice la palabra dental.
+     */
+    rubroConfiable?: boolean;
+  },
+): Vertical | null {
   const nombre = lead.empresa ?? "";
   const todo = `${lead.industria ?? ""} ${nombre}`;
-  return VERTICALES.find((v) => v.test.test(v.soloNombre ? nombre : todo)) ?? null;
+  return (
+    VERTICALES.find((v) =>
+      v.test.test(v.soloNombre && !opciones?.rubroConfiable ? nombre : todo),
+    ) ?? null
+  );
 }
 
 /** Primer nombre: los correos tutean, y "Hola María Fernanda Errázuriz" no. */

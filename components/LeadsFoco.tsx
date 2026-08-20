@@ -97,6 +97,12 @@ export default function LeadsFoco({
   const router = useRouter();
   const [filas, setFilas] = useState(filasIniciales);
   const [sel, setSel] = useState<string | null>(filasIniciales[0]?.id ?? null);
+  /** Cambiar de lead borra el resultado de la búsqueda anterior: si no, el
+   *  mensaje de un lead queda pegado sobre el siguiente y se lee como suyo. */
+  const elegir = useCallback((id: string | null) => {
+    setSel(id);
+    setResTel(null);
+  }, []);
   const [busqueda, setBusqueda] = useState(filtros.q);
   const [modal, setModal] = useState(false);
   const [nota, setNota] = useState("");
@@ -116,6 +122,8 @@ export default function LeadsFoco({
   const [error, setError] = useState<string | null>(null);
   const [notaFicha, setNotaFicha] = useState("");
   const [importar, setImportar] = useState(false);
+  const [buscandoTel, setBuscandoTel] = useState(false);
+  const [resTel, setResTel] = useState<{ ok: boolean; texto: string; detalle: string[] } | null>(null);
   const [csv, setCsv] = useState("");
   const [listaNueva, setListaNueva] = useState("lista_b");
   const [importando, setImportando] = useState(false);
@@ -230,7 +238,7 @@ export default function LeadsFoco({
       );
       setModal(false);
       setNota("");
-      if (siguiente) setSel(siguiente);
+      if (siguiente) elegir(siguiente);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -325,6 +333,41 @@ export default function LeadsFoco({
     }
   }
 
+  /** Pide el teléfono de este lead a los proveedores de datos. Gasta créditos:
+   *  por eso es un botón explícito, de a uno, y nunca se dispara solo. */
+  const buscarTelefono = useCallback(async (leadId: string) => {
+    setBuscandoTel(true);
+    setResTel(null);
+    try {
+      const r = await fetch("/api/foco/telefono", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: leadId }),
+      });
+      const d = await r.json();
+      const detalle: string[] = (d.intentos ?? []).map(
+        (i: { fuente: string; resultado: string }) => `${i.fuente}: ${i.resultado}`,
+      );
+      if (!r.ok) {
+        setResTel({ ok: false, texto: d.error ?? "No se pudo buscar", detalle });
+      } else if (d.telefono) {
+        setResTel({
+          ok: true,
+          texto: `${d.telefono} — de ${d.fuente}, ${d.creditos} crédito${d.creditos === 1 ? "" : "s"}`,
+          detalle,
+        });
+        router.refresh();
+      } else {
+        setResTel({ ok: false, texto: d.motivo ?? "Sin teléfono", detalle });
+        if (d.email) router.refresh();
+      }
+    } catch (e: any) {
+      setResTel({ ok: false, texto: e?.message ?? "Error de red", detalle: [] });
+    } finally {
+      setBuscandoTel(false);
+    }
+  }, [router]);
+
   // Teclado: ↑/↓ recorren la lista, Enter abre el modal. Se ignora mientras
   // se escribe en un campo, si no sería imposible tipear una nota.
   useEffect(() => {
@@ -338,10 +381,10 @@ export default function LeadsFoco({
       const i = filas.findIndex((f) => f.id === sel);
       if (e.key === "ArrowDown" && i < filas.length - 1) {
         e.preventDefault();
-        setSel(filas[i + 1].id);
+        elegir(filas[i + 1].id);
       } else if (e.key === "ArrowUp" && i > 0) {
         e.preventDefault();
-        setSel(filas[i - 1].id);
+        elegir(filas[i - 1].id);
       } else if (e.key === "Enter" && lead) {
         e.preventDefault();
         setModal(true);
@@ -499,7 +542,7 @@ export default function LeadsFoco({
                 {filas.map((f) => (
                   <tr
                     key={f.id}
-                    onClick={() => setSel(f.id)}
+                    onClick={() => elegir(f.id)}
                     className={`data-row cursor-pointer border-t border-line ${
                       f.id === sel ? "bg-brand/10" : ""
                     }`}
@@ -656,6 +699,23 @@ export default function LeadsFoco({
                   </>
                 )}
 
+                {resTel && (
+                  <div
+                    className={`mt-2.5 rounded-lg border px-3 py-2 text-[11.5px] leading-relaxed ${
+                      resTel.ok ? "border-ok/40 bg-ok/10 text-ok" : "border-warn/40 bg-warn/10 text-warn"
+                    }`}
+                  >
+                    {resTel.texto}
+                    {resTel.detalle.length > 0 && (
+                      <div className="mt-1 font-mono text-[10.5px] opacity-80">
+                        {resTel.detalle.map((d) => (
+                          <div key={d}>{d}</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {!editando && lead.suprimido && (
                   <div className="mt-2.5 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-[11.5px] leading-relaxed text-danger">
                     Este número pidió <strong>no ser contactado</strong> (lista de
@@ -688,6 +748,16 @@ export default function LeadsFoco({
                     <a className="btn-ghost" target="_blank" rel="noreferrer" href={lead.linkedin_contacto}>
                       LinkedIn persona
                     </a>
+                  )}
+                  {lead.linkedin_contacto && !lead.telefono && (
+                    <button
+                      className="btn-ghost !border-brand/45 !text-ink"
+                      disabled={buscandoTel}
+                      onClick={() => buscarTelefono(lead.id)}
+                      title="Le pregunta el teléfono a Apollo y a Lusha usando el perfil de LinkedIn. Gasta créditos del plan."
+                    >
+                      {buscandoTel ? "Buscando…" : "Buscar teléfono"}
+                    </button>
                   )}
                   {lead.web && (
                     <a className="btn-ghost" target="_blank" rel="noreferrer" href={lead.web}>
@@ -912,12 +982,45 @@ export default function LeadsFoco({
           <div className="glass w-full max-w-3xl p-5" onClick={(e) => e.stopPropagation()}>
             <div className="lbl">Importar tanda</div>
             <div className="ttl mt-1 text-[15px]">Pegar CSV con encabezados</div>
-            <p className="mt-1 text-[11.5px] leading-relaxed text-ink-mut">
-              Se reconocen los nombres del archivo de Lista B (<span className="font-mono">nombre_fantasia,
-              decisor_nombre, decisor_cargo, telefono_publico, senal_dolor…</span>) y los genéricos
-              (empresa, contacto, cargo, telefono). Reimportar el mismo archivo no duplica: actualiza
-              los datos y conserva intentos, resultado y notas.
-            </p>
+            <div className="mt-2 space-y-2 text-[11.5px] leading-relaxed text-ink-mut">
+              <p>
+                Un lead de Foco es <b className="text-ink-soft">una persona dentro de una empresa</b>,
+                no la empresa sola. Lo mínimo que sirve es{" "}
+                <span className="font-mono text-ink-soft">empresa</span> y{" "}
+                <span className="font-mono text-ink-soft">contacto</span>. Sin teléfono igual entra:
+                queda en la lista esperando el número. Para llamar al mesón sin nombre, eso es
+                Prospección, no Foco.
+              </p>
+              <p>
+                De dónde sale cada columna: <b className="text-ink-soft">empresa, rubro, comuna,
+                trabajadores y RUT</b> vienen del universo del SII;{" "}
+                <b className="text-ink-soft">contacto y cargo</b>, del perfil de LinkedIn; el{" "}
+                <b className="text-ink-soft">teléfono</b> lo devuelve Apollo después.
+              </p>
+              <p>
+                Se aceptan los nombres del archivo de Lista B (
+                <span className="font-mono">nombre_fantasia, decisor_nombre, decisor_cargo,
+                telefono_publico, senal_dolor…</span>) y los genéricos. Reimportar el mismo archivo{" "}
+                <b className="text-ink-soft">no duplica</b>: actualiza los datos y conserva intentos,
+                resultado y notas. Por eso se puede cargar ahora sin teléfono y volver a pegar el
+                mismo archivo cuando lleguen los números.
+              </p>
+            </div>
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+              <button
+                className="btn-ghost"
+                onClick={() =>
+                  setCsv(
+                    "empresa,razon_social,rut,web,linkedin_empresa,industria,n_empleados,comuna,region,contacto,cargo,telefono,email,linkedin_contacto,senal,confianza,fuente_url\n",
+                  )
+                }
+              >
+                Pegar encabezados de ejemplo
+              </button>
+              <span className="text-[11px] text-ink-dim">
+                Solo <span className="font-mono">empresa</span> es obligatoria. El resto, lo que tengas.
+              </span>
+            </div>
             <div className="mt-3 flex items-center gap-2">
               <span className="lbl">Lista</span>
               <input

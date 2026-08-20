@@ -3,6 +3,7 @@ import type { PlaceResult } from "./places";
 import { REGLAS_TONO, anclaRubro } from "./prospeccionAI";
 import { enriquecerBatch, type SenalesWeb } from "./enriquecimiento";
 import { matchRubroSlug } from "./growth/match";
+import { verticalDe } from "./secuencias";
 import { rubroPorSlug } from "./growth/industries";
 
 /**
@@ -71,6 +72,22 @@ export function calcularScore(
   // operan 100% por WhatsApp.
   const slug = matchRubroSlug(rubro);
   const ficha = slug ? rubroPorSlug(slug) : null;
+
+  // Tracción real por sobre la tabla de prioridades. `VERTICALES` sale del doc
+  // de secuencias del equipo y trae la cuenta de clientes cerrados por rubro
+  // (dental +17, estética +12, automotoras +18, inmobiliarias +15, gimnasios y
+  // centros boutique +20). Un rubro donde YA se cierra vale más que uno que
+  // alguien puso en "prioridad alta" antes de tener clientes.
+  const vertical = verticalDe(
+    { industria: rubro, empresa: p.nombre ?? "" },
+    // En Prospección el rubro es el término exacto que se buscó, no el del SII.
+    { rubroConfiable: true },
+  );
+  if (vertical) {
+    detalle.vertical_con_clientes = 12;
+    razones.push(`vertical donde ya hay clientes cerrados (${vertical.label})`);
+  }
+
   if (ficha?.prioridad_comercial === "alta") {
     detalle.rubro = 15;
     razones.push(`rubro prioritario (${ficha.nombre})`);
@@ -93,6 +110,15 @@ export function calcularScore(
   if (senales.solo_redes) {
     detalle.solo_redes = 20;
     razones.push("su única web es Instagram/Facebook → gestiona TODO a mano por DM");
+  } else if (!senales.visitada && p.web) {
+    // Tiene web, pero no se pudo abrir (timeout, bloqueo, certificado, URL
+    // rota). NO es lo mismo que no tener web, y tratarlo igual regalaba
+    // hasta 20 puntos por una falla nuestra: medido en una tanda real, 22 de
+    // 93 negocios con web caían acá y salían con score inflado. Sin
+    // evidencia no se premia ni se castiga; se deja anotado para revisar.
+    detalle.web_no_verificada = 0;
+    razones.push("tiene web pero no se pudo abrir — el score va sin esa señal");
+    senales.potencial = "desconocido";
   } else if (!senales.visitada && celular) {
     // El "negocio perfecto" invisible: ni web tiene y atiende a un celular.
     // Todo su flujo (consultas, pedidos, reservas) vive en WhatsApp.
@@ -116,7 +142,20 @@ export function calcularScore(
           ? "pide la hora por FORMULARIO/wizard (sin horas online: alguien responde a mano cada solicitud)"
           : "web SIN chatbot ni reservas ni CRM → gestiona manual",
       );
-      if (senales.whatsapp_link) {
+      // El caso más común en Chile y el que antes no se veía: la web existe,
+      // pero es una vitrina — la conversión se va al DM. Se mide por cuántos
+      // canales de DM ofrece la propia página (link de WhatsApp, botón
+      // flotante, Instagram enlazado). Antes solo se detectaba el negocio SIN
+      // web propia (7% de la base); esto alcanza al que sí la tiene.
+      if (senales.canales_dm >= 2) {
+        detalle.convierte_por_dm = 15;
+        const cuales = [
+          senales.boton_wa_flotante ? "botón flotante de WhatsApp" : null,
+          senales.whatsapp_link && !senales.boton_wa_flotante ? "link a WhatsApp" : null,
+          senales.instagram_link ? "Instagram enlazado" : null,
+        ].filter(Boolean);
+        razones.push(`su web es vitrina y la conversación se va al DM (${cuales.join(" + ")})`);
+      } else if (senales.whatsapp_link || senales.boton_wa_flotante) {
         detalle.whatsapp_manual = 5;
         razones.push("atiende por WhatsApp (link en su web)");
       }

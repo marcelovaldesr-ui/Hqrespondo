@@ -37,6 +37,12 @@ export interface SenalesWeb {
   crm: string | null;
   /** La web tiene link directo a WhatsApp (wa.me / api.whatsapp.com) */
   whatsapp_link: boolean;
+  /** Botón flotante de WhatsApp: el negocio EMPUJA la conversación al DM */
+  boton_wa_flotante: boolean;
+  /** La web enlaza su Instagram — la vitrina real está allá */
+  instagram_link: boolean;
+  /** Cuántos canales de DM ofrece la web (WhatsApp, botón, Instagram) */
+  canales_dm: number;
   /** Cuántas páginas se revisaron (portada + internas de agenda) */
   paginas: number;
   /** Resumen: alto = sin automatización (ideal), bajo = ya automatizado */
@@ -140,6 +146,17 @@ const CRM: Firma[] = [
 
 const WHATSAPP_LINK = /wa\.me\/|api\.whatsapp\.com\/send|whatsapp:\/\/send/i;
 
+/**
+ * Botón flotante de WhatsApp. No es lo mismo que tener un link: el botón
+ * flotante sigue al visitante por toda la página, y es la señal más clara de
+ * que el negocio decidió que la conversión pasa por el DM y no por su web.
+ * Son los widgets más usados en Chile.
+ */
+const BOTON_WA = /joinchat|whatsapp-?chat|wa-?widget|whatsapp-?button|floating[_-]?w(?:ha|p)|click-?to-?chat|chaty|elfsight.*whatsapp|getbutton|wp-?whatsapp|holler|whatsapp-?float/i;
+
+/** Enlace al perfil de Instagram del negocio. */
+const INSTAGRAM_LINK = /instagram\.com\/[a-z0-9._]/i;
+
 /** Links internos que probablemente llevan a la página de agenda/reserva. */
 const LINK_AGENDA =
   /href="([^"]*(?:agendar?|agendamiento|reservar?|reservas?|booking|book|pide-?tu-?hora|solicita-?hora|citas?)[^"]*)"/gi;
@@ -229,6 +246,9 @@ export async function enriquecerWeb(web: string | null): Promise<SenalesWeb> {
     ecommerce: null,
     crm: null,
     whatsapp_link: false,
+    boton_wa_flotante: false,
+    instagram_link: false,
+    canales_dm: 0,
     paginas: 0,
     potencial: "desconocido",
   };
@@ -282,8 +302,15 @@ export async function enriquecerWeb(web: string | null): Promise<SenalesWeb> {
     ecommerce,
     crm,
     whatsapp_link: WHATSAPP_LINK.test(todo),
+    boton_wa_flotante: BOTON_WA.test(todo),
+    instagram_link: INSTAGRAM_LINK.test(todo),
+    canales_dm: 0,
     paginas: paginas.length,
   };
+  parcial.canales_dm =
+    (parcial.whatsapp_link ? 1 : 0) +
+    (parcial.boton_wa_flotante ? 1 : 0) +
+    (parcial.instagram_link ? 1 : 0);
   return { ...parcial, potencial: clasificarPotencial(parcial) };
 }
 
