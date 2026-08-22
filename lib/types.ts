@@ -182,6 +182,19 @@ export interface Prospect {
   proxima_accion: string | null;
   notas: string | null;
   place_id: string | null;
+  /**
+   * Quién manda en el negocio y por dónde se supo. El nombre sale de fuentes
+   * públicas —la razón social del SII o el sitio del propio negocio—, nunca
+   * de LinkedIn ni de inventarlo. `decisor_origen` es obligatorio para poder
+   * responder de dónde salió el dato (Ley 21.719).
+   */
+  contacto_nombre?: string | null;
+  contacto_confianza?: string | null;
+  decisor_cargo?: string | null;
+  decisor_origen?: string | null;
+  verificado_at?: string | null;
+  /** De quién es el número: mesón, línea directa o celular del dueño. */
+  tipo_numero?: "recepcion" | "directo" | "movil_dueno" | "desconocido" | null;
   created_at: string;
   updated_at: string;
 }

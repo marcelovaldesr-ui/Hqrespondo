@@ -680,6 +680,27 @@ export default function ProspectTable({
                       <div className="mt-0.5 text-[10.5px] text-ink-dim">
                         {p.rubro} · {p.comuna}
                       </div>
+                      {p.contacto_nombre && (
+                        // Por quién preguntar. Es la diferencia entre llamar
+                        // al mesón y llamar a alguien: el nombre sale de la
+                        // razón social del SII o del sitio del propio negocio,
+                        // y el título dice de cuál de las dos.
+                        <div
+                          className="mt-1 flex items-center gap-1.5 truncate text-[10.5px] text-ok"
+                          title={
+                            [p.decisor_cargo, p.decisor_origen].filter(Boolean).join(" · ") ||
+                            "decisor detectado"
+                          }
+                        >
+                          <span aria-hidden>◆</span>
+                          <span className="truncate">
+                            preguntar por <b className="font-semibold">{p.contacto_nombre}</b>
+                          </span>
+                          {p.contacto_confianza === "media" && (
+                            <span className="shrink-0 text-ink-dim">(por confirmar)</span>
+                          )}
+                        </div>
+                      )}
                       {ultimaNotaLlamada(p.notas) && (
                         <div
                           className="mt-1 truncate text-[10.5px] italic text-warn"
