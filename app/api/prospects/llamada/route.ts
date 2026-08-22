@@ -11,6 +11,8 @@ import { personaDeLogin } from "@/lib/equipo";
  *   ids_grupo?: string[],       // sucursales agrupadas (se marcan todas)
  *   resultado: "no_contesto" | "recado" | "numero_malo"
  *            | "interesado" | "seguimiento" | "no_interesa",
+ *   quien_contesto?: "dueno" | "recepcion" | "nadie",  // el dato que cierra
+ *                               // el círculo: de quién es realmente el número
  *   dueno?: string,             // nombre del dueño si se consiguió
  *   contacto?: string,          // celular o correo directo si se consiguió
  *   nota?: string
@@ -23,6 +25,14 @@ import { personaDeLogin } from "@/lib/equipo";
  *  - interesado → 'respondio' (queda arriba en Prospección para agendar).
  *  - seguimiento → 'contactado' + proxima_accion en 2 días.
  *  - dueno/contacto → se guardan en contacto_nombre / contacto_celular|email.
+ *  - quien_contesto → escribe `tipo_numero` con un HECHO.
+ *
+ * Sobre `tipo_numero`: es el único lugar del sistema donde ese campo se llena
+ * con algo comprobado. Antes se deducía del formato del número —si era celular
+ * se asumía del dueño— y esa suposición era falsa: el número que el negocio
+ * publica es su línea de entrada, la conteste quien la conteste. Solo la
+ * llamada sabe. Por eso "quedó en el portero" marca recepción sin preguntar
+ * nada, y hablar con el dueño marca directo.
  */
 
 const RESULTADOS = {
@@ -84,12 +94,21 @@ export async function POST(req: Request) {
     const actor =
       String(body.actor ?? "").trim().slice(0, 40) ||
       personaDeLogin(req.headers.get("x-hq-user"));
+    const quienContesto = ["dueno", "recepcion", "nadie"].includes(String(body.quien_contesto))
+      ? (String(body.quien_contesto) as "dueno" | "recepcion" | "nadie")
+      : null;
     const dueno = String(body.dueno ?? "").trim();
     const contacto = String(body.contacto ?? "").trim();
     const nota = String(body.nota ?? "").trim();
 
+    const ETIQUETA_QUIEN: Record<string, string> = {
+      dueno: "contestó el dueño",
+      recepcion: "contestó recepción",
+      nadie: "no contestó nadie",
+    };
     const linea =
       `[${fecha} ${hora} · llamada] ${cfg.etiqueta}` +
+      (quienContesto ? ` · ${ETIQUETA_QUIEN[quienContesto]}` : "") +
       (dueno ? ` · dueño: ${dueno}` : "") +
       (contacto ? ` · contacto: ${contacto}` : "") +
       (nota ? ` · ${nota}` : "");
@@ -105,6 +124,16 @@ export async function POST(req: Request) {
       if (resultado === "seguimiento") {
         const en2d = new Date(ahora.getTime() + 2 * 86400_000);
         update.proxima_accion = en2d.toISOString().slice(0, 10);
+      }
+      // El círculo se cierra acá: lo que reportó quien llamó manda sobre
+      // cualquier deducción del sistema.
+      if (quienContesto === "dueno") {
+        update.tipo_numero = "directo";
+        update.verificado_at = ahora.toISOString();
+      } else if (quienContesto === "recepcion" || resultado === "gatekeeper") {
+        // "Quedó en el portero" ya prueba que ese número lo filtra alguien.
+        update.tipo_numero = "recepcion";
+        update.verificado_at = ahora.toISOString();
       }
       if (dueno) update.contacto_nombre = dueno;
       if (contacto) {

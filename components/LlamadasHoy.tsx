@@ -75,7 +75,7 @@ export default function LlamadasHoy({
   const [hechas, setHechas] = useState<Record<string, Resultado>>({});
   const [notasRapidas, setNotasRapidas] = useState<Record<string, string>>({});
   const [abierta, setAbierta] = useState<string | null>(null);
-  const [form, setForm] = useState({ resultado: "interesado" as Resultado, dueno: "", contacto: "", nota: "" });
+  const [form, setForm] = useState({ resultado: "interesado" as Resultado, quien_contesto: "" as "" | "dueno" | "recepcion", dueno: "", contacto: "", nota: "" });
   const [guardando, setGuardando] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [avisoRefresco, setAvisoRefresco] = useState(false);
@@ -114,6 +114,7 @@ export default function LlamadasHoy({
           ids_grupo: f.ids_grupo,
           resultado,
           actor: quien,
+          quien_contesto: extra?.quien_contesto ?? "",
           dueno: extra?.dueno ?? "",
           contacto: extra?.contacto ?? "",
           nota: extra?.nota || notasRapidas[f.id] || "",
@@ -122,7 +123,7 @@ export default function LlamadasHoy({
       if (!res.ok) throw new Error((await res.json())?.error ?? `HTTP ${res.status}`);
       setHechas((h) => ({ ...h, [f.id]: resultado }));
       setAbierta(null);
-      setForm({ resultado: "interesado", dueno: "", contacto: "", nota: "" });
+      setForm({ resultado: "interesado", quien_contesto: "", dueno: "", contacto: "", nota: "" });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -392,6 +393,23 @@ export default function LlamadasHoy({
                       <option value="seguimiento">Pidió que lo llame después</option>
                       <option value="no_interesa">No le interesa</option>
                       <option value="numero_malo">Número equivocado / malo</option>
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1 text-[11px] text-ink-mut">
+                    ¿Quién contestó?
+                    {/* Es el único dato que dice de verdad de quién es este
+                        número. El sistema puede deducir muchas cosas, pero
+                        esto solo lo sabe quien llamó. */}
+                    <select
+                      value={form.quien_contesto}
+                      onChange={(e) =>
+                        setForm({ ...form, quien_contesto: e.target.value as typeof form.quien_contesto })
+                      }
+                      className="w-36 rounded-lg border border-line bg-surface-3 px-2 py-1.5 text-[12.5px] outline-none focus:border-brand"
+                    >
+                      <option value="">No sé / no aplica</option>
+                      <option value="dueno">El dueño o quien decide</option>
+                      <option value="recepcion">Recepción o secretaria</option>
                     </select>
                   </label>
                   <label className="flex flex-col gap-1 text-[11px] text-ink-mut">
