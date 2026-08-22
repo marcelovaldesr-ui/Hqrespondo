@@ -35,7 +35,10 @@ const RUBRO = new Set(
    CARDIOLOGIA NEUROLOGIA PEDIATRIA PSIQUIATRIA PSICOLOGIA NUTRICION FONOAUDIOLOGIA IMAGENOLOGIA
    VETERINARIA VETERINARIO SALUD CENTRO CENTROS INSTITUTO LABORATORIO HOSPITAL POLICLINICO
    LIMITADA LTDA SPA EIRL SOCIEDAD COMPANIA ASOCIADOS INVERSIONES COMERCIAL PROFESIONAL
-   PROFESIONALES INTEGRAL INTEGRALES GENERAL`.split(/\s+/),
+   PROFESIONALES INTEGRAL INTEGRALES GENERAL
+   IMPORTADORA EXPORTADORA DISTRIBUIDORA PUBLICIDAD MARKETING CONSTRUCTORA INMOBILIARIA
+   TRANSPORTES LOGISTICA CAPACITACION EDUCACION EDITORIAL PRODUCTORA AGRICOLA FORESTAL
+   MINERA PESQUERA TURISMO HOTELERA GASTRONOMICA ALIMENTOS TEXTIL AUTOMOTRIZ`.split(/\s+/),
 );
 
 /** Títulos y cargos: acompañan al nombre pero no son parte de él. */
@@ -71,11 +74,14 @@ export function pareceNombreDePersona(nombre: string): boolean {
 }
 
 /** Saca del final las palabras que se colaron ("Francisco Lama Limitada"). */
+/** Formas legales truncadas en la fuente ("...Limitad", "...Compani"). */
+const LEGAL_TRUNCA = /^(LIMITAD|SOCIEDA|COMPANI|COMPAÑI|RESPONSABILID|INDIVIDUA|ASOCIAD)/;
+
 export function podarNombre(nombre: string): string {
   const toks = nombre.split(/\s+/).filter(Boolean);
   while (toks.length > 2) {
     const ultimo = sinAcento(toks[toks.length - 1]);
-    if (RUBRO.has(ultimo) || RUIDO_WEB.has(ultimo) || TITULO_CARGO.has(ultimo)) toks.pop();
+    if (RUBRO.has(ultimo) || RUIDO_WEB.has(ultimo) || TITULO_CARGO.has(ultimo) || LEGAL_TRUNCA.test(ultimo)) toks.pop();
     else break;
   }
   while (toks.length > 2) {

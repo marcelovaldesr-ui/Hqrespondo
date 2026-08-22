@@ -193,8 +193,16 @@ export interface Prospect {
   decisor_cargo?: string | null;
   decisor_origen?: string | null;
   verificado_at?: string | null;
-  /** De quién es el número: mesón, línea directa o celular del dueño. */
-  tipo_numero?: "recepcion" | "directo" | "movil_dueno" | "desconocido" | null;
+  /**
+   * De quién es el número. "publico" es el que el negocio publica para que lo
+   * llamen, y es lo único que se puede afirmar sin haber llamado: que sea
+   * celular no lo hace del dueño. Los demás valores solo se ponen cuando hay
+   * evidencia — un número distinto encontrado junto al nombre de la persona,
+   * o lo que reporte quien llamó.
+   */
+  tipo_numero?: "publico" | "recepcion" | "directo" | "movil_personal" | "desconocido" | null;
+  /** Hecho del formato, no del dueño: si acepta WhatsApp. */
+  numero_es_movil?: boolean | null;
   created_at: string;
   updated_at: string;
 }

@@ -701,6 +701,17 @@ export default function ProspectTable({
                           )}
                         </div>
                       )}
+                      {p.telefono && (
+                        // De quién es el número solo se sabe llamando. Antes acá
+                        // decía "móvil del dueño" por el formato del número, que
+                        // era una suposición: la línea que el negocio publica es
+                        // la que contesta quien esté en el mesón.
+                        <div className="mt-1 text-[10px] text-ink-dim">
+                          {p.tipo_numero === "directo" || p.tipo_numero === "movil_personal"
+                            ? "☎ número directo encontrado"
+                            : "☎ línea pública · confirma con quién hablas al llamar"}
+                        </div>
+                      )}
                       {ultimaNotaLlamada(p.notas) && (
                         <div
                           className="mt-1 truncate text-[10.5px] italic text-warn"
