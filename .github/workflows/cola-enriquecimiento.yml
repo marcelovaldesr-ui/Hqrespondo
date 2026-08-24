@@ -1,0 +1,53 @@
+# Cron externo de la cola de enriquecimiento (Fase 1).
+#
+# Igual que el agente de prospección: GitHub solo GATILLA por URL, el trabajo
+# corre en Vercel. Existe porque Vercel Hobby permite un solo cron al día y con
+# precisión de ±59 minutos, y esta cola necesita varias pasadas.
+#
+# NO requiere secretos nuevos: reutiliza CRON_KEY, el mismo que ya usa
+# agente-prospeccion.yml (repo → Settings → Secrets and variables → Actions).
+#
+# Horarios en UTC (Chile invierno = UTC-4). Van en minuto 45 a propósito, para
+# no chocar con las corridas del agente de prospección (minutos 00 y 30).
+#   45 12,14,16,18,20,22 UTC = 8,10,12,14,16,18 Chile, lunes a viernes.
+#
+# Cada corrida procesa 25 filas. Seis corridas = 150 al día. Si dos corridas se
+# solaparan no pasa nada: obtener_lote_cola usa FOR UPDATE SKIP LOCKED y la
+# segunda se lleva otras filas en vez de repetir las de la primera.
+
+name: Cola de enriquecimiento
+
+on:
+  schedule:
+    - cron: "45 12,14,16,18,20,22 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      lote:
+        description: "Cuántas filas procesar en esta corrida"
+        required: false
+        default: "25"
+
+jobs:
+  correr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Rellenar es idempotente y barato: lo que ya está en cola no se duplica.
+      # Correrlo en cada pasada evita que la cola se seque sin que nadie se dé
+      # cuenta.
+      - name: Rellenar la cola
+        run: |
+          set -e
+          URL="https://hqrespondo.vercel.app/api/cola/llenar?key=${{ secrets.CRON_KEY }}&limite=500"
+          RES=$(curl -s -m 90 -w "\nHTTP %{http_code}" "$URL")
+          echo "$RES"
+          echo "$RES" | grep -q "HTTP 200" || exit 1
+
+      - name: Procesar un lote
+        run: |
+          set -e
+          LOTE="${{ github.event.inputs.lote || '25' }}"
+          URL="https://hqrespondo.vercel.app/api/cola/procesar?key=${{ secrets.CRON_KEY }}&lote=${LOTE}"
+          RES=$(curl -s -m 120 -w "\nHTTP %{http_code}" "$URL")
+          echo "$RES"
+          echo "$RES" | grep -q "HTTP 200" || exit 1
