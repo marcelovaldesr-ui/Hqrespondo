@@ -339,6 +339,15 @@ export async function anotarUsoProveedor(
  * Devuelve "encontrado" en dos de cada tres filas, decidido por el id (no al
  * azar), para que dos corridas seguidas sobre la misma cola den lo mismo y se
  * pueda comparar.
+ *
+ * FIRMA COMO 'simulado', NO COMO 'web'. Es la corrección de un error real
+ * (25-ago-2026): la primera versión anotaba en el libro mayor `proveedor:"web"`
+ * con resultado 'exito'/'sin_dato'. Como el índice `enriq_intentos_definitivo_idx`
+ * trata esas dos respuestas como DEFINITIVAS, cada empresa procesada en seco
+ * quedaba marcada como "a web ya se le preguntó y contestó" — y la cascada real
+ * de la Fase 2 se habría saltado el proveedor `web` para siempre en esas
+ * empresas. Web es la mejor fuente gratis que hay (53% de acierto medido).
+ * Con 150 filas al día, en tres días habría envenenado toda la base.
  */
 export const enriquecerSimulado: Enriquecedor = async (item) => {
   const t0 = Date.now();
@@ -356,7 +365,9 @@ export const enriquecerSimulado: Enriquecedor = async (item) => {
       : undefined,
     intentos: [
       {
-        proveedor: "web",
+        // 'simulado' a propósito: no existe en proveedor_estado y no calza con
+        // ningún proveedor real, así que no puede bloquear a ninguno.
+        proveedor: "simulado",
         resultado: encontrado ? "exito" : "sin_dato",
         encontrado,
         costo_creditos: 0,

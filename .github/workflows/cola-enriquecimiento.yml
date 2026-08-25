@@ -17,9 +17,22 @@
 
 name: Cola de enriquecimiento
 
+# ─────────────────────────────────────────────────────────────────────────────
+# HORARIO APAGADO HASTA LA FASE 2.
+#
+# Mientras el enriquecedor sea el simulado, dejar esto corriendo solo gastaría
+# la cola: marcaría 150 empresas reales al día como 'completado' con datos
+# inventados, y habría que volver a encolarlas todas cuando llegue la cascada
+# de verdad. No hay nada que ganar.
+#
+# Se enciende descomentando el bloque `schedule:` el día que
+# `correrWorker` reciba el enriquecedor real. Mientras tanto queda el botón
+# "Run workflow" para probar a mano.
+# ─────────────────────────────────────────────────────────────────────────────
+
 on:
-  schedule:
-    - cron: "45 12,14,16,18,20,22 * * 1-5"
+  # schedule:
+  #   - cron: "45 12,14,16,18,20,22 * * 1-5"
   workflow_dispatch:
     inputs:
       lote:
