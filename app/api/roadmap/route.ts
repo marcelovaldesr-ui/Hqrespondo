@@ -1,6 +1,7 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { quienEs } from "@/lib/equipo";
 import type { RoadmapItem } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
     if (!body.tarea || !String(body.tarea).trim()) {
       return NextResponse.json({ error: "tarea es obligatoria" }, { status: 400 });
     }
-    const usuario = req.headers.get("x-hq-user");
+    const usuario = quienEs(req);
 
     const { data, error } = await db()
       .from("roadmap_items")

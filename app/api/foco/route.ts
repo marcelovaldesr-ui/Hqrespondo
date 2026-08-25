@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { CONECTA_FOCO, ESTADOS_FOCO, MAX_SIN_CONTESTAR, RESULTADO_CFG, RESULTADOS_FOCO, type ResultadoFoco } from "@/lib/foco";
 import { NIVELES_ENCAJE } from "@/lib/encaje";
-import { personaDeLogin } from "@/lib/equipo";
+import { personaDeLogin, quienEs } from "@/lib/equipo";
 import { PLAN_PRECIOS } from "@/lib/types";
 import { normalizarTelefono, registrarActividad } from "@/lib/actividades";
 
@@ -103,6 +103,7 @@ export async function POST(req: Request) {
     if (e2) throw new Error(e2.message);
 
     await registrarActividad({
+      lead_foco_id: lead.id,
       contacto: lead.telefono ?? "",
       actor,
       canal: "llamada",
@@ -189,6 +190,10 @@ export async function PATCH(req: Request) {
     if (!id) return NextResponse.json({ error: "falta id" }, { status: 400 });
 
     const upd: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    // Toda edición queda firmada sola. Antes se podía cambiar el teléfono o el
+    // estado de un lead sin que quedara rastro de quién lo hizo.
+    const quien = quienEs(req);
+    if (quien) upd.actualizado_por = quien;
     if (b.nota !== undefined) upd.nota = String(b.nota).slice(0, 4000);
     // Validado contra la lista cerrada: un estado inventado rebotaría en el
     // CHECK de la tabla como un 500 críptico en vez de un 400 que explica.
@@ -208,6 +213,10 @@ export async function PATCH(req: Request) {
     }
     if (upd.empresa === "") delete upd.empresa; // la empresa nunca queda vacía
     if (b.recordatorio !== undefined) upd.recordatorio = b.recordatorio || null;
+    // Próximo paso: QUÉ hacer. Va aparte del recordatorio, que dice CUÁNDO, y
+    // aparte de la nota, donde un compromiso se pierde entre el relato.
+    if (b.proximo_paso !== undefined) upd.proximo_paso = String(b.proximo_paso).trim().slice(0, 600) || null;
+    if (b.proximo_paso_at !== undefined) upd.proximo_paso_at = b.proximo_paso_at || null;
     if (Array.isArray(b.tags)) upd.tags = b.tags.map(String).slice(0, 12);
     // Corregir el encaje a mano lo deja marcado como manual, para que una
     // reimportación no vuelva a pisarlo con lo que dice la regla.

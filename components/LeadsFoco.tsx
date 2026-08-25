@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { ENCAJE_LABEL, NIVELES_ENCAJE, senalesDeGuia, type NivelEncaje } from "@/lib/encaje";
 import { secuenciaPara, verticalDe } from "@/lib/secuencias";
 import {
+import NuevoLeadFoco from "@/components/NuevoLeadFoco";
+import BitacoraLead from "@/components/BitacoraLead";
   CONECTA_FOCO,
   ESTADO_FOCO_LABEL,
   MAX_SIN_CONTESTAR,
@@ -415,6 +417,7 @@ export default function LeadsFoco({
             <span className="chip">
               <span className="led bg-brand led-glow-cyan" /> {pendientes} por tocar
             </span>
+            <NuevoLeadFoco />
             <button className="btn-ghost" onClick={() => setImportar(true)}>
               Importar CSV
             </button>
@@ -863,6 +866,8 @@ export default function LeadsFoco({
                   Último: {lead.ultimo_resultado ? RESULTADO_CFG[lead.ultimo_resultado].label : "sin tocar"}
                   {lead.ultimo_intento ? ` · ${fechaCorta(lead.ultimo_intento)}` : ""}
                 </div>
+
+                <BitacoraLead key={lead.id} leadId={lead.id} />
               </>
             )}
           </div>

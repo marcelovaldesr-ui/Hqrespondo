@@ -1,6 +1,7 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { quienEs } from "@/lib/equipo";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
     const { error } = await db().from("decisiones").insert({
       titulo: String(body.titulo).trim(),
       detalle: body.detalle || null,
-      decidido_por: req.headers.get("x-hq-user"),
+      decidido_por: quienEs(req),
     });
     if (error) throw new Error(error.message);
     return NextResponse.json({ ok: true });

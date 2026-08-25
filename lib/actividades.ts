@@ -58,6 +58,12 @@ export type Canal = "llamada" | "whatsapp" | "email" | "reunion" | "otro";
 
 export interface NuevaActividad {
   prospect_id?: string | null;
+  /**
+   * A qué lead de Foco se refiere. Sin esto la bitácora guardaba el toque pero
+   * no a quién, así que reconstruir la historia de UN lead obligaba a buscar
+   * por texto dentro de la nota. Migración 030.
+   */
+  lead_foco_id?: string | null;
   contacto?: string;
   actor?: string;
   canal: Canal;
@@ -80,6 +86,7 @@ export async function registrarActividad(a: NuevaActividad): Promise<void> {
     // actividad no quedaba, sin un solo error en el log).
     const { error } = await db().from("actividades").insert({
       prospect_id: a.prospect_id ?? null,
+      lead_foco_id: a.lead_foco_id ?? null,
       contacto: a.contacto ?? "",
       actor: a.actor ?? "",
       canal: a.canal,

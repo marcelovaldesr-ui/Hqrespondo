@@ -80,6 +80,24 @@ export function personaDeLogin(login?: string | null): string {
   return encontrado ? encontrado.nombre : l;
 }
 
+/**
+ * Quién está haciendo esta petición, listo para guardar.
+ *
+ * Envuelve a `personaDeLogin` para que ningún endpoint tenga que acordarse de
+ * traducir la cabecera. Antes media docena guardaba el login crudo ("hq_admin")
+ * y otros el nombre del equipo ("Marcelo"), así que la misma persona aparecía
+ * con dos identidades distintas según qué pantalla la registró.
+ *
+ * Devuelve `null` cuando no hay login. Eso pasa a propósito en las rutas que el
+ * middleware deja pasar sin autenticar —/api/cola, /api/prospeccion, /api/hooks—
+ * porque ahí no hay una persona: hay un cron. Quien necesite firmar igual usa
+ * `quienEs(req) ?? "el agente"`, que es honesto en vez de atribuirle a alguien
+ * una acción que no hizo.
+ */
+export function quienEs(req: Request): string | null {
+  return personaDeLogin(req.headers.get("x-hq-user")) || null;
+}
+
 export interface ObjetivoSemana {
   id: string;
   semana: string; // YYYY-MM-DD (lunes)

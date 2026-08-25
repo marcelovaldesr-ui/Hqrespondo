@@ -44,6 +44,13 @@ export interface HallazgoTelefono {
   confianza: "alta" | "media" | "baja";
   fuente: string;
   comoLoSupe: string;
+  /**
+   * El nombre COMPLETO tal como lo publica la fuente, cuando la fuente lo
+   * trae. El que sacamos de la razón social del SII viene truncado —"Jorge
+   * Bellolio" donde Maps dice "Jorge Adolfo Bellolio Messer"—, así que esta
+   * versión es mejor para pedir por la persona al llamar.
+   */
+  nombreEnLaFuente?: string;
 }
 
 export interface ResultadoAgente {
@@ -136,6 +143,7 @@ export async function telefonoPorMapsDeLaPersona(
       confianza: "alta",
       fuente: `Google Maps · ficha propia "${p.displayName?.text}"`,
       comoLoSupe: "la persona tiene su propio registro en Maps, distinto al de la clínica",
+      nombreEnLaFuente: String(p.displayName?.text ?? "").trim() || undefined,
     };
   }
   return null;

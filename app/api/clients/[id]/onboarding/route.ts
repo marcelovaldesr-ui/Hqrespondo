@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { quienEs } from "@/lib/equipo";
 import { ONBOARDING_PASOS_DEFAULT } from "@/lib/types";
 
 /** GET /api/clients/:id/onboarding — checklist del cliente */
@@ -76,7 +77,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Falta task_id" }, { status: 400 });
     }
     const hecho = Boolean(body.hecho);
-    const usuario = req.headers.get("x-hq-user");
+    const usuario = quienEs(req);
     const { error } = await db()
       .from("onboarding_tasks")
       .update({

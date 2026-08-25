@@ -1,6 +1,7 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { quienEs } from "@/lib/equipo";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
     if (!body.fecha) {
       return NextResponse.json({ error: "La fecha es obligatoria" }, { status: 400 });
     }
-    const usuario = req.headers.get("x-hq-user");
+    const usuario = quienEs(req);
     const insert: Record<string, unknown> = { responsable: body.responsable ?? usuario };
     for (const c of CAMPOS) if (c in body && body[c] !== undefined) insert[c] = body[c];
     insert.titulo = String(body.titulo).trim();

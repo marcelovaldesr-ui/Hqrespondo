@@ -1,6 +1,7 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { quienEs } from "@/lib/equipo";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
       monto: Number(body.monto) || 0,
       fecha: body.fecha || new Date().toISOString().slice(0, 10),
       categoria: body.categoria ? String(body.categoria).trim() : null,
-      pagado_por: body.pagado_por || req.headers.get("x-hq-user"),
+      pagado_por: body.pagado_por || quienEs(req),
       notas: body.notas || null,
     });
     if (error) throw new Error(error.message);

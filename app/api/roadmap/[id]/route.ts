@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { quienEs } from "@/lib/equipo";
 
 const CAMPOS_EDITABLES = [
   "tarea",
@@ -29,7 +30,7 @@ export async function PATCH(
     if (Object.keys(update).length === 0) {
       return NextResponse.json({ error: "Nada que actualizar" }, { status: 400 });
     }
-    update.actualizado_por = req.headers.get("x-hq-user");
+    update.actualizado_por = quienEs(req);
 
     const { data, error } = await db()
       .from("roadmap_items")

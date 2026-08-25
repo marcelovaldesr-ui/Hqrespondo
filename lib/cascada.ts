@@ -62,6 +62,7 @@ type EmpresaFila = {
   telefono_directo: string | null;
   decisor_nombre: string | null;
   decisor_confianza: string | null;
+  decisor_nombre_completo: string | null;
   prospect_id: string | null;
   n_trabajadores: number | null;
 };
@@ -174,11 +175,29 @@ async function guardarHallazgo(
     ? ""
     : " · SIN CONTROL: no había número público con qué compararlo, puede ser la recepción";
 
+  // Un FIJO encontrado en la ficha de un profesional es, casi siempre, la
+  // línea de su consulta — y esa la contesta la recepcionista igual que
+  // cualquier otra. Caso real (25-ago-2026): el público de la Clínica Bellolio
+  // era un celular y el "directo" que hallamos, un fijo. Llamarlo `directo` a
+  // secas promete más de lo que sabemos. Lo único que resuelve de quién es un
+  // número es la llamada, y para eso está el campo "¿quién contestó?".
+  const matiz = /^9\d{8}$/.test(nuevo)
+    ? ""
+    : " · es un FIJO: probablemente la línea de su consulta, confirmar al llamar quién contesta";
+
+  // El nombre completo que regala la fuente vale por sí solo, aunque el
+  // teléfono termine descartándose: sirve para pedir por la persona correcta.
+  const nombreCompleto =
+    h.nombreEnLaFuente && !e.decisor_nombre_completo
+      ? { decisor_nombre_completo: h.nombreEnLaFuente, decisor_nombre_completo_origen: h.fuente }
+      : {};
+
   const { data, error } = await db()
     .from("empresas_sii")
     .update({
       telefono_directo: h.telefono,
-      telefono_directo_origen: `${h.fuente} · ${h.tipo} · confianza ${h.confianza}${control}`,
+      telefono_directo_origen: `${h.fuente} · ${h.tipo} · confianza ${h.confianza}${matiz}${control}`,
+      ...nombreCompleto,
       updated_at: new Date().toISOString(),
     })
     .eq("rut", e.rut)
@@ -225,7 +244,7 @@ export function cascadaTelefonoDirecto(opts: {
     // ---- 0. la empresa ----
     const { data, error } = await db()
       .from("empresas_sii")
-      .select("rut,razon_social,comuna,telefono,telefono_directo,decisor_nombre,decisor_confianza,prospect_id,n_trabajadores")
+      .select("rut,razon_social,comuna,telefono,telefono_directo,decisor_nombre,decisor_confianza,decisor_nombre_completo,prospect_id,n_trabajadores")
       .eq("rut", item.entidad_id)
       .maybeSingle();
     if (error) throw new Error(`leer empresas_sii ${item.entidad_id}: ${error.message}`);
