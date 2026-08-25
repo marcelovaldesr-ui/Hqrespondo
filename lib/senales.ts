@@ -163,14 +163,19 @@ Reglas que no puedes romper:
 - Si el aviso tiene más de 60 días, responde encontrado:false.
 - Si no encuentras un aviso concreto, responde encontrado:false. NO adivines.
 
-Responde SOLO este JSON:
+Empieza tu respuesta directamente con la llave de apertura. Nada de texto antes ni después.
+
 {"encontrado":true|false,"empresa_en_el_aviso":"...","cargo":"...","donde":"qué portal o página","publicado":"fecha o 'reciente'","resumen":"una línea, máximo 15 palabras"}`;
 
   try {
     const { data, fuentes } = await geminiJsonConFuentes<RespuestaIA>(
       prompt,
       [{ google_search: {} }],
-      { temperature: 0, maxOutputTokens: 700 },
+      // 1.500 y no 700: con la búsqueda activada el modelo suele escribir
+      // preámbulo antes del JSON y se cortaba a mitad, dejando un JSON sin
+      // cerrar. Dos de las 19 primeras corridas murieron así (25-ago-2026).
+      // El JSON que se pide es corto; el margen es para el relato de más.
+      { temperature: 0, maxOutputTokens: 1500 },
     );
 
     const crudo: Record<string, unknown> = { ...data, fuentes: fuentes.slice(0, 3) };
