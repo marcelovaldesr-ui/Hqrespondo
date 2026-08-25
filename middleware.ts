@@ -28,6 +28,11 @@ import type { NextRequest } from "next/server";
  * (que NO manda Basic Auth — sin esta excepción el agente muere en 401
  * silencioso) y todas validan su propio secreto adentro (lib/prospeccion/auth).
  *
+ * Las rutas /api/cola/* quedan fuera por lo mismo: las llama GitHub Actions con
+ * curl, que tampoco manda Basic Auth, y validan el mismo secreto adentro
+ * (PROS_CRON_SECRET, vía lib/prospeccion/auth). Sin esta línea el worker de la
+ * cola moría en el mismo 401 silencioso que describe el párrafo de arriba.
+ *
  * El redirect de "/" → "/dashboard" se hace ACÁ y no en app/page.tsx.
  * Motivo (bug real, 14-ago-2026): app/page.tsx era un `redirect("/dashboard")`
  * que Next prerenderizaba como artefacto estático. Servido desde el caché de
@@ -42,7 +47,8 @@ export function middleware(req: NextRequest) {
 
   if (
     pathname.startsWith("/api/hooks") ||
-    pathname.startsWith("/api/prospeccion")
+    pathname.startsWith("/api/prospeccion") ||
+    pathname.startsWith("/api/cola")
   )
     return NextResponse.next();
 

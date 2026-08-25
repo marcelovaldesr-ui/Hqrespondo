@@ -12,11 +12,28 @@
 
 name: Agente de prospección
 
+# ─────────────────────────────────────────────────────────────────────────────
+# APAGADO EL 25-AGO-2026, a pedido de Marcelo.
+#
+# Este agente enviaba correos en frío SOLO, por Gmail API, sin que nadie los
+# revisara antes. La secuencia y la configuración quedaron mal calibradas y no
+# estaban aportando reuniones, así que se detiene el envío automático.
+#
+# Junto con esto se sacaron los dos crons de vercel.json, que disparaban los
+# mismos endpoints una vez al día cada uno. Con los tres apagados, nada corre
+# solo.
+#
+# Cómo volver a encenderlo: descomenta el bloque `schedule:` de abajo, y vuelve
+# a agregar los crons en vercel.json. ANTES de hacerlo, revisa que
+# `prospects.proximo_toque_at` no tenga fechas vencidas acumuladas — si las
+# tiene, la primera corrida saldría con una ráfaga de correos atrasados.
+# ─────────────────────────────────────────────────────────────────────────────
+
 on:
-  schedule:
-    - cron: "0 13,15,17,19,21 * * 1-5"   # corridas de envío/enriquecimiento
-    - cron: "30 14,16,18,20,22 * * 1-5"  # revisión de respuestas (media hora corrida)
-  workflow_dispatch: {} # botón manual "Run workflow" para probar
+  # schedule:
+  #   - cron: "0 13,15,17,19,21 * * 1-5"   # corridas de envío/enriquecimiento
+  #   - cron: "30 14,16,18,20,22 * * 1-5"  # revisión de respuestas
+  workflow_dispatch: {} # solo a mano, desde el botón "Run workflow"
 
 jobs:
   correr:
