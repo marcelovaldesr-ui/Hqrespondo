@@ -87,6 +87,11 @@ export const ESTADO_FOCO_LABEL: Record<EstadoFoco, string> = {
 };
 
 export interface LeadFoco {
+  /** Fase 3 — copia de la señal vigente: ordena la cola y se dice en la llamada. */
+  senal_reciente?: string | null;
+  senal_reciente_url?: string | null;
+  senal_reciente_at?: string | null;
+  senal_vigente_hasta?: string | null;
   id: string;
   empresa: string;
   razon_social: string;
@@ -131,7 +136,8 @@ const SELECT =
   "id,empresa,razon_social,rut,web,linkedin_empresa,industria,n_empleados,comuna,region," +
   "contacto,cargo,telefono,email,linkedin_contacto,lista,estado,ultimo_resultado,tags,nota," +
   "recordatorio,intentos,sin_contestar,ultimo_intento,senal,confianza,fuente_url,ficha,contactabilidad," +
-  "encaje,encaje_motivo,encaje_manual";
+  "encaje,encaje_motivo,encaje_manual," +
+  "senal_reciente,senal_reciente_url,senal_reciente_at,senal_vigente_hasta";
 
 /**
  * Grupos de cargo. El MISMO mapa arma los chips del filtro (en resumenFoco) y
@@ -241,6 +247,12 @@ export async function listarFoco(f: FiltrosFoco = {}): Promise<LeadFoco[]> {
   if (colaDeLlamadas) {
     qo = qo.order("recordatorio", { ascending: true, nullsFirst: false });
     qo = qo.order("contactabilidad", { ascending: false });
+    // Fase 3: entre los que se pueden marcar, primero los que tienen una señal
+    // VIGENTE. Un aviso buscando recepcionista publicado esta semana es un
+    // negocio diciendo que tiene el problema AHORA; llamarlo hoy no es lo mismo
+    // que llamarlo en tres meses. Las vencidas las borra el worker antes de
+    // detectar nuevas, así que lo que quede acá está vivo.
+    qo = qo.order("senal_vigente_hasta", { ascending: false, nullsFirst: false });
     qo = qo.order("encaje_rank", { ascending: false });
   } else {
     qo = qo.order("encaje_rank", { ascending: false });

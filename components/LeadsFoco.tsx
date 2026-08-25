@@ -833,6 +833,44 @@ export default function LeadsFoco({
                   </>
                 )}
 
+                {/* ---------- Fase 3: la señal vigente ----------
+                    Va ARRIBA de "por qué llamarlos" y con otro color a
+                    propósito: eso de abajo es lo que alguien escribió sobre por
+                    qué este negocio encaja; esto es un hecho fechado y citable
+                    que dice que tiene el problema AHORA. Quien llama tiene que
+                    verlo antes de marcar, y poder abrir la fuente para no citar
+                    de memoria un aviso que quizá ya bajaron. */}
+                {lead.senal_reciente && (
+                  <>
+                    <div className="hairline my-3" />
+                    <div className="rounded-lg border border-ok/40 bg-ok/10 px-3 py-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] uppercase tracking-[0.13em] text-ok">
+                          Señal vigente
+                        </span>
+                        {lead.senal_vigente_hasta && (
+                          <span className="font-mono text-[9.5px] text-ink-faint">
+                            hasta {fechaCorta(lead.senal_vigente_hasta)}
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-[12.5px] leading-snug text-ink">
+                        {lead.senal_reciente}
+                      </p>
+                      {lead.senal_reciente_url && (
+                        <a
+                          className="mt-1 inline-block text-[10.5px] text-ok underline"
+                          href={lead.senal_reciente_url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          ver el aviso
+                        </a>
+                      )}
+                    </div>
+                  </>
+                )}
+
                 {lead.senal && (
                   <>
                     <div className="hairline my-3" />

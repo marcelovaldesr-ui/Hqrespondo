@@ -20,7 +20,7 @@ import { db } from "@/lib/db";
 // ---------------------------------------------------------------------------
 
 export type Entidad = "prospect" | "lead_foco" | "empresa_sii";
-export type Objetivo = "telefono_directo" | "email" | "decisor" | "linkedin";
+export type Objetivo = "telefono_directo" | "email" | "decisor" | "linkedin" | "senal";
 export type EstadoItem =
   | "pendiente"
   | "procesando"

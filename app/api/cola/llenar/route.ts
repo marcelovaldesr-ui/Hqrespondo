@@ -22,6 +22,43 @@ export async function GET(req: Request) {
   }
 
   const url = new URL(req.url);
+
+  // ---- Fase 3: llenar la cola de SEÑALES ----
+  // Se encolan los leads de Foco que alguien puede llamar mañana. No las 7.312
+  // empresas del SII: saber que una empresa está contratando recepcionista, sin
+  // tener su teléfono ni el nombre de nadie, es información que no se puede usar.
+  if (url.searchParams.get("objetivo") === "senal") {
+    const lim = Math.min(Math.max(Number(url.searchParams.get("limite")) || 200, 1), 1000);
+    try {
+      const { data, error } = await db()
+        .from("leads_foco")
+        .select("id,contactabilidad")
+        .in("estado", ["nuevo", "contactando"])
+        .in("encaje", ["alto", "medio", "sin_evaluar"])
+        .or(`senal_vigente_hasta.is.null,senal_vigente_hasta.lt.${new Date().toISOString()}`)
+        .order("contactabilidad", { ascending: false })
+        .limit(lim);
+      if (error) throw new Error(error.message);
+
+      const items: PorEncolar[] = (data ?? []).map(
+        (l: { id: string; contactabilidad: number | null }) => ({
+          entidad: "lead_foco" as const,
+          id: l.id,
+          objetivo: "senal" as const,
+          // Los que ya se pueden marcar primero: una señal sobre un lead
+          // llamable se usa mañana; sobre uno sin teléfono, no se usa.
+          prioridad: (l.contactabilidad ?? 0) >= 3 ? 100 : 0,
+        }),
+      );
+      const nuevas = await encolar(items);
+      return NextResponse.json({ ok: true, objetivo: "senal", candidatas: items.length, encoladas: nuevas });
+    } catch (e) {
+      return NextResponse.json(
+        { ok: false, error: e instanceof Error ? e.message : String(e) },
+        { status: 500 },
+      );
+    }
+  }
   const limite = Math.min(Math.max(Number(url.searchParams.get("limite")) || 500, 1), 1000);
   const objetivo = (url.searchParams.get("objetivo") ?? "telefono_directo") as PorEncolar["objetivo"];
 

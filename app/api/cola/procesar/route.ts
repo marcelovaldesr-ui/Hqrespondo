@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { autorizado } from "@/lib/prospeccion/auth";
 import { correrWorker, enriquecerSimulado, proveedoresDisponibles } from "@/lib/cola";
 import { cascadaTelefonoDirecto } from "@/lib/cascada";
+import { detectorDeSenales } from "@/lib/cascadaSenal";
+import { limpiarSenalesVencidas } from "@/lib/senales";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -42,6 +44,12 @@ export async function GET(req: Request) {
   const pedido = (url.searchParams.get("modo") ?? "real").toLowerCase();
   const modo = pedido === "seco" || pedido === "simulado" ? pedido : "real";
 
+  // Qué objetivo se trabaja en esta corrida. `telefono_directo` es el de la
+  // Fase 2; `senal` es el de la Fase 3 y se pide explícitamente, porque las dos
+  // colas compiten por el mismo cupo de Gemini y quién manda es una decisión,
+  // no algo que deba resolver el azar del lote.
+  const objetivo = url.searchParams.get("objetivo") === "senal" ? "senal" : "telefono_directo";
+
   const porDefecto = modo === "real" ? 25 : 50;
   const lote = Math.min(
     Math.max(Number(url.searchParams.get("lote")) || porDefecto, 1),
@@ -49,25 +57,32 @@ export async function GET(req: Request) {
   );
 
   try {
+    const vivos = await proveedoresDisponibles();
+
+    // Una señal vencida ordena la cola con información falsa, así que la
+    // limpieza va ANTES de detectar nuevas: es más importante borrar la que
+    // miente que encontrar una más.
+    const vencidas = objetivo === "senal" ? await limpiarSenalesVencidas() : 0;
+
     const enriquecedor =
       modo === "simulado"
         ? enriquecerSimulado
-        : cascadaTelefonoDirecto({
-            vivos: await proveedoresDisponibles(),
-            modo: modo === "seco" ? "seco" : "real",
-          });
+        : objetivo === "senal"
+          ? detectorDeSenales({ vivos })
+          : cascadaTelefonoDirecto({ vivos, modo: modo === "seco" ? "seco" : "real" });
 
     const r = await correrWorker({
       lote,
+      objetivo,
       // 280s deja 20 de margen bajo el tope de 300 de Vercel. Con 45s
       // alcanzaban 6 empresas por corrida; con esto, unas 35.
       limiteMs: 280_000,
       enriquecedor,
     });
-    return NextResponse.json({ ok: true, modo, ...r });
+    return NextResponse.json({ ok: true, modo, objetivo, senales_vencidas: vencidas, ...r });
   } catch (e) {
     return NextResponse.json(
-      { ok: false, modo, error: e instanceof Error ? e.message : String(e) },
+      { ok: false, modo, objetivo, error: e instanceof Error ? e.message : String(e) },
       { status: 500 },
     );
   }
