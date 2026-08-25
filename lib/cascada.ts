@@ -39,6 +39,7 @@ import {
   telefonoPorBusquedaPublica,
   type HallazgoTelefono,
 } from "@/lib/agenteTelefono";
+import { decisorBuscable } from "@/lib/decisorBuscable";
 import {
   proveedoresYaConsultados,
   type Enriquecedor,
@@ -60,6 +61,7 @@ type EmpresaFila = {
   telefono: string | null;
   telefono_directo: string | null;
   decisor_nombre: string | null;
+  decisor_confianza: string | null;
   prospect_id: string | null;
   n_trabajadores: number | null;
 };
@@ -223,7 +225,7 @@ export function cascadaTelefonoDirecto(opts: {
     // ---- 0. la empresa ----
     const { data, error } = await db()
       .from("empresas_sii")
-      .select("rut,razon_social,comuna,telefono,telefono_directo,decisor_nombre,prospect_id,n_trabajadores")
+      .select("rut,razon_social,comuna,telefono,telefono_directo,decisor_nombre,decisor_confianza,prospect_id,n_trabajadores")
       .eq("rut", item.entidad_id)
       .maybeSingle();
     if (error) throw new Error(`leer empresas_sii ${item.entidad_id}: ${error.message}`);
@@ -255,6 +257,26 @@ export function cascadaTelefonoDirecto(opts: {
         intentos: [{
           proveedor: "sin_decisor", resultado: "sin_dato", encontrado: false,
           respuesta: { motivo: !e.decisor_nombre ? "sin decisor_nombre" : "sin comuna" },
+        }],
+      };
+    }
+
+    // ---- 0-bis. ¿este decisor se puede buscar? ----
+    // Va ANTES de cualquier proveedor, y esa posición es todo el punto: un
+    // decisor falso cuesta una búsqueda de Gemini y una de Places, y si por
+    // mala suerte alguna "encuentra" algo, ensucia la lista de llamadas con un
+    // número que alguien va a marcar. Ver lib/decisorBuscable.ts para los
+    // cuatro modos de falla que esto ataja y la medición que los encontró.
+    const veredicto = decisorBuscable(e.razon_social, e.decisor_nombre, e.decisor_confianza);
+    if (!veredicto.buscable) {
+      console.log(`[cascada] ${e.rut} SALTADA · ${e.decisor_nombre} · ${veredicto.motivo}`);
+      return {
+        encontrado: false,
+        intentos: [{
+          proveedor: "decisor_no_buscable",
+          resultado: "sin_dato",
+          encontrado: false,
+          respuesta: { decisor: e.decisor_nombre, razon_social: e.razon_social, motivo: veredicto.motivo },
         }],
       };
     }
