@@ -5,7 +5,7 @@ import { encolar, type PorEncolar } from "@/lib/cola";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 /**
  * GET /api/cola/llenar?key=SECRETO[&limite=500][&objetivo=telefono_directo]

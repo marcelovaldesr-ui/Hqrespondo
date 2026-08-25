@@ -40,6 +40,7 @@ import {
   type HallazgoTelefono,
 } from "@/lib/agenteTelefono";
 import { decisorBuscable } from "@/lib/decisorBuscable";
+import { promoverAFoco } from "@/lib/promoverDecisor";
 import {
   proveedoresYaConsultados,
   type Enriquecedor,
@@ -209,7 +210,23 @@ async function guardarHallazgo(
   }
   // 0 filas = otra corrida ya le puso un teléfono directo. No es un error, pero
   // tampoco es un acierto de esta corrida.
-  return (data?.length ?? 0) > 0 ? "guardado" : "descartado";
+  if ((data?.length ?? 0) === 0) return "descartado";
+
+  // Y acá se cierra el circuito. Guardar el número en una columna no sirve de
+  // nada si nadie lo puede marcar: hasta el 25-ago-2026 `telefono_directo` no
+  // aparecía en ninguna pantalla de HQ. Promoverlo a Leads Foco lo pone en una
+  // cola de llamadas de verdad, con su procedencia a la vista, y hace que la
+  // respuesta de "¿quién contestó?" vuelva a esta misma empresa.
+  //
+  // Si la promoción falla NO se pierde el hallazgo: el teléfono ya quedó
+  // guardado, y /api/cola/promover lo alcanza después.
+  try {
+    const p = await promoverAFoco(e.rut);
+    console.log(`[cascada] ${e.rut} → cola de llamadas: ${p.estado}`);
+  } catch (err) {
+    console.error(`[cascada] no se pudo promover ${e.rut} a Foco:`, err);
+  }
+  return "guardado";
 }
 
 // ---------------------------------------------------------------------------

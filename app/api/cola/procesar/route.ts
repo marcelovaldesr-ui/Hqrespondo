@@ -5,7 +5,7 @@ import { cascadaTelefonoDirecto } from "@/lib/cascada";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 /**
  * GET /api/cola/procesar?key=SECRETO[&modo=real|seco|simulado][&lote=N]
@@ -42,7 +42,7 @@ export async function GET(req: Request) {
   const pedido = (url.searchParams.get("modo") ?? "real").toLowerCase();
   const modo = pedido === "seco" || pedido === "simulado" ? pedido : "real";
 
-  const porDefecto = modo === "real" ? 6 : 25;
+  const porDefecto = modo === "real" ? 25 : 50;
   const lote = Math.min(
     Math.max(Number(url.searchParams.get("lote")) || porDefecto, 1),
     100,
@@ -59,7 +59,9 @@ export async function GET(req: Request) {
 
     const r = await correrWorker({
       lote,
-      limiteMs: 45_000, // por debajo de maxDuration, con margen
+      // 280s deja 20 de margen bajo el tope de 300 de Vercel. Con 45s
+      // alcanzaban 6 empresas por corrida; con esto, unas 35.
+      limiteMs: 280_000,
       enriquecedor,
     });
     return NextResponse.json({ ok: true, modo, ...r });

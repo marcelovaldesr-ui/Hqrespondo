@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     const s = db();
     const { data: lead, error: e1 } = await s
       .from("leads_foco")
-      .select("id,empresa,contacto,cargo,telefono,industria,intentos,sin_contestar,nota")
+      .select("id,empresa,contacto,cargo,telefono,industria,intentos,sin_contestar,nota,rut,lista")
       .eq("id", id)
       .single();
     if (e1 || !lead) return NextResponse.json({ error: "lead no encontrado" }, { status: 404 });
@@ -101,6 +101,31 @@ export async function POST(req: Request) {
 
     const { error: e2 } = await s.from("leads_foco").update(upd).eq("id", id);
     if (e2) throw new Error(e2.message);
+
+    // ---- El veredicto vuelve a la empresa de origen ----
+    // Este bloque es la razón de ser de toda la cascada. Encontrar un teléfono
+    // no prueba nada; lo único que resuelve de quién es un número es la llamada.
+    // Acá esa respuesta viaja de vuelta a `empresas_sii` para poder contestar,
+    // con datos y no con fe: de los números que encontramos, ¿cuántos eran del
+    // que decide?
+    //
+    // Los ambiguos quedan en null a propósito. "Mándanos un correo" es lo que
+    // dice una recepcionista tanto como un dueño apurado: contarlo como acierto
+    // sería inflar la métrica que estamos tratando de medir.
+    const VERDICTO: Partial<Record<ResultadoFoco, "decisor" | "recepcion" | "malo">> = {
+      exito: "decisor", rechazo: "decisor", ya_cliente: "decisor", no_aplica: "decisor",
+      gatekeeper: "recepcion", derivo: "recepcion",
+      equivocado: "malo", no_existe: "malo",
+    };
+    const verdicto = VERDICTO[resultado];
+    if (verdicto && lead.rut) {
+      const { error: eV } = await s
+        .from("empresas_sii")
+        .update({ telefono_directo_verdicto: verdicto, verificado_at: ahora.toISOString() })
+        .eq("rut", lead.rut)
+        .not("telefono_directo", "is", null);
+      if (eV) console.error("[foco] no se pudo devolver el veredicto a empresas_sii:", eV.message);
+    }
 
     await registrarActividad({
       lead_foco_id: lead.id,
