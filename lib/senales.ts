@@ -111,15 +111,38 @@ type RespuestaIA = {
 };
 
 /**
+ * Qué pasó al buscar. El `motivo` NO es decorativo: es la única forma de saber
+ * si el detector no encuentra nada porque no hay avisos, o porque los filtros
+ * están rechazando avisos buenos.
+ *
+ * Nació de una corrida real (25-ago-2026): 10 de 10 empresas sin señal, y el
+ * libro mayor anotaba lo mismo en los dos casos. Sin poder distinguirlos no se
+ * puede decidir si la fase sirve o si hay que aflojar un filtro — así que se
+ * estaba midiendo nada.
+ */
+export type ResultadoBusqueda = {
+  senal: Senal | null;
+  motivo:
+    | "encontrada"
+    | "la busqueda no encontro ningun aviso"
+    | "el aviso no trae URL citable"
+    | "el cargo no es de atencion de publico"
+    | "el aviso es de otra empresa con nombre parecido"
+    | "error en la busqueda";
+  /** Lo que contestó el modelo, para poder revisar los rechazos a mano. */
+  crudo?: Record<string, unknown>;
+};
+
+/**
  * Busca si la empresa está contratando a alguien para atender público.
- * Devuelve null cuando no hay nada citable — que es la respuesta correcta la
- * mayoría de las veces y no un fallo.
+ * `senal: null` es la respuesta correcta la mayoría de las veces y no un fallo;
+ * el `motivo` dice cuál de las cuatro razones fue.
  */
 export async function buscarSenalContratacion(entrada: {
   empresa: string;
   comuna?: string | null;
   industria?: string | null;
-}): Promise<Senal | null> {
+}): Promise<ResultadoBusqueda> {
   const prompt = `Averigua si esta empresa chilena publicó recientemente un aviso de trabajo para un cargo de ATENCIÓN DE PÚBLICO.
 
 Empresa: ${entrada.empresa}
@@ -150,23 +173,29 @@ Responde SOLO este JSON:
       { temperature: 0, maxOutputTokens: 700 },
     );
 
-    if (!data?.encontrado) return null;
+    const crudo: Record<string, unknown> = { ...data, fuentes: fuentes.slice(0, 3) };
+
+    if (!data?.encontrado) {
+      return { senal: null, motivo: "la busqueda no encontro ningun aviso", crudo };
+    }
 
     // Filtro 1 — sin URL citada no hay señal.
     const url = fuentes[0]?.url;
-    if (!url) return null;
+    if (!url) return { senal: null, motivo: "el aviso no trae URL citable", crudo };
 
     // Filtro 2 — el cargo tiene que atender público.
     const cargo = String(data.cargo ?? "");
     if (!CARGO_DE_ATENCION.test(sinAcento(cargo).toLowerCase()) && !CARGO_DE_ATENCION.test(cargo)) {
-      return null;
+      return { senal: null, motivo: "el cargo no es de atencion de publico", crudo };
     }
 
     // Filtro 3 — el aviso tiene que ser de ESTA empresa. Acá no se le cree al
     // modelo: se compara el nombre que él mismo copió del aviso.
     const enAviso = String(data.empresa_en_el_aviso ?? "");
     const calza = mismaEmpresa(entrada.empresa, enAviso);
-    if (!calza) return null;
+    if (!calza) {
+      return { senal: null, motivo: "el aviso es de otra empresa con nombre parecido", crudo };
+    }
 
     // Un nombre que calza entero da más confianza que uno que calza en una
     // palabra. Sin fecha explícita, la confianza baja: puede ser un aviso viejo.
@@ -174,15 +203,23 @@ Responde SOLO este JSON:
     const conFecha = !!data.publicado && !/reciente/i.test(String(data.publicado));
 
     return {
-      tipo: "contratando_atencion",
-      detalle: `Busca ${cargo.toLowerCase()}${data.publicado ? ` (${data.publicado})` : ""}${
-        data.donde ? ` · ${data.donde}` : ""
-      }`,
-      evidencia_url: url,
-      confianza: exacto && conFecha ? "alta" : exacto || conFecha ? "media" : "baja",
+      senal: {
+        tipo: "contratando_atencion",
+        detalle: `Busca ${cargo.toLowerCase()}${data.publicado ? ` (${data.publicado})` : ""}${
+          data.donde ? ` · ${data.donde}` : ""
+        }`,
+        evidencia_url: url,
+        confianza: exacto && conFecha ? "alta" : exacto || conFecha ? "media" : "baja",
+      },
+      motivo: "encontrada",
+      crudo,
     };
-  } catch {
-    return null;
+  } catch (e) {
+    return {
+      senal: null,
+      motivo: "error en la busqueda",
+      crudo: { error: e instanceof Error ? e.message : String(e) },
+    };
   }
 }
 

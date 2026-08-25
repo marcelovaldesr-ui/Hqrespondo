@@ -83,21 +83,31 @@ export function detectorDeSenales(opts: { vivos: Set<string> }): Enriquecedor {
 
     const t0 = Date.now();
     try {
-      const senal = await buscarSenalContratacion({
+      const r = await buscarSenalContratacion({
         empresa: lead.empresa,
         comuna: lead.comuna,
         industria: lead.industria,
       });
+      const senal = r.senal;
       const ms = Date.now() - t0;
 
       if (!senal) {
-        console.log(`[senal] ${lead.empresa} → nada citable`);
+        // El motivo va al libro mayor. Es lo que permite responder, con datos,
+        // si el detector no encuentra nada porque no hay avisos o porque un
+        // filtro está de más.
+        console.log(`[senal] ${lead.empresa} → ${r.motivo}`);
         return {
           encontrado: false,
           intentos: [{
-            proveedor: "gemini", resultado: "sin_dato", encontrado: false, ms,
-            costo_creditos: 1,
-            respuesta: { consulta: `${lead.empresa} · ${lead.comuna ?? ""}` },
+            proveedor: "gemini",
+            resultado: r.motivo === "error en la busqueda" ? "error" : "sin_dato",
+            encontrado: false, ms, costo_creditos: 1,
+            error_detalle: r.motivo === "error en la busqueda" ? String(r.crudo?.error ?? "") : undefined,
+            respuesta: {
+              consulta: `${lead.empresa} · ${lead.comuna ?? ""}`,
+              motivo: r.motivo,
+              contesto_el_modelo: r.crudo,
+            },
           }],
         };
       }
