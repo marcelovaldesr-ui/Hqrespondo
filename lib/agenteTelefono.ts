@@ -86,8 +86,16 @@ function clasificar(tel: string, telefonoConocido?: string | null): TipoNumero {
   return esCelular(tel) ? "movil_personal" : "directo";
 }
 
-/** 1) ¿La persona tiene su propia ficha en Google Maps? */
-async function porMapsDeLaPersona(
+/**
+ * 1) ¿La persona tiene su propia ficha en Google Maps?
+ *
+ * Exportada (25-ago-2026) para que la cascada de la Fase 2 pueda decidir
+ * CUÁNDO llamarla. `buscarTelefonoDirecto` la corre siempre y de primera, pero
+ * consume cupo de Places (1.000 gratis al mes); la cascada la deja para después
+ * de la web, que es gratis, y se la salta cuando el cortacircuitos dice que no
+ * queda cupo.
+ */
+export async function telefonoPorMapsDeLaPersona(
   persona: string,
   comuna: string,
   telefonoConocido?: string | null,
@@ -171,8 +179,14 @@ export function telefonoCercaDelNombre(
   return null;
 }
 
-/** 3) Búsqueda pública con IA, obligada a citar. */
-async function porBusquedaPublica(
+/**
+ * 3) Búsqueda pública con IA, obligada a citar.
+ *
+ * Exportada por el mismo motivo que la de arriba: es el paso más caro y el que
+ * más se puede equivocar, así que quien la llama tiene que poder decidir si
+ * corresponde gastarla.
+ */
+export async function telefonoPorBusquedaPublica(
   persona: string,
   empresa: string,
   comuna: string,
@@ -234,7 +248,7 @@ export async function buscarTelefonoDirecto(entrada: {
   const traza: string[] = [];
   const hallazgos: HallazgoTelefono[] = [];
 
-  const enMaps = await porMapsDeLaPersona(entrada.persona, entrada.comuna, entrada.telefonoConocido);
+  const enMaps = await telefonoPorMapsDeLaPersona(entrada.persona, entrada.comuna, entrada.telefonoConocido);
   traza.push(enMaps ? `Maps de la persona → ${enMaps.telefono}` : "Maps de la persona → nada distinto al mesón");
   if (enMaps) hallazgos.push(enMaps);
 
@@ -247,7 +261,7 @@ export async function buscarTelefonoDirecto(entrada: {
   // La búsqueda con IA es la más cara y la que más puede equivocarse: solo se
   // usa cuando las dos gratis no encontraron nada.
   if (!hallazgos.length) {
-    const enBusqueda = await porBusquedaPublica(
+    const enBusqueda = await telefonoPorBusquedaPublica(
       entrada.persona, entrada.empresa, entrada.comuna, entrada.telefonoConocido,
     );
     traza.push(enBusqueda ? `búsqueda pública → ${enBusqueda.telefono}` : "búsqueda pública → nada citable");
