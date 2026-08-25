@@ -32,6 +32,7 @@
  */
 
 import { db } from "@/lib/db";
+import { textoDeLaWeb } from "@/lib/leerWeb";
 import { normalizarTelefono } from "@/lib/actividades";
 import {
   telefonoCercaDelNombre,
@@ -88,44 +89,6 @@ async function contextoDelProspect(
     .maybeSingle();
   const p = data as { web: string | null; telefono: string | null } | null;
   return { web: p?.web ?? null, telefono: p?.telefono ?? null };
-}
-
-/**
- * Baja la portada y la convierte en texto plano. No usa `enriquecerWeb` porque
- * eso devuelve señales (¿tiene chatbot?, ¿tiene reservas?) y lo que hace falta
- * acá es el texto crudo para buscar un nombre dentro.
- *
- * Nunca lanza: un sitio caído es un dato ("no se pudo leer"), no un error de
- * la corrida.
- */
-async function textoDeLaWeb(web: string): Promise<string | null> {
-  const url = /^https?:\/\//i.test(web) ? web : `https://${web}`;
-  // Una red social no es un sitio que se pueda leer así.
-  if (/facebook\.com|instagram\.com|linktr\.ee|wa\.me\//i.test(url)) return null;
-  try {
-    const ctrl = new AbortController();
-    const corte = setTimeout(() => ctrl.abort(), 12_000);
-    const r = await fetch(url, {
-      signal: ctrl.signal,
-      redirect: "follow",
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; RespondoHQ/1.0)" },
-    });
-    clearTimeout(corte);
-    if (!r.ok) return null;
-    const tipo = r.headers.get("content-type") ?? "";
-    if (!/text\/html|application\/xhtml/i.test(tipo)) return null;
-    const html = await r.text();
-    return html
-      .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/&nbsp;/g, " ")
-      .replace(/&amp;/g, "&")
-      .replace(/\s+/g, " ")
-      .slice(0, 120_000);
-  } catch {
-    return null;
-  }
 }
 
 // ---------------------------------------------------------------------------

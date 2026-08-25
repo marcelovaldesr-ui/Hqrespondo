@@ -29,8 +29,58 @@ export default function NuevoLeadFoco({ lista = "general" }: { lista?: string })
   const [guardando, setGuardando] = useState(false);
   const [msg, setMsg] = useState<{ tipo: "ok" | "error"; texto: string } | null>(null);
   const [f, setF] = useState<Record<string, string>>({});
+  const [leyendo, setLeyendo] = useState(false);
+  const [leido, setLeido] = useState<string | null>(null);
 
   const set = (k: string, v: string) => setF((p) => ({ ...p, [k]: v }));
+
+  /**
+   * Lee el sitio y rellena lo que encuentre.
+   *
+   * Regla que importa: NUNCA pisa lo que ya escribiste. Si tipeaste el rubro a
+   * mano y después pegas la web, tu texto gana. Lo del sitio es una propuesta,
+   * no una corrección.
+   */
+  async function leerSitio() {
+    const web = (f.web ?? "").trim();
+    if (!web || leyendo) return;
+    setLeyendo(true);
+    setLeido(null);
+    setMsg(null);
+    try {
+      const r = await fetch("/api/foco/leer-web", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ web }),
+      });
+      const j = await r.json();
+      if (!j.ok) {
+        setLeido(j.motivo ?? "No se pudo leer el sitio.");
+        return;
+      }
+      const ficha = (j.ficha ?? {}) as Record<string, string>;
+      const puestos: string[] = [];
+      setF((prev) => {
+        const sig = { ...prev };
+        for (const [k, v] of Object.entries(ficha)) {
+          if (!v) continue;
+          if ((sig[k] ?? "").trim()) continue; // lo tuyo manda
+          sig[k] = v;
+          puestos.push(k);
+        }
+        return sig;
+      });
+      setLeido(
+        puestos.length
+          ? `Del sitio salieron: ${puestos.join(", ")}. Revísalos antes de guardar.`
+          : "El sitio se leyó pero no aportó nada que no tuvieras ya.",
+      );
+    } catch (e) {
+      setLeido(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLeyendo(false);
+    }
+  }
 
   function cerrar() {
     if (guardando) return;
@@ -85,17 +135,31 @@ export default function NuevoLeadFoco({ lista = "general" }: { lista?: string })
             <div className="lbl">Agregar a Leads Foco</div>
             <div className="ttl mt-1 text-[15px]">Un lead, a mano</div>
             <p className="mt-2 text-[11.5px] leading-relaxed text-ink-mut">
-              Lo único obligatorio es la <b className="text-ink-soft">empresa</b>. Todo lo demás se
-              puede completar después desde la ficha. Si el teléfono está en la lista de no
-              contactar, el lead <b className="text-ink-soft">no se agrega</b> y te avisa por qué.
+              Lo único obligatorio es la <b className="text-ink-soft">empresa</b>. Si tienes el
+              sitio, pégalo y aprieta <b className="text-ink-soft">leer sitio</b>: rellena rubro,
+              comuna y contacto solo. Nunca pisa lo que ya escribiste. Si el teléfono está en la
+              lista de no contactar, el lead <b className="text-ink-soft">no se agrega</b> y te
+              avisa por qué.
             </p>
 
             <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
               {CAMPOS.map((c) => (
                 <label key={c.k} className="block">
-                  <span className="lbl mb-1 block">
-                    {c.label}
-                    {"req" in c && c.req ? <span className="text-coral"> *</span> : null}
+                  <span className="lbl mb-1 flex items-center justify-between gap-2">
+                    <span>
+                      {c.label}
+                      {"req" in c && c.req ? <span className="text-coral"> *</span> : null}
+                    </span>
+                    {c.k === "web" && (
+                      <button
+                        type="button"
+                        className="btn-ghost !px-1.5 !py-0 text-[9.5px]"
+                        disabled={leyendo || !(f.web ?? "").trim()}
+                        onClick={leerSitio}
+                      >
+                        {leyendo ? "leyendo…" : "✨ leer sitio"}
+                      </button>
+                    )}
                   </span>
                   <input
                     className="input text-[12.5px]"
@@ -103,12 +167,23 @@ export default function NuevoLeadFoco({ lista = "general" }: { lista?: string })
                     value={f[c.k] ?? ""}
                     onChange={(e) => set(c.k, e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && !guardando) guardar();
+                      if (e.key !== "Enter" || guardando) return;
+                      // En el campo de la web, Enter LEE el sitio en vez de
+                      // guardar: es lo que uno espera después de pegar una URL,
+                      // y guardar sin haberla leído desperdicia el viaje.
+                      if (c.k === "web") leerSitio();
+                      else guardar();
                     }}
                   />
                 </label>
               ))}
             </div>
+
+            {leido && (
+              <div className="mt-2 rounded-md border border-line2 bg-surface-3/60 px-2.5 py-1.5 text-[11px] leading-snug text-ink-mut">
+                {leido}
+              </div>
+            )}
 
             <label className="mt-2.5 block">
               <span className="lbl mb-1 block">Por qué llamarlos</span>
