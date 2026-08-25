@@ -218,18 +218,36 @@ export async function listarFoco(f: FiltrosFoco = {}): Promise<LeadFoco[]> {
   // Orden de trabajo. PRIMERO las promesas: un recordatorio vencido es una
   // palabra empeñada ("llámame el jueves") y en la cola de hoy todos los
   // recordatorios visibles ya vencieron, así que van arriba, el más viejo
-  // primero. Detrás, el ENCAJE — de nada sirve un teléfono directo si el
-  // negocio no se puede atender —, la contactabilidad, los menos tocados y
-  // recién ahí el tamaño. (Bug real: al meter el orden por encaje, las
-  // promesas quedaron enterradas bajo leads frescos durante una versión.)
+  // primero. (Bug real: al meter el orden por encaje, las promesas quedaron
+  // enterradas bajo leads frescos durante una versión.)
+  //
+  // Después, y acá está la corrección del 25-ago-2026: en la COLA DE HOY manda
+  // la contactabilidad, no el encaje.
+  //
+  // El orden anterior ponía el encaje primero, con el argumento de que "de nada
+  // sirve un teléfono directo si el negocio no se puede atender". Suena bien y
+  // está mal para esta pantalla: dejaba un lead con teléfono Y persona —o sea,
+  // marcable AHORA— debajo de diez leads de encaje alto que dicen "sin número".
+  // Un lead que no se puede llamar no es trabajo de la cola de llamadas; es
+  // trabajo de escritorio, y para eso existe la cola "Por investigar", que
+  // filtra justamente por contactabilidad < 3.
+  //
+  // El encaje no desaparece: sigue decidiendo el orden ENTRE los que sí se
+  // pueden marcar, y sigue filtrando de entrada (bajo y nulo no se muestran).
+  // En las demás vistas —"Todos" y "Por investigar"— el encaje manda como
+  // antes, porque ahí sí se está eligiendo a quién vale la pena perseguir.
   let qo = q;
-  if (f.cola !== "investigar" && f.cola !== "todos") {
+  const colaDeLlamadas = f.cola !== "investigar" && f.cola !== "todos";
+  if (colaDeLlamadas) {
     qo = qo.order("recordatorio", { ascending: true, nullsFirst: false });
+    qo = qo.order("contactabilidad", { ascending: false });
+    qo = qo.order("encaje_rank", { ascending: false });
+  } else {
+    qo = qo.order("encaje_rank", { ascending: false });
+    qo = qo.order("contactabilidad", { ascending: false });
   }
   const [{ data, error }, suprimidos] = await Promise.all([
     qo
-      .order("encaje_rank", { ascending: false })
-      .order("contactabilidad", { ascending: false })
       .order("intentos", { ascending: true })
       .order("n_empleados", { ascending: false, nullsFirst: false })
       .limit(f.limite ?? 300),

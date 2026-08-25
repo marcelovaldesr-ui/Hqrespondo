@@ -663,11 +663,14 @@ export default function LeadsFoco({
 
                 <div className="mb-1.5 flex items-center justify-between gap-2">
                   <span className="lbl">Persona y contacto</span>
+                  {/* Era un enlace de 10px en gris tenue y nadie lo encontraba:
+                      Marcelo pidió "una opción para editar" que llevaba semanas
+                      ahí. Un botón que no se ve es un botón que no existe. */}
                   <button
-                    className="text-[10px] text-ink-faint underline hover:text-ink-mut"
+                    className="btn-ghost !px-2 !py-0.5 text-[10.5px]"
                     onClick={() => (editando ? setEditando(false) : abrirEdicion())}
                   >
-                    {editando ? "cancelar" : "editar datos"}
+                    {editando ? "Cancelar" : "✎ Editar datos"}
                   </button>
                 </div>
                 {editando ? (

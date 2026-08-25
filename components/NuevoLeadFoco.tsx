@@ -17,6 +17,7 @@ const CAMPOS = [
   { k: "contacto",  label: "Persona",        ph: "María José Contreras" },
   { k: "cargo",     label: "Cargo",          ph: "Dueña / Gerente" },
   { k: "telefono",  label: "Teléfono",       ph: "+56 9 1234 5678" },
+  { k: "email",     label: "Correo",         ph: "contacto@clinica.cl" },
   { k: "industria", label: "Rubro",          ph: "Clínica dental" },
   { k: "comuna",    label: "Comuna",         ph: "Providencia" },
 ] as const;
