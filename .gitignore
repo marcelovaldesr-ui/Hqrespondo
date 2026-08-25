@@ -13,3 +13,7 @@ app-build-manifest.json
 app-path-routes-manifest.json
 
 .claude/
+
+# Carpeta puente: acá quedan los zips con que Claude entrega archivos.
+# No es código del proyecto y no debe versionarse.
+_to_delete/

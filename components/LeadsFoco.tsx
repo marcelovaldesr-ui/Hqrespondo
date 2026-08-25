@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import { ENCAJE_LABEL, NIVELES_ENCAJE, senalesDeGuia, type NivelEncaje } from "@/lib/encaje";
 import { secuenciaPara, verticalDe } from "@/lib/secuencias";
 import {
-import NuevoLeadFoco from "@/components/NuevoLeadFoco";
-import BitacoraLead from "@/components/BitacoraLead";
   CONECTA_FOCO,
   ESTADO_FOCO_LABEL,
   MAX_SIN_CONTESTAR,
@@ -17,6 +15,8 @@ import BitacoraLead from "@/components/BitacoraLead";
   type ResumenFoco,
   type ResultadoFoco,
 } from "@/lib/foco";
+import NuevoLeadFoco from "@/components/NuevoLeadFoco";
+import BitacoraLead from "@/components/BitacoraLead";
 
 /**
  * Leads Foco — mesa de trabajo del segundo motor de prospección.
