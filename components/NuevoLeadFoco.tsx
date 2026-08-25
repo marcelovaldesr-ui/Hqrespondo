@@ -18,6 +18,7 @@ const CAMPOS = [
   { k: "cargo",     label: "Cargo",          ph: "Dueña / Gerente" },
   { k: "telefono",  label: "Teléfono",       ph: "+56 9 1234 5678" },
   { k: "email",     label: "Correo",         ph: "contacto@clinica.cl" },
+  { k: "web",       label: "Sitio web",      ph: "clinicaaurora.cl" },
   { k: "industria", label: "Rubro",          ph: "Clínica dental" },
   { k: "comuna",    label: "Comuna",         ph: "Providencia" },
 ] as const;

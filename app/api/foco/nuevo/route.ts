@@ -37,6 +37,13 @@ export async function POST(req: Request) {
     const industria = String(b.industria ?? "").trim().slice(0, 200);
     const comuna = String(b.comuna ?? "").trim().slice(0, 120);
     const cargo = String(b.cargo ?? "").trim().slice(0, 200);
+    // OJO — bug real del 25-ago-2026: el formulario mandaba `email` y este
+    // endpoint no lo leía, así que se perdía en silencio y había que volver a
+    // escribirlo desde "editar datos". El formulario y el endpoint son dos
+    // listas de campos separadas y se desincronizaron. Cada vez que se agregue
+    // un campo a NuevoLeadFoco.tsx hay que agregarlo ACÁ y en el insert.
+    const email = String(b.email ?? "").trim().slice(0, 200);
+    const web = String(b.web ?? "").trim().slice(0, 300);
     const senal = String(b.senal ?? "").trim().slice(0, 600);
     const nota = String(b.nota ?? "").trim().slice(0, 4000);
     const nEmpleados = Number.isFinite(Number(b.n_empleados)) && Number(b.n_empleados) > 0
@@ -99,6 +106,8 @@ export async function POST(req: Request) {
         contacto,
         cargo,
         telefono,
+        email,
+        web,
         industria,
         comuna,
         lista,
