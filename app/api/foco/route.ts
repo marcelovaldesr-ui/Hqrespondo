@@ -208,6 +208,70 @@ export async function POST(req: Request) {
   }
 }
 
+/**
+ * DELETE /api/foco  { id }
+ *
+ * Borra un lead de verdad. Es lo correcto para lo que se acumula de sobra:
+ * pruebas, duplicados, empresas que no eran, tandas mal filtradas de Apollo.
+ * Dejar basura en la cola le cuesta atención a quien llama todos los días.
+ *
+ * Lo que NO se borra es la bitácora. Desde la migración 035 la actividad
+ * sobrevive al lead con `lead_foco_id` en NULL: conserva el teléfono, el actor,
+ * el resultado y la nota con el nombre de la empresa. Si a alguien se le llamó,
+ * ese hecho no desaparece porque después se borre la ficha — ni para las
+ * métricas ni para la Ley 21.719.
+ *
+ * Y antes de irse deja constancia de su propio borrado, con quién lo hizo.
+ */
+export async function DELETE(req: Request) {
+  try {
+    const b = await req.json().catch(() => ({}));
+    const id = String(b.id ?? new URL(req.url).searchParams.get("id") ?? "");
+    if (!id) return NextResponse.json({ error: "falta id" }, { status: 400 });
+
+    const s = db();
+    const { data: lead, error: e1 } = await s
+      .from("leads_foco")
+      .select("id,empresa,contacto,telefono,intentos,lista")
+      .eq("id", id)
+      .maybeSingle();
+    if (e1) throw new Error(e1.message);
+    if (!lead) return NextResponse.json({ error: "lead no encontrado" }, { status: 404 });
+
+    const quien = quienEs(req) ?? "alguien sin sesión";
+
+    // Cuántas llamadas quedan registradas. Se informa al que borra: no para
+    // impedírselo, sino para que sepa qué está sacando de la cola.
+    const { count } = await s
+      .from("actividades")
+      .select("id", { count: "exact", head: true })
+      .eq("lead_foco_id", id);
+
+    // La constancia va ANTES del borrado: si el delete falla, queda anotado el
+    // intento; si el orden fuera al revés y fallara la anotación, el lead se
+    // habría ido sin dejar rastro.
+    await registrarActividad({
+      contacto: lead.telefono ?? "",
+      actor: quien,
+      canal: "otro",
+      tipo: "toque",
+      resultado: "fuera_icp",
+      nota: `Lead borrado de Foco (lista ${lead.lista}): ${lead.empresa}${lead.contacto ? ` · ${lead.contacto}` : ""}. Tenía ${lead.intentos ?? 0} intento(s).`,
+    });
+
+    const { error: e2 } = await s.from("leads_foco").delete().eq("id", id);
+    if (e2) throw new Error(e2.message);
+
+    return NextResponse.json({
+      ok: true,
+      borrado: lead.empresa,
+      actividades_conservadas: count ?? 0,
+    });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message ?? String(e) }, { status: 500 });
+  }
+}
+
 export async function PATCH(req: Request) {
   try {
     const b = await req.json();

@@ -141,6 +141,10 @@ export default function LeadsFoco({
   // cada uno lleva valor + tipo + de dónde salió.
   const [otrosTels, setOtrosTels] = useState<DatoContacto[]>([]);
   const [otrosMails, setOtrosMails] = useState<DatoContacto[]>([]);
+  // Confirmación en dos pasos, en la misma ficha. Un `confirm()` del navegador
+  // bloquea todo y se aprieta sin leer; esto obliga a mirar qué se va a borrar.
+  const [confirmaBorrar, setConfirmaBorrar] = useState(false);
+  const [borrando, setBorrando] = useState(false);
   const primeraCarga = useRef(true);
 
   // Cuando el servidor devuelve otra tanda (cambió un filtro), la tabla se
@@ -152,6 +156,9 @@ export default function LeadsFoco({
 
   const lead = useMemo(() => filas.find((f) => f.id === sel) ?? null, [filas, sel]);
   useEffect(() => setNotaFicha(lead?.nota ?? ""), [lead?.id, lead?.nota]);
+  // Cambiar de lead cancela una confirmación pendiente: si no, el "sí, borrar"
+  // quedaría armado apuntando a otro lead.
+  useEffect(() => setConfirmaBorrar(false), [lead?.id]);
   useEffect(() => { setEditando(false); setSecuencia(false); }, [lead?.id]);
 
   const navegar = useCallback(
@@ -360,6 +367,37 @@ export default function LeadsFoco({
       router.refresh();
     } catch {
       setError("No se pudo cambiar el contacto principal.");
+    }
+  }
+
+  /**
+   * Borra el lead. La bitácora NO se va con él (migración 035): si se le llamó,
+   * ese registro sobrevive para las métricas y para poder auditarlo.
+   */
+  async function borrarLead() {
+    if (!lead || borrando) return;
+    setBorrando(true);
+    const id = lead.id;
+    const nombre = lead.empresa;
+    try {
+      const r = await fetch("/api/foco", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error ?? "no se pudo borrar");
+      setFilas((fs) => fs.filter((x) => x.id !== id));
+      setSel(null);
+      setConfirmaBorrar(false);
+      setAvisoPipeline(
+        `${nombre} se borró de Leads Foco.` +
+          (j.actividades_conservadas ? ` Sus ${j.actividades_conservadas} evento(s) de bitácora se conservaron.` : ""),
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBorrando(false);
     }
   }
 
@@ -1089,6 +1127,39 @@ export default function LeadsFoco({
                 </div>
 
                 <BitacoraLead key={lead.id} leadId={lead.id} />
+
+                {/* ---------- Borrar el lead ---------- */}
+                <div className="hairline my-3" />
+                {confirmaBorrar ? (
+                  <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2.5">
+                    <div className="text-[12px] leading-snug text-danger">
+                      ¿Borrar <b>{lead.empresa}</b> de Leads Foco?
+                    </div>
+                    <div className="mt-1 text-[11px] leading-snug text-ink-mut">
+                      Se va de la cola para siempre. Lo que <b className="text-ink-soft">sí se conserva</b> es
+                      la bitácora: si se le llamó, ese registro sigue contando en las métricas.
+                    </div>
+                    <div className="mt-2 flex gap-1.5">
+                      <button
+                        className="btn-ghost !border-danger/45 !text-danger"
+                        disabled={borrando}
+                        onClick={borrarLead}
+                      >
+                        {borrando ? "Borrando…" : "Sí, borrar"}
+                      </button>
+                      <button className="btn-ghost" disabled={borrando} onClick={() => setConfirmaBorrar(false)}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    className="btn-ghost w-full !py-1.5 text-[11px] !text-ink-faint hover:!text-danger"
+                    onClick={() => setConfirmaBorrar(true)}
+                  >
+                    Borrar este lead
+                  </button>
+                )}
               </>
             )}
           </div>
