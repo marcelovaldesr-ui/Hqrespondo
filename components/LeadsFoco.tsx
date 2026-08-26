@@ -273,9 +273,14 @@ export default function LeadsFoco({
   function abrirEdicion() {
     if (!lead) return;
     setBorrador({
-      empresa: lead.empresa, contacto: lead.contacto, cargo: lead.cargo,
+      empresa: lead.empresa, razon_social: lead.razon_social ?? "", rut: lead.rut ?? "",
+      contacto: lead.contacto, cargo: lead.cargo,
       telefono: lead.telefono, email: lead.email, web: lead.web,
       linkedin_contacto: lead.linkedin_contacto,
+      linkedin_empresa: lead.linkedin_empresa ?? "",
+      industria: lead.industria ?? "", comuna: lead.comuna ?? "", region: lead.region ?? "",
+      n_empleados: lead.n_empleados ? String(lead.n_empleados) : "",
+      senal: lead.senal ?? "",
     });
     setEditando(true);
   }
@@ -699,25 +704,56 @@ export default function LeadsFoco({
                 </div>
                 {editando ? (
                   <div className="space-y-1.5">
+                    {/* Todo lo que la ficha muestra se puede corregir acá.
+                        Antes eran siete campos y para arreglar la comuna o el
+                        rubro había que entrar a Supabase. Van agrupados —
+                        persona, empresa, ubicación— porque una lista de trece
+                        cajas iguales no se lee. */}
                     {(
                       [
-                        ["empresa", "Nombre de fantasía"],
+                        ["— La persona —", ""],
                         ["contacto", "Persona (decisor)"],
                         ["cargo", "Cargo"],
-                        ["telefono", "Teléfono"],
-                        ["email", "Email"],
-                        ["web", "Sitio web"],
+                        ["telefono", "Teléfono principal"],
+                        ["email", "Email principal"],
                         ["linkedin_contacto", "LinkedIn de la persona"],
+                        ["— La empresa —", ""],
+                        ["empresa", "Nombre de fantasía"],
+                        ["razon_social", "Razón social"],
+                        ["rut", "RUT"],
+                        ["industria", "Rubro"],
+                        ["n_empleados", "N° de trabajadores"],
+                        ["web", "Sitio web"],
+                        ["linkedin_empresa", "LinkedIn de la empresa"],
+                        ["— Dónde está —", ""],
+                        ["comuna", "Comuna"],
+                        ["region", "Región"],
                       ] as const
-                    ).map(([campo, rotulo]) => (
-                      <input
-                        key={campo}
-                        className="input !py-1.5 text-[12px]"
-                        placeholder={rotulo}
-                        value={borrador[campo] ?? ""}
-                        onChange={(e) => setBorrador((br) => ({ ...br, [campo]: e.target.value }))}
-                      />
-                    ))}
+                    ).map(([campo, rotulo]) =>
+                      rotulo === "" ? (
+                        <div key={campo} className="pt-1.5 text-[9.5px] uppercase tracking-[0.13em] text-ink-faint">
+                          {campo.replace(/—/g, "").trim()}
+                        </div>
+                      ) : (
+                        <input
+                          key={campo}
+                          className="input !py-1.5 text-[12px]"
+                          placeholder={rotulo}
+                          inputMode={campo === "n_empleados" ? "numeric" : undefined}
+                          value={borrador[campo] ?? ""}
+                          onChange={(e) => setBorrador((br) => ({ ...br, [campo]: e.target.value }))}
+                        />
+                      ),
+                    )}
+                    <div className="pt-1.5 text-[9.5px] uppercase tracking-[0.13em] text-ink-faint">
+                      Por qué llamarlos
+                    </div>
+                    <textarea
+                      className="input min-h-[60px] !py-1.5 text-[12px]"
+                      placeholder="Atienden todo por WhatsApp · me lo recomendó Amaro · están contratando recepcionista…"
+                      value={borrador.senal ?? ""}
+                      onChange={(e) => setBorrador((br) => ({ ...br, senal: e.target.value }))}
+                    />
                     <button className="btn-primary w-full !py-1.5 text-[12.5px]" onClick={guardarEdicion}>
                       Guardar datos
                     </button>

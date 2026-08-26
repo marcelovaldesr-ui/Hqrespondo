@@ -232,9 +232,23 @@ export async function PATCH(req: Request) {
     // "Por investigar" produce exactamente esto —un nombre, un cargo, un
     // número encontrados a mano— y sin esta puerta el hallazgo no tenía
     // dónde anotarse más que en la nota, donde no ordena ninguna cola.
-    const EDITABLES = ["empresa", "contacto", "cargo", "telefono", "email", "web", "linkedin_contacto"] as const;
+    // Todo lo que la ficha muestra tiene que poder corregirse desde la ficha.
+    // Antes eran siete campos y la ficha tenía el doble: para arreglar la
+    // comuna o el rubro de un lead había que entrar a Supabase.
+    const EDITABLES = [
+      "empresa", "razon_social", "rut", "contacto", "cargo",
+      "telefono", "email", "web", "linkedin_contacto", "linkedin_empresa",
+      "industria", "comuna", "region",
+    ] as const;
     for (const campo of EDITABLES) {
       if (b[campo] !== undefined) upd[campo] = String(b[campo]).trim().slice(0, 300);
+    }
+    // La señal es un párrafo, no una línea: se le da más espacio.
+    if (b.senal !== undefined) upd.senal = String(b.senal).trim().slice(0, 1200);
+    // Número, no texto: vacío significa "no se sabe", y eso es NULL, no cero.
+    if (b.n_empleados !== undefined) {
+      const n = Number(b.n_empleados);
+      upd.n_empleados = Number.isFinite(n) && n > 0 ? Math.min(Math.round(n), 100_000) : null;
     }
     if (upd.empresa === "") delete upd.empresa; // la empresa nunca queda vacía
     if (b.recordatorio !== undefined) upd.recordatorio = b.recordatorio || null;
