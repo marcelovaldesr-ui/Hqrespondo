@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import ContactosExtra, { limpiarContactos, type DatoContacto } from "@/components/ContactosExtra";
 
 /**
  * Alta manual de un lead de Foco.
@@ -31,6 +32,8 @@ export default function NuevoLeadFoco({ lista = "general" }: { lista?: string })
   const [f, setF] = useState<Record<string, string>>({});
   const [leyendo, setLeyendo] = useState(false);
   const [leido, setLeido] = useState<string | null>(null);
+  const [otrosTels, setOtrosTels] = useState<DatoContacto[]>([]);
+  const [otrosMails, setOtrosMails] = useState<DatoContacto[]>([]);
 
   const set = (k: string, v: string) => setF((p) => ({ ...p, [k]: v }));
 
@@ -99,7 +102,25 @@ export default function NuevoLeadFoco({ lista = "general" }: { lista?: string })
       const r = await fetch("/api/foco/nuevo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...f, nota: f.nota ?? "", lista }),
+        body: JSON.stringify({
+          ...f,
+          nota: f.nota ?? "",
+          lista,
+          telefonos: limpiarContactos(
+            [
+              ...(f.telefono?.trim() ? [{ valor: f.telefono.trim(), tipo: "otro", fuente: "alta manual" }] : []),
+              ...otrosTels,
+            ],
+            (v) => v.replace(/\D/g, ""),
+          ),
+          emails: limpiarContactos(
+            [
+              ...(f.email?.trim() ? [{ valor: f.email.trim(), tipo: "trabajo", fuente: "alta manual" }] : []),
+              ...otrosMails,
+            ],
+            (v) => v.toLowerCase(),
+          ),
+        }),
       });
       const j = await r.json();
       if (!r.ok) {
@@ -112,6 +133,8 @@ export default function NuevoLeadFoco({ lista = "general" }: { lista?: string })
       });
       // Se limpia todo menos la lista: lo normal es cargar varios seguidos.
       setF({});
+      setOtrosTels([]);
+      setOtrosMails([]);
       router.refresh();
     } catch (e) {
       setMsg({ tipo: "error", texto: e instanceof Error ? e.message : String(e) });
@@ -184,6 +207,25 @@ export default function NuevoLeadFoco({ lista = "general" }: { lista?: string })
                 {leido}
               </div>
             )}
+
+            <div className="mt-2.5">
+              <ContactosExtra
+                titulo="Otros teléfonos"
+                items={otrosTels}
+                onChange={setOtrosTels}
+                tipos={["movil", "corporativo", "otro"]}
+                placeholder="+56 2 2222 8889"
+                etiquetaAgregar="agregar otro teléfono"
+              />
+              <ContactosExtra
+                titulo="Otros correos"
+                items={otrosMails}
+                onChange={setOtrosMails}
+                tipos={["trabajo", "personal", "otro"]}
+                placeholder="otro@empresa.cl"
+                etiquetaAgregar="agregar otro correo"
+              />
+            </div>
 
             <label className="mt-2.5 block">
               <span className="lbl mb-1 block">Por qué llamarlos</span>

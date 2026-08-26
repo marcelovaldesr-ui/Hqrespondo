@@ -110,8 +110,14 @@ export async function POST(req: Request) {
         web,
         // El arreglo se llena también acá para que no existan dos formas de
         // leer lo mismo: la ficha siempre mira `telefonos`/`emails`.
-        telefonos: telefono ? [{ valor: telefono, tipo: "otro", fuente: "alta manual" }] : [],
-        emails: email ? [{ valor: email, tipo: "trabajo", fuente: "alta manual" }] : [],
+        // Si el formulario mandó la lista completa, esa manda. El respaldo
+        // cubre el caso de que alguien llame al endpoint sin ella.
+        telefonos: Array.isArray(b.telefonos) && b.telefonos.length
+          ? b.telefonos.slice(0, 8)
+          : telefono ? [{ valor: telefono, tipo: "otro", fuente: "alta manual" }] : [],
+        emails: Array.isArray(b.emails) && b.emails.length
+          ? b.emails.slice(0, 8)
+          : email ? [{ valor: email, tipo: "trabajo", fuente: "alta manual" }] : [],
         industria,
         comuna,
         lista,

@@ -17,6 +17,7 @@ import {
 } from "@/lib/foco";
 import NuevoLeadFoco from "@/components/NuevoLeadFoco";
 import BitacoraLead from "@/components/BitacoraLead";
+import ContactosExtra, { limpiarContactos, type DatoContacto } from "@/components/ContactosExtra";
 
 /**
  * Leads Foco — mesa de trabajo del segundo motor de prospección.
@@ -136,6 +137,10 @@ export default function LeadsFoco({
   const [secuencia, setSecuencia] = useState(false);
   const [copiadoSec, setCopiadoSec] = useState<string | null>(null);
   const [borrador, setBorrador] = useState<Record<string, string>>({});
+  // Los adicionales van en su propio estado porque son objetos, no texto:
+  // cada uno lleva valor + tipo + de dónde salió.
+  const [otrosTels, setOtrosTels] = useState<DatoContacto[]>([]);
+  const [otrosMails, setOtrosMails] = useState<DatoContacto[]>([]);
   const primeraCarga = useRef(true);
 
   // Cuando el servidor devuelve otra tanda (cambió un filtro), la tabla se
@@ -282,6 +287,17 @@ export default function LeadsFoco({
       n_empleados: lead.n_empleados ? String(lead.n_empleados) : "",
       senal: lead.senal ?? "",
     });
+    // Solo los que NO son el principal: el principal tiene su propio campo
+    // arriba, y mostrarlo dos veces invita a editarlo en el lugar equivocado.
+    const mismoTel = (a: string, b: string) => a.replace(/\D/g, "") === b.replace(/\D/g, "");
+    setOtrosTels(
+      (lead.telefonos ?? []).filter((t) => t?.valor && !mismoTel(t.valor, lead.telefono ?? "")),
+    );
+    setOtrosMails(
+      (lead.emails ?? []).filter(
+        (m) => m?.valor && m.valor.toLowerCase() !== (lead.email ?? "").toLowerCase(),
+      ),
+    );
     setEditando(true);
   }
 
@@ -292,10 +308,30 @@ export default function LeadsFoco({
     // falla, el próximo guardado lo reintenta (el dato no se pierde de la vista).
     setFilas((fs) => fs.map((f) => (f.id === lead.id ? { ...f, ...borrador } : f)));
     try {
+      // El principal viaja DENTRO del arreglo también: así la ficha tiene una
+      // sola fuente de verdad y no dos listas que se contradicen.
+      const soloDigitos = (v: string) => v.replace(/\D/g, "");
+      const principalTel = (borrador.telefono ?? "").trim();
+      const principalMail = (borrador.email ?? "").trim();
+      const telefonos = limpiarContactos(
+        [
+          ...(principalTel ? [{ valor: principalTel, tipo: "otro", fuente: "a mano" }] : []),
+          ...otrosTels,
+        ],
+        soloDigitos,
+      );
+      const emails = limpiarContactos(
+        [
+          ...(principalMail ? [{ valor: principalMail, tipo: "trabajo", fuente: "a mano" }] : []),
+          ...otrosMails,
+        ],
+        (v) => v.toLowerCase(),
+      );
+
       await fetch("/api/foco", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: lead.id, ...borrador }),
+        body: JSON.stringify({ id: lead.id, ...borrador, telefonos, emails }),
       });
       router.refresh(); // recalcula contactabilidad/contadores del servidor
     } catch {
@@ -745,6 +781,23 @@ export default function LeadsFoco({
                         />
                       ),
                     )}
+                    <ContactosExtra
+                      titulo="Otros teléfonos"
+                      items={otrosTels}
+                      onChange={setOtrosTels}
+                      tipos={["movil", "corporativo", "otro"]}
+                      placeholder="+56 2 2222 8889"
+                      etiquetaAgregar="agregar otro teléfono"
+                    />
+                    <ContactosExtra
+                      titulo="Otros correos"
+                      items={otrosMails}
+                      onChange={setOtrosMails}
+                      tipos={["trabajo", "personal", "otro"]}
+                      placeholder="otro@empresa.cl"
+                      etiquetaAgregar="agregar otro correo"
+                    />
+
                     <div className="pt-1.5 text-[9.5px] uppercase tracking-[0.13em] text-ink-faint">
                       Por qué llamarlos
                     </div>
