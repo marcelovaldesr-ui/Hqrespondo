@@ -86,7 +86,18 @@ export const ESTADO_FOCO_LABEL: Record<EstadoFoco, string> = {
   descartado: "Descartado",
 };
 
+/** Un teléfono o correo conocido del lead. El que se trabaja es el primario. */
+export interface DatoContacto {
+  valor: string;
+  /** movil | corporativo | otro · para correos: trabajo | personal | otro */
+  tipo: string;
+  fuente: string;
+}
+
 export interface LeadFoco {
+  /** Todos los teléfonos conocidos (migración 034). `telefono` es el primario. */
+  telefonos?: DatoContacto[] | null;
+  emails?: DatoContacto[] | null;
   /** Fase 3 — copia de la señal vigente: ordena la cola y se dice en la llamada. */
   senal_reciente?: string | null;
   senal_reciente_url?: string | null;
@@ -137,7 +148,8 @@ const SELECT =
   "contacto,cargo,telefono,email,linkedin_contacto,lista,estado,ultimo_resultado,tags,nota," +
   "recordatorio,intentos,sin_contestar,ultimo_intento,senal,confianza,fuente_url,ficha,contactabilidad," +
   "encaje,encaje_motivo,encaje_manual," +
-  "senal_reciente,senal_reciente_url,senal_reciente_at,senal_vigente_hasta";
+  "senal_reciente,senal_reciente_url,senal_reciente_at,senal_vigente_hasta," +
+  "telefonos,emails";
 
 /**
  * Grupos de cargo. El MISMO mapa arma los chips del filtro (en resumenFoco) y

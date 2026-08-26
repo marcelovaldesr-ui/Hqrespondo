@@ -298,6 +298,30 @@ export default function LeadsFoco({
     }
   }
 
+  /**
+   * Promueve un teléfono o correo alternativo a primario.
+   *
+   * El primario no es un dato más: es el que ordena la cola de hoy, el que se
+   * marca y el que se compara contra la lista de supresión. Por eso cambiarlo
+   * es un botón explícito y no una edición de texto — "el móvil no contesta,
+   * probemos el fijo" es una decisión, y queda registrada como tal.
+   */
+  async function usarContacto(campo: "usar_telefono" | "usar_email", valor: string) {
+    if (!lead) return;
+    const destino = campo === "usar_telefono" ? "telefono" : "email";
+    setFilas((fs) => fs.map((x) => (x.id === lead.id ? { ...x, [destino]: valor } : x)));
+    try {
+      await fetch("/api/foco", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: lead.id, [campo]: valor }),
+      });
+      router.refresh();
+    } catch {
+      setError("No se pudo cambiar el contacto principal.");
+    }
+  }
+
   async function guardarNota() {
     if (!lead || notaFicha === lead.nota) return;
     try {
@@ -886,6 +910,73 @@ export default function LeadsFoco({
                     </div>
                   </>
                 )}
+
+                {/* ---------- Otros teléfonos y correos (migración 034) ----------
+                    Apollo suele dar el móvil Y el corporativo de la misma
+                    persona. El primario es el que ordena la cola y el que se
+                    marca; los demás viven acá con un botón para cambiarlos.
+                    Se muestran solo los que NO son el primario: repetir el que
+                    ya está arriba no informa nada. */}
+                {(() => {
+                  const otrosTel = (lead.telefonos ?? []).filter(
+                    (t) => t?.valor && t.valor.replace(/\D/g, "") !== (lead.telefono ?? "").replace(/\D/g, ""),
+                  );
+                  const otrosMail = (lead.emails ?? []).filter(
+                    (m) => m?.valor && m.valor.toLowerCase() !== (lead.email ?? "").toLowerCase(),
+                  );
+                  if (!otrosTel.length && !otrosMail.length) return null;
+                  return (
+                    <>
+                      <div className="hairline my-3" />
+                      <div className="lbl mb-1.5">Otros contactos</div>
+                      <div className="space-y-1.5">
+                        {otrosTel.map((t) => (
+                          <div
+                            key={t.valor}
+                            className="flex items-center justify-between gap-2 rounded-md border border-line2 px-2.5 py-1.5"
+                          >
+                            <div className="min-w-0">
+                              <div className="truncate font-mono text-[12px] text-ink">{t.valor}</div>
+                              <div className="text-[9.5px] uppercase tracking-wider text-ink-faint">
+                                {t.tipo}{t.fuente ? ` · ${t.fuente}` : ""}
+                              </div>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-1">
+                              <a className="btn-ghost !px-2 !py-0.5 text-[10.5px]" href={telLink(t.valor)}>
+                                llamar
+                              </a>
+                              <button
+                                className="btn-ghost !px-2 !py-0.5 text-[10.5px]"
+                                onClick={() => usarContacto("usar_telefono", t.valor)}
+                              >
+                                usar este
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                        {otrosMail.map((m) => (
+                          <div
+                            key={m.valor}
+                            className="flex items-center justify-between gap-2 rounded-md border border-line2 px-2.5 py-1.5"
+                          >
+                            <div className="min-w-0">
+                              <div className="truncate text-[12px] text-ink">{m.valor}</div>
+                              <div className="text-[9.5px] uppercase tracking-wider text-ink-faint">
+                                {m.tipo}{m.fuente ? ` · ${m.fuente}` : ""}
+                              </div>
+                            </div>
+                            <button
+                              className="btn-ghost shrink-0 !px-2 !py-0.5 text-[10.5px]"
+                              onClick={() => usarContacto("usar_email", m.valor)}
+                            >
+                              usar este
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  );
+                })()}
 
                 <div className="hairline my-3" />
                 <div className="lbl mb-1.5">Notas</div>

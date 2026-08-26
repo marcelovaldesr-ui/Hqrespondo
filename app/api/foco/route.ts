@@ -238,6 +238,19 @@ export async function PATCH(req: Request) {
     }
     if (upd.empresa === "") delete upd.empresa; // la empresa nunca queda vacía
     if (b.recordatorio !== undefined) upd.recordatorio = b.recordatorio || null;
+
+    // ---- Varios teléfonos / correos (migración 034) ----
+    // `usar_telefono` promueve uno del arreglo a primario: es el que ordena la
+    // cola y el que alguien marca. Cambiarlo es una decisión ("el móvil no
+    // contesta, probemos el fijo"), no una edición de texto.
+    if (Array.isArray(b.telefonos)) upd.telefonos = b.telefonos.slice(0, 8);
+    if (Array.isArray(b.emails)) upd.emails = b.emails.slice(0, 8);
+    if (typeof b.usar_telefono === "string" && b.usar_telefono.trim()) {
+      upd.telefono = b.usar_telefono.trim().slice(0, 60);
+    }
+    if (typeof b.usar_email === "string" && b.usar_email.trim()) {
+      upd.email = b.usar_email.trim().slice(0, 200);
+    }
     // Próximo paso: QUÉ hacer. Va aparte del recordatorio, que dice CUÁNDO, y
     // aparte de la nota, donde un compromiso se pierde entre el relato.
     if (b.proximo_paso !== undefined) upd.proximo_paso = String(b.proximo_paso).trim().slice(0, 600) || null;

@@ -108,6 +108,10 @@ export async function POST(req: Request) {
         telefono,
         email,
         web,
+        // El arreglo se llena también acá para que no existan dos formas de
+        // leer lo mismo: la ficha siempre mira `telefonos`/`emails`.
+        telefonos: telefono ? [{ valor: telefono, tipo: "otro", fuente: "alta manual" }] : [],
+        emails: email ? [{ valor: email, tipo: "trabajo", fuente: "alta manual" }] : [],
         industria,
         comuna,
         lista,

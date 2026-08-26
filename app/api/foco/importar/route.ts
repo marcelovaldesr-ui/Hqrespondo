@@ -92,6 +92,58 @@ const ALIAS: Record<string, string[]> = {
   whatsapp: ["tiene_whatsapp_web", "whatsapp", "tiene_whatsapp"],
 };
 
+/**
+ * Columnas de teléfono y correo que puede traer un archivo, con el tipo que
+ * implica cada encabezado.
+ *
+ * Existe aparte de ALIAS porque ALIAS elige LA PRIMERA columna que calza y
+ * descarta el resto — y Apollo exporta el móvil y el corporativo en columnas
+ * distintas, así que uno de los dos se perdía siempre.
+ */
+const COLS_TELEFONO: Array<[string, string]> = [
+  ["mobile_phone", "movil"], ["celular", "movil"], ["movil", "movil"],
+  ["telefono_movil", "movil"], ["whatsapp", "movil"],
+  ["corporate_phone", "corporativo"], ["telefono_corporativo", "corporativo"],
+  ["work_direct_phone", "corporativo"], ["company_phone", "corporativo"],
+  ["telefono", "otro"], ["telefono_publico", "otro"], ["telefono_directo", "otro"],
+  ["fono", "otro"], ["phone", "otro"], ["other_phone", "otro"], ["home_phone", "otro"],
+  ["telefono_2", "otro"], ["fono_2", "otro"],
+];
+
+const COLS_EMAIL: Array<[string, string]> = [
+  ["email", "trabajo"], ["correo", "trabajo"], ["mail", "trabajo"],
+  ["work_email", "trabajo"], ["business_email", "trabajo"],
+  ["personal_email", "personal"], ["secondary_email", "personal"],
+  ["email_2", "otro"], ["other_email", "otro"], ["correo_2", "otro"],
+];
+
+type Dato = { valor: string; tipo: string; fuente: string };
+
+/** Junta todas las columnas que traigan algo, sin repetir el mismo valor. */
+function recolectar(
+  fila: string[], cab: string[], cols: Array<[string, string]>,
+  normaliza: (v: string) => string, fuente: string,
+): Dato[] {
+  const vistos = new Set<string>();
+  const out: Dato[] = [];
+  for (const [nombre, tipo] of cols) {
+    const i = cab.indexOf(nombre);
+    if (i < 0) continue;
+    const bruto = (fila[i] ?? "").trim();
+    if (!bruto) continue;
+    // Una celda puede traer varios separados por coma o punto y coma.
+    for (const parte of bruto.split(/[,;|]/)) {
+      const valor = parte.trim();
+      if (!valor) continue;
+      const llave = normaliza(valor);
+      if (!llave || vistos.has(llave)) continue;
+      vistos.add(llave);
+      out.push({ valor, tipo, fuente });
+    }
+  }
+  return out;
+}
+
 export async function POST(req: Request) {
   try {
     const b = await req.json();
@@ -166,6 +218,9 @@ export async function POST(req: Request) {
         cargo: val(f, "cargo"),
         telefono: val(f, "telefono"),
         email: val(f, "email"),
+        // Marcadores: más abajo se reemplazan por los arreglos completos.
+        _telefonos: recolectar(f, cab, COLS_TELEFONO, normalizarTelefono, "importacion"),
+        _emails: recolectar(f, cab, COLS_EMAIL, (v) => v.toLowerCase(), "importacion"),
         linkedin_contacto: val(f, "linkedin_contacto"),
         senal: val(f, "senal"),
         confianza: val(f, "confianza") || "baja",
@@ -173,6 +228,37 @@ export async function POST(req: Request) {
       });
     }
     if (!nuevos.length) return NextResponse.json({ error: "Ninguna fila tenía empresa" }, { status: 400 });
+
+    // ---- Teléfonos y correos: todos los que vengan, y el móvil como primario ----
+    // El primario manda: es el que ordena la cola y el que alguien va a marcar.
+    // Se prefiere el MÓVIL sobre el fijo porque el producto que se vende es
+    // atención por WhatsApp — y a un fijo no le llega un WhatsApp jamás.
+    for (const r of nuevos) {
+      const tels = (r._telefonos ?? []) as Dato[];
+      const mails = (r._emails ?? []) as Dato[];
+      delete r._telefonos;
+      delete r._emails;
+
+      if (tels.length) {
+        const movil = tels.find((t) => t.tipo === "movil");
+        r.telefono = (movil ?? tels[0]).valor;
+        r.telefonos = tels;
+      } else if (String(r.telefono ?? "").trim()) {
+        r.telefonos = [{ valor: String(r.telefono), tipo: "otro", fuente: "importacion" }];
+      } else {
+        r.telefonos = [];
+      }
+
+      if (mails.length) {
+        const trabajo = mails.find((m) => m.tipo === "trabajo");
+        r.email = (trabajo ?? mails[0]).valor;
+        r.emails = mails;
+      } else if (String(r.email ?? "").trim()) {
+        r.emails = [{ valor: String(r.email), tipo: "otro", fuente: "importacion" }];
+      } else {
+        r.emails = [];
+      }
+    }
 
     const s = db();
 
