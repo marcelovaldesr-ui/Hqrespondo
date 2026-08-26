@@ -445,6 +445,35 @@ export async function correrWorker(opts?: {
         );
       }
 
+      // Si TODO lo que se intentó falló, la fila no se dio por hecha. Sin esto,
+      // un enriquecedor que devuelve (en vez de reventar) cierra la fila como
+      // `completado` y la saca de la cola para siempre, aunque nadie la haya
+      // buscado de verdad.
+      //
+      // Pasó el 26-ago-2026: 10 empresas del SII cerradas en 1,7 segundos con
+      // un solo intento `error` cada una ("esta cascada no atiende
+      // empresa_sii"). El worker contó 10 completados y 0 errores. Nada en la
+      // respuesta decía que se habían perdido.
+      //
+      // `sin_dato` NO entra acá: eso es haber buscado y no haber encontrado,
+      // que es un resultado legítimo y definitivo. Y una lista de intentos
+      // vacía tampoco: significa que no hubo nada que buscar (el lead ya tenía
+      // número), que también es un cierre correcto.
+      const todoFallo =
+        salida.intentos.length > 0 &&
+        !salida.encontrado &&
+        salida.intentos.every((i) => i.resultado === "error");
+
+      if (todoFallo) {
+        const detalle = salida.intentos[salida.intentos.length - 1]?.error_detalle
+          ?? "todos los intentos fallaron";
+        // 'fallido' la devuelve a la cola con espera creciente, y a los
+        // max_intentos queda 'agotado' — visible, no desaparecida.
+        await cerrarItem(item.id, "fallido", null, detalle);
+        fallidos++;
+        continue;
+      }
+
       await cerrarItem(item.id, "completado", {
         encontrado: salida.encontrado,
         datos: salida.datos ?? null,
