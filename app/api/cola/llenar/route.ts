@@ -23,6 +23,40 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
 
+  // ---- Leads de Foco que tienen decisor y NO tienen teléfono ----
+  // Son el mejor insumo que hay para la cascada: el nombre de la persona ya
+  // está, que es lo caro. Lo único que falta es el número, que es justo lo que
+  // la cascada sabe buscar.
+  if (url.searchParams.get("fuente") === "foco" && url.searchParams.get("objetivo") !== "senal") {
+    const lim = Math.min(Math.max(Number(url.searchParams.get("limite")) || 200, 1), 1000);
+    try {
+      const { data, error } = await db()
+        .from("leads_foco")
+        .select("id,n_empleados")
+        .in("estado", ["nuevo", "contactando"])
+        .in("encaje", ["alto", "medio", "sin_evaluar"])
+        .eq("telefono", "")
+        .neq("contacto", "")
+        .order("n_empleados", { ascending: false, nullsFirst: false })
+        .limit(lim);
+      if (error) throw new Error(error.message);
+
+      const items: PorEncolar[] = (data ?? []).map((l: { id: string }) => ({
+        entidad: "lead_foco" as const,
+        id: l.id,
+        objetivo: "telefono_directo" as const,
+        prioridad: 80,
+      }));
+      const nuevas = await encolar(items);
+      return NextResponse.json({ ok: true, fuente: "foco", candidatas: items.length, encoladas: nuevas });
+    } catch (e) {
+      return NextResponse.json(
+        { ok: false, error: e instanceof Error ? e.message : String(e) },
+        { status: 500 },
+      );
+    }
+  }
+
   // ---- Fase 3: llenar la cola de SEÑALES ----
   // Se encolan los leads de Foco que alguien puede llamar mañana. No las 7.312
   // empresas del SII: saber que una empresa está contratando recepcionista, sin

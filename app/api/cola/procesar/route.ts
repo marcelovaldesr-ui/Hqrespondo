@@ -3,6 +3,7 @@ import { autorizado } from "@/lib/prospeccion/auth";
 import { correrWorker, enriquecerSimulado, proveedoresDisponibles } from "@/lib/cola";
 import { cascadaTelefonoDirecto } from "@/lib/cascada";
 import { detectorDeSenales } from "@/lib/cascadaSenal";
+import { cascadaLeadFoco } from "@/lib/cascadaLeadFoco";
 import { limpiarSenalesVencidas } from "@/lib/senales";
 
 export const dynamic = "force-dynamic";
@@ -50,6 +51,12 @@ export async function GET(req: Request) {
   // no algo que deba resolver el azar del lote.
   const objetivo = url.searchParams.get("objetivo") === "senal" ? "senal" : "telefono_directo";
 
+  // Sobre QUÉ se busca el teléfono. Por defecto las empresas del padrón del SII;
+  // con `fuente=foco`, los leads de Foco que tienen nombre de decisor y ningún
+  // número — medido el 26-ago-2026: 28 de 41 estaban en ese caso, quietos,
+  // porque nadie los procesaba.
+  const fuente = url.searchParams.get("fuente") === "foco" ? "foco" : "sii";
+
   const porDefecto = modo === "real" ? 25 : 50;
   const lote = Math.min(
     Math.max(Number(url.searchParams.get("lote")) || porDefecto, 1),
@@ -69,7 +76,9 @@ export async function GET(req: Request) {
         ? enriquecerSimulado
         : objetivo === "senal"
           ? detectorDeSenales({ vivos })
-          : cascadaTelefonoDirecto({ vivos, modo: modo === "seco" ? "seco" : "real" });
+          : fuente === "foco"
+            ? cascadaLeadFoco({ vivos, modo: modo === "seco" ? "seco" : "real" })
+            : cascadaTelefonoDirecto({ vivos, modo: modo === "seco" ? "seco" : "real" });
 
     const r = await correrWorker({
       lote,
@@ -79,7 +88,7 @@ export async function GET(req: Request) {
       limiteMs: 280_000,
       enriquecedor,
     });
-    return NextResponse.json({ ok: true, modo, objetivo, senales_vencidas: vencidas, ...r });
+    return NextResponse.json({ ok: true, modo, objetivo, fuente, senales_vencidas: vencidas, ...r });
   } catch (e) {
     return NextResponse.json(
       { ok: false, modo, objetivo, error: e instanceof Error ? e.message : String(e) },

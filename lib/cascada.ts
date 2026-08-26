@@ -32,14 +32,9 @@
  */
 
 import { db } from "@/lib/db";
-import { textoDeLaWeb } from "@/lib/leerWeb";
 import { normalizarTelefono } from "@/lib/actividades";
-import {
-  telefonoCercaDelNombre,
-  telefonoPorMapsDeLaPersona,
-  telefonoPorBusquedaPublica,
-  type HallazgoTelefono,
-} from "@/lib/agenteTelefono";
+import { type HallazgoTelefono } from "@/lib/agenteTelefono";
+import { buscarPorPasos, type ModoCascada } from "@/lib/pasosTelefono";
 import { decisorBuscable } from "@/lib/decisorBuscable";
 import { promoverAFoco } from "@/lib/promoverDecisor";
 import {
@@ -54,7 +49,8 @@ import {
  * que no puede gastar un peso ni un crédito. Es el modo para mirar resultados
  * reales antes de soltar la cascada completa.
  */
-export type ModoCascada = "real" | "seco";
+/** Se reexporta desde donde ahora vive, para no romper a quien ya lo importaba. */
+export type { ModoCascada };
 
 type EmpresaFila = {
   rut: string;
@@ -204,9 +200,6 @@ export function cascadaTelefonoDirecto(opts: {
   const { vivos, modo } = opts;
 
   return async function enriquecer(item: ItemCola): Promise<SalidaEnriquecimiento> {
-    const intentos: SalidaEnriquecimiento["intentos"] = [];
-    const traza: string[] = [];
-
     if (item.entidad !== "empresa_sii" || item.objetivo !== "telefono_directo") {
       // Todavía no hay cascada escrita para esta combinación. Se marca como
       // error (reintentable) y no como 'sin_dato', que sería definitivo.
@@ -288,94 +281,17 @@ export function cascadaTelefonoDirecto(opts: {
     const ctx = await contextoDelProspect(e);
     const publico = e.telefono ?? ctx.telefono;
 
-    /** Cierra la cascada con un hallazgo: lo guarda y arma la salida. */
-    const conHallazgo = async (
-      proveedor: string, h: HallazgoTelefono, ms: number,
-    ): Promise<SalidaEnriquecimiento> => {
-      const g = await guardarHallazgo(e, h, publico);
-      const ok = g === "guardado";
-      intentos.push({
-        proveedor,
-        resultado: g === "guardado" ? "exito" : g === "descartado" ? "sin_dato" : "error",
-        encontrado: ok,
-        ms,
-        respuesta: { ...h, guardado: g },
-        ...(g === "error" ? { error_detalle: "falló el guardado en empresas_sii" } : {}),
-      });
-      traza.push(`${proveedor} → ${ok ? h.telefono : `${h.telefono} ${g}`}`);
-      console.log(`[cascada] ${e.rut} ${persona} · ${traza.join(" | ")}`);
-      return {
-        encontrado: ok,
-        datos: ok ? { telefono_directo: h.telefono, tipo: h.tipo, fuente: h.fuente } : undefined,
-        intentos,
-      };
-    };
-
-    // ---- 1. web (gratis) ----
-    if (!ya.has("web") && vivos.has("web")) {
-      const t0 = Date.now();
-      const texto = ctx.web ? await textoDeLaWeb(ctx.web) : null;
-      if (texto) {
-        const h = telefonoCercaDelNombre(texto, persona, publico);
-        if (h) return conHallazgo("web", h, Date.now() - t0);
-        intentos.push({
-          proveedor: "web", resultado: "sin_dato", encontrado: false, ms: Date.now() - t0,
-          respuesta: { url: ctx.web, largo_texto: texto.length },
-        });
-        traza.push("web → no hay teléfono junto a su nombre");
-      } else {
-        // Sin sitio que leer NO se anota nada: anotar 'sin_dato' sería decir
-        // "a la web ya se le preguntó", y el día que aparezca el sitio la
-        // cascada se lo saltaría para siempre.
-        traza.push(ctx.web ? "web → no se pudo abrir" : "web → la empresa no tiene sitio conocido");
-      }
-    }
-
-    // ---- 2. Places: la ficha propia de la persona (gasta cupo) ----
-    if (modo === "real" && !ya.has("places") && vivos.has("places")) {
-      const t0 = Date.now();
-      try {
-        const h = await telefonoPorMapsDeLaPersona(persona, comuna, publico);
-        if (h) return conHallazgo("places", h, Date.now() - t0);
-        intentos.push({
-          proveedor: "places", resultado: "sin_dato", encontrado: false, ms: Date.now() - t0,
-          costo_creditos: 1,
-          respuesta: { consulta: `${persona}, ${comuna}, Chile` },
-        });
-        traza.push("places → la persona no tiene ficha propia");
-      } catch (err) {
-        intentos.push({
-          proveedor: "places", resultado: "error", encontrado: false, ms: Date.now() - t0,
-          error_detalle: err instanceof Error ? err.message : String(err),
-        });
-        traza.push("places → error");
-      }
-    } else if (modo === "real" && !vivos.has("places")) {
-      traza.push("places → saltado (sin cupo o cortado)");
-    }
-
-    // ---- 3. búsqueda pública con IA (la más cara y la que más se equivoca) ----
-    if (modo === "real" && !ya.has("gemini") && vivos.has("gemini")) {
-      const t0 = Date.now();
-      try {
-        const h = await telefonoPorBusquedaPublica(persona, empresa, comuna, publico);
-        if (h) return conHallazgo("gemini", h, Date.now() - t0);
-        intentos.push({
-          proveedor: "gemini", resultado: "sin_dato", encontrado: false, ms: Date.now() - t0,
-          costo_creditos: 1,
-          respuesta: { consulta: `${persona} · ${empresa} · ${comuna}` },
-        });
-        traza.push("gemini → nada citable");
-      } catch (err) {
-        intentos.push({
-          proveedor: "gemini", resultado: "error", encontrado: false, ms: Date.now() - t0,
-          error_detalle: err instanceof Error ? err.message : String(err),
-        });
-        traza.push("gemini → error");
-      }
-    }
-
-    console.log(`[cascada] ${e.rut} ${persona} · ${traza.join(" | ") || "nada que hacer"}`);
-    return { encontrado: false, datos: { traza }, intentos };
+    return buscarPorPasos(
+      {
+        etiqueta: e.rut,
+        persona,
+        empresa,
+        comuna,
+        publico,
+        web: ctx.web,
+      },
+      { vivos, modo, ya },
+      (h) => guardarHallazgo(e, h, publico),
+    );
   };
 }
