@@ -32,9 +32,19 @@ name: Cola de enriquecimiento
 # hasta el día 1. Se apaga comentando el bloque `schedule:`.
 # ─────────────────────────────────────────────────────────────────────────────
 
+# APAGADO el 26-ago-2026, a peticion de Marcelo.
+#
+# Motivo: se llamo a los primeros numeros que encontro la cascada y lo unico
+# que salio fueron recepciones. El sistema funciona -- el problema es que las
+# fuentes publicas chilenas no publican el movil del que decide. Dejarlo
+# corriendo 6 veces al dia gastaba cupo de Places y de Gemini para llenar la
+# base de numeros que no sirven.
+#
+# Para volver a encenderlo: descomenta las dos lineas de `schedule:`.
+# El boton "Run workflow" sigue funcionando para correrlo a mano cuando quieras.
 on:
-  schedule:
-    - cron: "45 12,14,16,18,20,22 * * 1-5"
+  # schedule:
+  #   - cron: "45 12,14,16,18,20,22 * * 1-5"
   workflow_dispatch:
     inputs:
       lote:
