@@ -64,7 +64,7 @@ export const ENCAJE_LABEL: Record<NivelEncaje, string> = {
   medio: "Encaje medio",
   bajo: "Encaje bajo",
   nulo: "No encaja",
-  sin_evaluar: "Sin evaluar",
+  sin_evaluar: "Falta el rubro",
 };
 
 export const ENCAJE_RANK: Record<NivelEncaje, number> = {
@@ -192,6 +192,27 @@ const DESCARTES_MODELO: Regla[] = [
     noPromover: true,
   },
 ];
+
+/**
+ * PRECIO QUE SE CALCULA, NO QUE SE CONSULTA — el contrapeso del ensanche.
+ *
+ * Al abrir el ICP a "todo negocio que atiende por redes", el riesgo no es
+ * teórico: es que vuelvan a entrar exactamente los negocios que la guía de
+ * agosto sacó a mano. Y el motivo de esos descartes NUNCA fue el canal —una
+ * ferretería vive en WhatsApp— sino que **el asistente no puede contestar**:
+ * si el precio depende de los metros, del material o de la cantidad, no hay
+ * respuesta que dar, solo datos que tomar y derivar a una persona.
+ *
+ * Eso es lo que separa una tienda de motos de una ferretería, aunque las dos
+ * "vendan cosas por WhatsApp": la moto tiene precio por unidad; el perfil de
+ * aluminio se cotiza por metro cortado.
+ *
+ * Se prueba contra el rubro Y contra la nota, porque esta forma de vender casi
+ * siempre está escrita con todas sus letras ("cortamos a medida", "cotiza por
+ * m2"). No baja a "nulo": son vendibles, solo cuestan más de lo que rinden.
+ */
+const PRECIO_A_MEDIDA =
+  /a medida|a la medida|por metro|por m2|por m²|metro lineal|segun medida|segun material|corte de|cortamos|presupuesto por proyecto|segun cantidad|por kilo|por tonelada/;
 
 /**
  * ENCAJES POSITIVOS — negocios donde la misma pregunta llega decenas de veces
@@ -326,10 +347,32 @@ const POSITIVOS: Regla[] = [
     noPromover: true,
   },
   {
-    patron: /\b(repuesto|accesorios para veh|automotor|automotriz|motocicleta|moto\b|neumatic|lubricentro|venta de partes)/,
+    patron: /\b(repuesto|accesorios para veh|automotor|automotriz|motocicleta|motos?\b|moto ?shop|motor ?shop|neumatic|lubricentro|venta de partes)/,
     nivel: "alto",
     motivo:
       "Automotoras y repuestos: vertical con secuencia propia y +18 clientes (Motorman, Montiel, Motorland, Codas). Modelos, stock, precios, financiamiento y test drives; el interesado sigue cotizando si el primer contacto no es inmediato. Es el perfil de RS Shop, la reunión ya agendada.",
+  },
+  {
+    // Bicicleterías, tiendas de patines, scooters, artículos deportivos. No
+    // calzaban en ninguna regla y caían en "sin evaluar" — son tres de los
+    // leads que Marcelo cargó a mano y quedaron con "?".
+    //
+    // Mecánicamente son idénticas a repuestos: catálogo con precio por unidad
+    // y la misma pregunta todo el día ("¿tienen el modelo X?", "¿cuánto vale?",
+    // "¿queda talla M?"). Eso es lo que el asistente sabe contestar.
+    patron: /bicicleta|bicicleteria|\bbike\b|patin|scooter|articulos deportivos|tienda de deporte/,
+    nivel: "medio",
+    motivo:
+      "Tienda con catálogo de precio fijo (bicicletas, patines, accesorios): la misma pregunta —modelo, talla, stock, precio— llega decenas de veces al día y hoy la contesta alguien escribiendo a mano. Sube a alto con señal de que no alcanzan a responder.",
+  },
+  {
+    // Arriendo por unidad reservable: un auto, una máquina, un espacio. Es el
+    // primo del cupo único — lo que se agenda es un objeto en vez de una hora,
+    // pero la garantía de "esto ya está tomado" es igual de central.
+    patron: /rent ?a ?car|rentacar|arriendo de|arriendo por|alquiler de|renta de (auto|vehic|maquin)|leasing operativo/,
+    nivel: "medio",
+    motivo:
+      "Arriendo por unidad reservable (autos, maquinaria, espacios): la consulta es siempre la misma —disponibilidad para tal fecha, tarifa, requisitos— y el sistema puede responderla y bloquear la unidad. Confirmar en la llamada si hoy lo llevan a mano o ya tienen sistema.",
   },
   {
     patron: /\b(colegio|jardin infantil|preescolar|ensenanza|enseñanza|instituto|preuniversitario|academia|escuela)/,
@@ -530,6 +573,15 @@ export function evaluarEncaje(e: EntradaEncaje): Encaje {
   for (const r of DESCARTES_MODELO) {
     if (r.patron.test(texto)) return { nivel: r.nivel, motivo: r.motivo };
   }
+  // Este mira el rubro además de la nota: "vidrios a medida" o "corte de
+  // melamina" viene escrito en el giro, no en la investigación.
+  if (PRECIO_A_MEDIDA.test(`${identidad} ${texto}`)) {
+    return {
+      nivel: "bajo",
+      motivo:
+        "El precio se calcula (medidas, material, cantidad), no se consulta: ahí el asistente no cotiza, solo toma datos y deriva. Es la misma razón por la que la guía de agosto sacó a las ferreterías e imprentas de la lista. Se puede vender igual, pero rinde menos por el mismo esfuerzo — y el soporte pesa el doble.",
+    };
+  }
 
   let base: Encaje | null = null;
   for (const r of POSITIVOS) {
@@ -559,10 +611,42 @@ export function evaluarEncaje(e: EntradaEncaje): Encaje {
           "El rubro no lo clasifica, pero el nombre dice que agenda de a uno (un box, una silla, un profesional). Ahí la agenda rinde al máximo y una inasistencia cuesta la hora completa. Vale mirar el sitio antes de descartarlo.",
       };
     }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // EL SUPUESTO POR DEFECTO, DADO VUELTA — 26-ago-2026
+    //
+    // Marcelo: "podemos abarcar a todos los negocios que al final tienen
+    // contacto con sus clientes por redes".
+    //
+    // Eso cambia la forma de la pregunta, no solo la lista. Hasta acá esto era
+    // una LISTA BLANCA de rubros: lo que no estaba en la lista caía en "sin
+    // evaluar", que en la práctica significaba "no lo mires". Tenía sentido
+    // cuando el ICP eran cinco verticales. Con el ICP abierto, una lista
+    // blanca es la estructura equivocada: el que no aparece en la lista pasa a
+    // ser la mayoría, y la mayoría no puede quedar sin clasificar.
+    //
+    // Así que el que no calza ya no queda afuera: queda en MEDIO, que es lo
+    // que de verdad sabemos de él —atiende clientes finales, probablemente por
+    // mensajería— y con el motivo diciendo qué falta confirmar. Los que NO
+    // sirven siguen cayendo antes, en los descartes de arriba, que es donde
+    // está guardado lo que ya aprendieron vendiendo.
+    //
+    // "sin_evaluar" queda para un solo caso, y ahora significa algo concreto:
+    // falta el dato. No es un veredicto sobre el negocio, es un pendiente
+    // nuestro, y se arregla escribiendo el rubro en la ficha.
+    // ─────────────────────────────────────────────────────────────────────
+    if (!rubro.trim()) {
+      return {
+        nivel: "sin_evaluar",
+        motivo:
+          "Falta el rubro. No es que el negocio no encaje: es que no sabemos a qué se dedica. Escríbelo en la ficha —o pega el sitio y usa «leer sitio»— y se clasifica solo.",
+      };
+    }
+
     return {
-      nivel: "sin_evaluar",
+      nivel: "medio",
       motivo:
-        "El rubro no dice lo suficiente para clasificarlo. Revisar el sitio antes de llamar: la pregunta es si la misma consulta le llega muchas veces al día.",
+        "Rubro fuera de las reglas conocidas. Entra en medio a propósito: casi cualquier negocio que atiende a sus clientes por WhatsApp o Instagram tiene consultas que se repiten. Lo que falta confirmar en la llamada es si ESA consulta se repite lo suficiente y si hoy la contesta una persona a mano.",
     };
   }
 

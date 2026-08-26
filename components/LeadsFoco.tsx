@@ -52,7 +52,7 @@ const ENCAJE_CHIP: Record<NivelEncaje, string> = {
 };
 
 const ENCAJE_CORTO: Record<NivelEncaje, string> = {
-  alto: "ALTO", medio: "MEDIO", sin_evaluar: "SIN VER", bajo: "BAJO", nulo: "NO",
+  alto: "ALTO", medio: "MEDIO", sin_evaluar: "SIN RUBRO", bajo: "BAJO", nulo: "NO",
 };
 
 const LED_ESTADO: Record<EstadoFoco, string> = {
@@ -627,7 +627,7 @@ export default function LeadsFoco({
           <option value="sirven">Los que sirven ({(resumen.porEncaje.alto ?? 0) + (resumen.porEncaje.medio ?? 0) + (resumen.porEncaje.sin_evaluar ?? 0)})</option>
           <option value="alto">Encaje alto ({resumen.porEncaje.alto ?? 0})</option>
           <option value="medio">Encaje medio ({resumen.porEncaje.medio ?? 0})</option>
-          <option value="sin_evaluar">Sin evaluar ({resumen.porEncaje.sin_evaluar ?? 0})</option>
+          <option value="sin_evaluar">Falta el rubro ({resumen.porEncaje.sin_evaluar ?? 0})</option>
           <option value="todos">Todos, incluso los descartados</option>
         </select>
         <select

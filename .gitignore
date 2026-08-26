@@ -17,3 +17,9 @@ app-path-routes-manifest.json
 # Carpeta puente: acá quedan los zips con que Claude entrega archivos.
 # No es código del proyecto y no debe versionarse.
 _to_delete/
+
+# Tarballs de trabajo. Se arman en la carpeta del repo para copiar el codigo a
+# un proyecto de verificacion aparte, y no tienen nada que hacer en el historial.
+# Uno se colo en el commit 048f827 por un `git add -A`; que no vuelva a pasar.
+*.tgz
+*.tar.gz
