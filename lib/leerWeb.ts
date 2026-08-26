@@ -9,6 +9,7 @@
  */
 
 import { geminiJson } from "@/lib/gemini";
+import { pareceEmail, pareceTelefono } from "@/lib/validarContacto";
 
 /**
  * Destinos que este lector NUNCA debe pedir.
@@ -211,10 +212,16 @@ ${texto.slice(0, 12_000)}`;
     const CLAVES: (keyof FichaDelSitio)[] = [
       "empresa", "industria", "comuna", "telefono", "email", "contacto", "cargo", "senal",
     ];
+    // 3. Y que cada valor tenga la FORMA del campo donde va a caer. El modelo
+    //    a veces pone el nombre del negocio en "telefono" o una frase en
+    //    "email", y eso aterrizaba tal cual en la casilla del formulario. El
+    //    usuario después lo guardaba sin mirar, porque venía "del sitio".
     const limpio: FichaDelSitio = {};
     for (const k of CLAVES) {
       const s = String((data as Record<string, unknown>)?.[k] ?? "").trim();
       if (!s || /^(no|n\/a|na|-|sin|null|none|no encontrado|no aparece|no especificado)$/i.test(s)) continue;
+      if (k === "telefono" && !pareceTelefono(s)) continue;
+      if (k === "email" && !pareceEmail(s)) continue;
       limpio[k] = s.slice(0, 300);
     }
     return { ok: true, ficha: limpio };

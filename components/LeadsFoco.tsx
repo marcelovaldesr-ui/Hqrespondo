@@ -18,6 +18,7 @@ import {
 import NuevoLeadFoco from "@/components/NuevoLeadFoco";
 import BitacoraLead from "@/components/BitacoraLead";
 import ContactosExtra, { limpiarContactos, type DatoContacto } from "@/components/ContactosExtra";
+import { revisarContactos } from "@/lib/validarContacto";
 
 /**
  * Leads Foco — mesa de trabajo del segundo motor de prospección.
@@ -141,6 +142,8 @@ export default function LeadsFoco({
   // cada uno lleva valor + tipo + de dónde salió.
   const [otrosTels, setOtrosTels] = useState<DatoContacto[]>([]);
   const [otrosMails, setOtrosMails] = useState<DatoContacto[]>([]);
+  /** Lo que está mal escrito en el editor de la ficha. Se muestra al lado del botón de guardar, que es donde el ojo está en ese momento. */
+  const [errEdicion, setErrEdicion] = useState<string[]>([]);
   // Confirmación en dos pasos, en la misma ficha. Un `confirm()` del navegador
   // bloquea todo y se aprieta sin leer; esto obliga a mirar qué se va a borrar.
   const [confirmaBorrar, setConfirmaBorrar] = useState(false);
@@ -305,11 +308,29 @@ export default function LeadsFoco({
         (m) => m?.valor && m.valor.toLowerCase() !== (lead.email ?? "").toLowerCase(),
       ),
     );
+    setErrEdicion([]);
     setEditando(true);
   }
 
   async function guardarEdicion() {
     if (!lead) return;
+
+    // Mismo criterio que el alta manual: si lo escrito no corresponde a la
+    // casilla, no se guarda. Acá importa el doble, porque el guardado es
+    // optimista — pinta la pantalla antes de que el servidor conteste — así
+    // que un dato malo quedaría a la vista como si fuera bueno.
+    const problemas = revisarContactos({
+      telefono: borrador.telefono,
+      email: borrador.email,
+      otrosTels,
+      otrosMails,
+    });
+    if (problemas.length) {
+      setErrEdicion(problemas);
+      return;
+    }
+    setErrEdicion([]);
+
     setEditando(false);
     // Espejo primero, red después: lo escrito se ve al instante y si el PATCH
     // falla, el próximo guardado lo reintenta (el dato no se pierde de la vista).
@@ -845,6 +866,13 @@ export default function LeadsFoco({
                       value={borrador.senal ?? ""}
                       onChange={(e) => setBorrador((br) => ({ ...br, senal: e.target.value }))}
                     />
+                    {errEdicion.length > 0 && (
+                      <div className="rounded-md border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-[11px] leading-snug text-danger">
+                        {errEdicion.map((t, i) => (
+                          <div key={i}>{t}</div>
+                        ))}
+                      </div>
+                    )}
                     <button className="btn-primary w-full !py-1.5 text-[12.5px]" onClick={guardarEdicion}>
                       Guardar datos
                     </button>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ContactosExtra, { limpiarContactos, type DatoContacto } from "@/components/ContactosExtra";
+import { revisarContactos } from "@/lib/validarContacto";
 
 /**
  * Alta manual de un lead de Foco.
@@ -96,6 +97,22 @@ export default function NuevoLeadFoco({ lista = "general" }: { lista?: string })
       setMsg({ tipo: "error", texto: "Falta el nombre de la empresa." });
       return;
     }
+
+    // Antes de mandar nada: ¿lo que hay en cada casilla corresponde a esa
+    // casilla? Un nombre en el campo del teléfono se guardaba tal cual y
+    // después había que descubrirlo llamando. No importa cómo llegó ahí
+    // (autocompletar, la lectura del sitio, o un dedo apurado): no se guarda.
+    const problemas = revisarContactos({
+      telefono: f.telefono,
+      email: f.email,
+      otrosTels,
+      otrosMails,
+    });
+    if (problemas.length) {
+      setMsg({ tipo: "error", texto: problemas.join(" · ") });
+      return;
+    }
+
     setGuardando(true);
     setMsg(null);
     try {
@@ -187,6 +204,13 @@ export default function NuevoLeadFoco({ lista = "general" }: { lista?: string })
                   <input
                     className="input text-[12.5px]"
                     placeholder={c.ph}
+                    // El autocompletar del navegador es el otro sospechoso de
+                    // que un nombre aparezca en el teléfono: sin `name`, Chrome
+                    // adivina qué es cada casilla por el texto de al lado y en
+                    // un formulario en español se equivoca. Un token que no
+                    // conoce lo deja fuera de todas.
+                    name={`hq-${c.k}`}
+                    autoComplete={`hq-nuevo-lead-${c.k}`}
                     value={f[c.k] ?? ""}
                     onChange={(e) => set(c.k, e.target.value)}
                     onKeyDown={(e) => {
