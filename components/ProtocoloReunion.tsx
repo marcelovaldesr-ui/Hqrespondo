@@ -46,7 +46,7 @@ export default function ProtocoloReunion({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/55 p-4 backdrop-blur-sm"
       onClick={onCerrar}
     >
       <div className="glass my-6 w-full max-w-2xl p-5" onClick={(e) => e.stopPropagation()}>

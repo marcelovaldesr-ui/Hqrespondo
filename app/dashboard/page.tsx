@@ -320,7 +320,7 @@ export default async function Dashboard() {
       <section
         className="panel relative overflow-hidden p-5"
         style={{
-          backgroundImage:
+          background:
             "linear-gradient(120deg, rgba(123,91,240,0.06), rgba(37,99,235,0.04) 55%, rgba(236,106,86,0.05))",
         }}
       >
@@ -721,10 +721,10 @@ export default async function Dashboard() {
                       className="meter-fill"
                       style={{
                         width: `${p.score}%`,
-                        backgroundImage:
+                        background:
                           p.score >= 70
-                            ? "linear-gradient(90deg,#8B6BFF,#C3AEFF)"
-                            : "linear-gradient(90deg,#FFB43D,#FFD08A)",
+                            ? "#5C42C4"
+                            : "#7F5716",
                       }}
                     />
                   </span>

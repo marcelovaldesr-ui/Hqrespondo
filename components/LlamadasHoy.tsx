@@ -271,10 +271,10 @@ export default function LlamadasHoy({
                       className="meter-fill"
                       style={{
                         width: `${f.score}%`,
-                        backgroundImage:
+                        background:
                           f.score >= 85
-                            ? "linear-gradient(90deg,#8B6BFF,#C3AEFF)"
-                            : "linear-gradient(90deg,#4C5163,#70768B)",
+                            ? "#5C42C4"
+                            : "#868274",
                       }}
                     />
                   </span>

@@ -331,7 +331,7 @@ export default function RoadmapBoard({
                 type="checkbox"
                 checked={mostrarHechas}
                 onChange={(e) => setMostrarHechas(e.target.checked)}
-                className="accent-[#7B5BF0]"
+                className="accent-brand"
               />
               Ver hechas
             </label>

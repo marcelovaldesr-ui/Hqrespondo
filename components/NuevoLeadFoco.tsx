@@ -168,7 +168,7 @@ export default function NuevoLeadFoco({ lista = "general" }: { lista?: string })
 
       {abierto && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/55 p-4 backdrop-blur-sm"
           onClick={cerrar}
         >
           <div className="glass w-full max-w-xl p-5" onClick={(e) => e.stopPropagation()}>

@@ -93,7 +93,7 @@ export default function CommandPalette() {
       aria-label="Ir a una sección"
     >
       <button
-        className="absolute inset-0 bg-[#05050A]/78 backdrop-blur-sm"
+        className="absolute inset-0 bg-ink/45 backdrop-blur-sm"
         onClick={() => setAbierto(false)}
         aria-label="Cerrar"
         tabIndex={-1}

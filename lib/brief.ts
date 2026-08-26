@@ -148,6 +148,13 @@ Si una sección no tiene datos, NO la incluyas — pero si TODO está vacío, la
 
 Estilo: español de Chile, directo, accionable, máximo 250 palabras. Cierra con UNA recomendación final y una línea de momentum sobria acorde a la fase (sin cursilería).
 
+Frases declarativas y sin relleno. Un dato por línea, con el número adelante.
+NADA de "es clave revisarlos hoy", "no olvides", "recuerda que", "Ejemplos:",
+"¡vamos!" ni signos de exclamación: eso es relleno de chat y hace que el brief
+se lea como copiado de un asistente en vez de escrito por alguien del equipo.
+Los emojis van SOLO en los encabezados de sección de arriba —son lo único que
+separa secciones en WhatsApp— y en ninguna otra parte del texto.
+
 Datos:
 ${JSON.stringify(datos, null, 2)}`,
     );
@@ -170,7 +177,7 @@ ${JSON.stringify(datos, null, 2)}`,
     const sugerencias = nada
       ? `\n🎯 Sin pendientes con fecha — hoy se construye pipeline:\n- Prospectar un rubro nuevo (ferreterías, corredoras, clínicas) por comuna\n- Contactar los prospectos de mayor score\n- Enviar follow-up 1 a contactados sin respuesta`
       : "";
-    contenido = `Brief ${hoy} (modo básico)\n\n🔥 Contactar hoy:\n${hot || "- sin calientes → buscar prospectos nuevos"}\n\n⏰ Seguimientos: ${datos.seguimientos_vencidos_o_de_hoy.length}\n📋 Pipeline detenido: ${datos.pipeline_sin_movimiento_5_dias.length}\n✅ Tareas vencidas: ${(roadmapRes.data ?? []).length}\n💰 MRR ${mrr.toLocaleString("es-CL")} · por cobrar ${cobrosPendientes.toLocaleString("es-CL")} · gastos mes ${gastosMes.toLocaleString("es-CL")}${gastosMes > mrr ? " ⚠️ gastos sobre MRR" : ""}\n${atrasados ? `📈 Objetivos atrasados:\n${atrasados}\n` : ""}⚠️ Errores bots:\n${errores || "- sin errores"}${sugerencias}`;
+    contenido = `Brief ${hoy} (modo básico)\n\n🔥 Contactar hoy:\n${hot || "- sin calientes → buscar prospectos nuevos"}\n\n⏰ Seguimientos: ${datos.seguimientos_vencidos_o_de_hoy.length}\n📋 Pipeline detenido: ${datos.pipeline_sin_movimiento_5_dias.length}\n✅ Tareas vencidas: ${(roadmapRes.data ?? []).length}\n💰 MRR ${mrr.toLocaleString("es-CL")} · por cobrar ${cobrosPendientes.toLocaleString("es-CL")} · gastos mes ${gastosMes.toLocaleString("es-CL")}${gastosMes > mrr ? " · gastos sobre MRR" : ""}\n${atrasados ? `📈 Objetivos atrasados:\n${atrasados}\n` : ""}⚠️ Errores bots:\n${errores || "- sin errores"}${sugerencias}`;
   }
 
   await s.from("briefs").insert({ contenido, tipo: "diario" });

@@ -3,6 +3,7 @@ import type { Brief } from "@/lib/types";
 import { fechaCorta, hora, timeAgo } from "@/lib/format";
 import PageHeader from "@/components/PageHeader";
 import BriefActions from "@/components/BriefActions";
+import BriefTexto from "@/components/BriefTexto";
 
 export const dynamic = "force-dynamic";
 
@@ -61,9 +62,9 @@ export default async function BriefPage() {
               {timeAgo(ultimo.created_at)}
             </span>
           </div>
-          <pre className="relative mt-5 whitespace-pre-wrap border-l-2 border-brand/70 bg-surface-3/45 px-5 py-4 font-sans text-[15px] leading-8 text-ink-soft shadow-glow">
-            {ultimo.contenido}
-          </pre>
+          <div className="relative mt-5 border-l-2 border-brand/50 bg-surface-3/50 px-5 py-4">
+            <BriefTexto texto={ultimo.contenido} />
+          </div>
         </article>
       )}
 
@@ -76,9 +77,9 @@ export default async function BriefPage() {
                 <summary className="cursor-pointer font-mono text-xs text-ink-mut transition hover:text-brand">
                   {fechaCorta(b.created_at)} · {hora(b.created_at)}
                 </summary>
-                <pre className="mt-3 whitespace-pre-wrap border-t border-line pt-3 font-sans text-[12.5px] leading-relaxed text-ink-soft">
-                  {b.contenido}
-                </pre>
+                <div className="mt-3 border-t border-line pt-3">
+                  <BriefTexto texto={b.contenido} compacto />
+                </div>
               </details>
             ))}
           </div>
@@ -102,9 +103,9 @@ export default async function BriefPage() {
                   </span>{" "}
                   · {fechaCorta(b.created_at)} · {hora(b.created_at)}
                 </summary>
-                <pre className="mt-3 whitespace-pre-wrap border-t border-line pt-3 font-sans text-[12.5px] leading-relaxed text-ink-soft">
-                  {b.contenido}
-                </pre>
+                <div className="mt-3 border-t border-line pt-3">
+                  <BriefTexto texto={b.contenido} compacto />
+                </div>
               </details>
             ))}
           </div>

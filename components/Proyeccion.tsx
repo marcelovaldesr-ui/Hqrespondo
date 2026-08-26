@@ -168,14 +168,14 @@ function Linea({
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img">
         {ticks.map((t) => (
           <g key={t}>
-            <line x1={pad.l} y1={y(t)} x2={pad.l + iw} y2={y(t)} stroke="rgba(255,255,255,0.075)" />
-            <text x={pad.l - 9} y={y(t) + 4} textAnchor="end" fontSize="10.5" fill="#70768B" fontFamily="monospace">
+            <line x1={pad.l} y1={y(t)} x2={pad.l + iw} y2={y(t)} stroke="rgba(29,27,22,0.10)" />
+            <text x={pad.l - 9} y={y(t) + 4} textAnchor="end" fontSize="10.5" fill="#6A655B" fontFamily="monospace">
               {compacto(t)}
             </text>
           </g>
         ))}
         {[1, 6, 12, 18, 24, 30, 36].map((m) => (
-          <text key={m} x={x(m - 1)} y={H - 8} textAnchor="middle" fontSize="10.5" fill="#70768B" fontFamily="monospace">
+          <text key={m} x={x(m - 1)} y={H - 8} textAnchor="middle" fontSize="10.5" fill="#6A655B" fontFamily="monospace">
             {m === 1 ? "mes 1" : m}
           </text>
         ))}
@@ -201,15 +201,15 @@ function Linea({
         ))}
         {series.map((s) => (
           <g key={`${s.nombre}-fin`}>
-            <circle cx={x(MESES - 1)} cy={y(s.datos[MESES - 1])} r="4" fill={s.color} stroke="#0B0B14" strokeWidth="2" />
+            <circle cx={x(MESES - 1)} cy={y(s.datos[MESES - 1])} r="4" fill={s.color} stroke="#FDFBF7" strokeWidth="2" />
           </g>
         ))}
 
         {hover !== null && (
           <>
-            <line x1={x(hover)} y1={pad.t} x2={x(hover)} y2={pad.t + ih} stroke="rgba(255,255,255,0.28)" />
+            <line x1={x(hover)} y1={pad.t} x2={x(hover)} y2={pad.t + ih} stroke="rgba(29,27,22,0.30)" />
             {series.map((s) => (
-              <circle key={s.nombre} cx={x(hover)} cy={y(s.datos[hover])} r="4.5" fill={s.color} stroke="#0B0B14" strokeWidth="2" />
+              <circle key={s.nombre} cx={x(hover)} cy={y(s.datos[hover])} r="4.5" fill={s.color} stroke="#FDFBF7" strokeWidth="2" />
             ))}
           </>
         )}
@@ -485,10 +485,10 @@ export default function Proyeccion({
           <Linea
             filas={filas}
             series={[
-              { nombre: "Recurrente", datos: filas.map((f) => f.mrr), color: "#9174FF" },
-              { nombre: "Caja del mes", datos: filas.map((f) => Math.max(0, f.caja)), color: "#E66551" },
+              { nombre: "Recurrente", datos: filas.map((f) => f.mrr), color: "#5C42C4" },
+              { nombre: "Caja del mes", datos: filas.map((f) => Math.max(0, f.caja)), color: "#B4553F" },
             ]}
-            refLinea={{ v: objetivoCaja, label: "objetivo", color: "#2FD98C" }}
+            refLinea={{ v: objetivoCaja, label: "objetivo", color: "#2F6B45" }}
           />
         )}
 
@@ -515,8 +515,8 @@ export default function Proyeccion({
         <Linea
           filas={filas}
           series={[
-            { nombre: "Tu mezcla", datos: filas.map((f) => f.mrr), color: "#9174FF" },
-            { nombre: "Casi todo Inicial", datos: filasInicial.map((f) => f.mrr), color: "#12A0BA" },
+            { nombre: "Tu mezcla", datos: filas.map((f) => f.mrr), color: "#5C42C4" },
+            { nombre: "Casi todo Inicial", datos: filasInicial.map((f) => f.mrr), color: "#1B7F92" },
           ]}
         />
         <p className="mt-3 text-[12.5px] text-ink-mut">

@@ -339,7 +339,7 @@ export default function EquipoSemanal({
                               onChange={(ev) =>
                                 actualizar(o, { hablado_reunion: ev.target.checked })
                               }
-                              className="h-3.5 w-3.5 accent-[#8B6BFF]"
+                              className="h-3.5 w-3.5 accent-brand"
                             />
                             Se habló en la reunión
                           </label>
@@ -415,10 +415,10 @@ export default function EquipoSemanal({
                           borderRadius: "3px 3px 1px 1px",
                           background:
                             v === null
-                              ? "#1E1E2A"
+                              ? "#E9E3D6"
                               : esActual
-                                ? "#9174FF"
-                                : "rgba(145,116,255,0.4)",
+                                ? "#5C42C4"
+                                : "rgba(92,66,196,0.32)",
                         }}
                       />
                     </span>

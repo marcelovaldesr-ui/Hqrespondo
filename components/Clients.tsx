@@ -163,7 +163,7 @@ function OnboardingPanel({ clientId }: { clientId: string }) {
                     type="checkbox"
                     checked={t.hecho}
                     onChange={() => marcar(t)}
-                    className="mt-0.5 accent-[#16A34A]"
+                    className="mt-0.5 accent-ok"
                   />
                   <span className={t.hecho ? "text-ink-faint line-through" : "text-ink-soft"}>
                     {t.paso}

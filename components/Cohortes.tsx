@@ -87,7 +87,7 @@ export default function Cohortes({ filas }: { filas: Cohorte[] }) {
                       className="absolute inset-y-0 left-0 rounded-full"
                       style={{
                         width: `${(f.conectados / maxEntraron) * 100}%`,
-                        background: "#9174FF",
+                        background: "#5C42C4",
                       }}
                     />
                   </span>

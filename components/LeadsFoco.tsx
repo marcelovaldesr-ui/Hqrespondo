@@ -52,7 +52,7 @@ const ENCAJE_CHIP: Record<NivelEncaje, string> = {
 };
 
 const ENCAJE_CORTO: Record<NivelEncaje, string> = {
-  alto: "ALTO", medio: "MEDIO", sin_evaluar: "?", bajo: "BAJO", nulo: "NO",
+  alto: "ALTO", medio: "MEDIO", sin_evaluar: "SIN VER", bajo: "BAJO", nulo: "NO",
 };
 
 const LED_ESTADO: Record<EstadoFoco, string> = {
@@ -1197,7 +1197,7 @@ export default function LeadsFoco({
       {/* ---------- Secuencia de correos ---------- */}
       {secuencia && lead && (
         <div
-          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/55 p-4 backdrop-blur-sm"
           onClick={() => setSecuencia(false)}
         >
           <div className="glass my-6 w-full max-w-2xl p-5" onClick={(e) => e.stopPropagation()}>
@@ -1301,7 +1301,7 @@ export default function LeadsFoco({
       {/* ---------- Modal de importación ---------- */}
       {importar && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/55 p-4 backdrop-blur-sm"
           onClick={() => !importando && setImportar(false)}
         >
           <div className="glass w-full max-w-3xl p-5" onClick={(e) => e.stopPropagation()}>
@@ -1383,7 +1383,7 @@ export default function LeadsFoco({
       {/* ---------- Modal de disposición ---------- */}
       {modal && lead && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/55 p-4 backdrop-blur-sm"
           onClick={() => !guardando && setModal(false)}
         >
           <div className="glass w-full max-w-2xl p-5" onClick={(e) => e.stopPropagation()}>
