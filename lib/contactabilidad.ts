@@ -306,9 +306,31 @@ export function cargoObjetivo(rubro: string | null | undefined): string {
  * `pareceNombreDePersona` ya existía en el proyecto y sirve exacto: pide entre
  * dos y cuatro palabras, todas de letras, ninguna de rubro ni de relleno web.
  */
-function nombreUsable(bruto: string | null | undefined): string {
+function nombreUsable(bruto: string | null | undefined, empresa?: string): string {
   const n = podarNombre((bruto ?? "").trim());
   if (!n || !pareceNombreDePersona(n)) return "";
+
+  // Si el "nombre" es en realidad el nombre del negocio, no es una persona.
+  //
+  // La corrida sobre 50 leads reales del 4-sep lo dejó a la vista:
+  //   «Hola, ¿hablo con Grupo Isan?»
+  //   «Hola, ¿hablo con Furiosos Bikes?»
+  //   «Hola, ¿hablo con Casa Tarjetas Lua?»
+  // Los tres pasan el filtro de "parece nombre de persona" —dos palabras, solo
+  // letras— porque no hay forma de saberlo mirando el texto solo. Pero sí
+  // mirándolo AL LADO del nombre de la empresa: si la mitad o más de sus
+  // palabras están en el nombre del negocio, es el negocio.
+  if (empresa) {
+    const norm = (x: string) =>
+      x.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+       .split(/[^a-z0-9]+/).filter((w) => w.length > 2);
+    const delNegocio = new Set(norm(empresa));
+    const toks = norm(n);
+    if (toks.length) {
+      const comunes = toks.filter((t) => delNegocio.has(t)).length;
+      if (comunes / toks.length >= 0.5) return "";
+    }
+  }
   // "JAIME PEREZ" en mayúsculas se lee como un grito. Se pasa a capitalización
   // normal, respetando las partículas.
   return n
@@ -319,7 +341,7 @@ function nombreUsable(bruto: string | null | undefined): string {
 }
 
 export function armarPlan(e: EntradaPlan, rubro?: string | null): Paso[] {
-  const nombre = nombreUsable(e.decisor?.nombre);
+  const nombre = nombreUsable(e.decisor?.nombre, e.empresa);
   const cargo = (e.decisor?.cargo ?? "").trim();
   const { etiqueta } = pesoDelCargo(cargo);
   const pasos: Paso[] = [];
@@ -340,7 +362,7 @@ export function armarPlan(e: EntradaPlan, rubro?: string | null): Paso[] {
   for (const { c, ev } of evaluados) {
     const esWa = c.tipo === "whatsapp_publicado";
     const movil = esMovil(c);
-    const quien = nombreUsable(c.persona) || nombre;
+    const quien = nombreUsable(c.persona, e.empresa) || nombre;
 
     let via: Via;
     let guion: string;
