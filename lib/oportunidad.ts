@@ -173,6 +173,42 @@ export function evaluarOportunidad(e: EntradaOportunidad): Oportunidad {
     alto: 62, medio: 46, sin_evaluar: 34, bajo: 16, nulo: 0,
   };
   let puntos = BASE[encaje.nivel];
+
+  // ── EVIDENCIA POR SOBRE PRIOR: el negocio que vive en el DM ────────────
+  //
+  // El `encaje` es una apuesta a partir del NOMBRE DEL RUBRO: "¿en un negocio
+  // así se conversa con clientes?". `solo_redes` no es una apuesta: es la
+  // observación de que este negocio, en concreto, no tiene más canal que el
+  // mensaje directo. Alguien está escribiendo esas respuestas a mano, hoy.
+  //
+  // Por eso levanta el piso en vez de sumar unos puntos encima. Los +8 de más
+  // abajo se quedan como el bono de volumen que ya eran.
+  //
+  // Hay una segunda razón, aritmética: a un negocio CON sitio el motor puede
+  // restarle hasta 16 puntos cuando le encuentra reservas o CRM andando. A uno
+  // que solo tiene Instagram esos descuentos no pueden dispararse nunca —no
+  // porque tenga suerte, sino porque es seguro que no hay nada que desplazar—.
+  // Compararlos sin corregir eso castiga al que menos infraestructura tiene,
+  // que es exactamente el que más nos sirve.
+  //
+  // NO rescata un rubro `bajo` ni `nulo`: una notaría que solo usa Facebook
+  // sigue siendo una notaría. Solo confirma lo que ya era plausible.
+  //
+  // Y solo vale para un negocio CHICO. Esto lo encontró una prueba de control:
+  // un banco de 5.000 personas cuya "web" fuera instagram.com pasaba de
+  // "no vale el tiempo" a "oportunidad media". Una empresa de ese tamaño no
+  // atiende por DM; lo que pasó es que alguien guardó el link de la red social
+  // en vez del sitio. Eso es un dato malo, no una señal. Con el tamaño
+  // desconocido sí se aplica: un negocio sin sitio y solo con Instagram es
+  // chico casi por definición.
+  const chico = e.nEmpleados == null || e.nEmpleados <= 50;
+  const soloRedesEvidencia =
+    !!e.web?.solo_redes && chico && (encaje.nivel === "medio" || encaje.nivel === "sin_evaluar");
+  if (soloRedesEvidencia) {
+    puntos = BASE.alto;
+    aFavor.push("no tiene sitio: toda su atención pasa por mensajes directos, escritos a mano");
+  }
+
   if (encaje.nivel === "alto") aFavor.push("rubro donde el asistente sí puede trabajar");
   if (encaje.nivel === "bajo" || encaje.nivel === "nulo") enContra.push("el rubro no calza con lo que el asistente sabe hacer");
 
@@ -187,7 +223,10 @@ export function evaluarOportunidad(e: EntradaOportunidad): Oportunidad {
   // ── 3. ¿Hay volumen de consultas? Sin volumen no hay dolor que resolver.
   if (w?.boton_wa_flotante) { puntos += 9; aFavor.push("botón flotante de WhatsApp: empuja toda la consulta al DM"); }
   else if (w?.whatsapp_link) { puntos += 6; aFavor.push("publica WhatsApp para que le escriban"); }
-  if (w?.solo_redes) { puntos += 8; aFavor.push("su única presencia es Instagram/Facebook: gestiona todo a mano por DM"); }
+  // El bono va con el mismo candado de tamaño que el piso de más arriba: la
+  // frase "gestiona todo a mano por DM" es igual de falsa para una empresa de
+  // 5.000 personas, y antes se la sumábamos igual.
+  if (w?.solo_redes && chico) { puntos += 8; aFavor.push("su única presencia es Instagram/Facebook: gestiona todo a mano por DM"); }
   if (n?.volumen.includes("pideEscribir")) { puntos += 5; aFavor.push("su sitio pide explícitamente que le escriban o agenden"); }
   if (n?.volumen.includes("preguntasFrecuentes")) { puntos += 3; aFavor.push("tiene página de preguntas frecuentes: las mismas preguntas se repiten"); }
   if ((n?.reviews ?? 0) >= 150) { puntos += 6; aFavor.push(`${n!.reviews} reseñas en Google: tiene flujo real de clientes`); }

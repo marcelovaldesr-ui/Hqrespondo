@@ -82,7 +82,12 @@ export async function htmlDeLaWeb(web: string, maxMs = 12_000): Promise<string |
   if (!destinoPermitido(url)) return null;
   // Una red social devuelve el cascarón de su aplicación, no el perfil. Leer
   // eso y extraerle números produce datos inventados con cara de verdaderos.
+  // Directorios y perfiles corporativos añadidos el 4-sep-2026: no son el
+  // sitio del negocio, y leerlos como si lo fueran mete teléfonos de terceros
+  // con la evidencia más alta que tenemos. Pasó con portalchile.org y con una
+  // página de LinkedIn en la corrida real.
   if (/facebook\.com|instagram\.com|linktr\.ee|tiktok\.com|youtube\.com|x\.com|twitter\.com|ubereats\.com|rappi\.|pedidosya\.|justo\.mx|menu\.dine/i.test(url.hostname)) return null;
+  if (/linkedin\.com|portalchile\.|paginasamarillas\.|amarillas\.|guiaempresas|empresite|einforma|dateas\.|mercadopublico\.|boletinconcursal|rutificador|infoempresa|cylex|yelp\.|foursquare\./i.test(url.hostname)) return null;
 
   try {
     const ctrl = new AbortController();

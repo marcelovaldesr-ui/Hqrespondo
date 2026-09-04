@@ -30,7 +30,9 @@ import {
   armarPlan, estadoDelLead, veredictoDelLead, prioridadComercial,
   type EstadoLead, type Paso, type EstadoLinea, type TipoContactoAjuste, type Veredicto,
 } from "@/lib/contactabilidad";
-import { senalesDeHtml, type SenalesWeb } from "@/lib/enriquecimiento";
+import {
+  senalesDeHtml, ES_SOLO_REDES, ES_MARKETPLACE, ES_DIRECTORIO, type SenalesWeb,
+} from "@/lib/enriquecimiento";
 import { evaluarOportunidad, senalesOportunidadDeHtml, type Oportunidad } from "@/lib/oportunidad";
 
 /** Páginas donde un negocio pone sus datos de contacto y a su gente. */
@@ -162,6 +164,17 @@ export async function enriquecerLead(e: EntradaEnriquecimiento): Promise<Resulta
           traza.push(`leí ${link.replace(base.origin, "")}`);
         }
       }
+    } else if (ES_SOLO_REDES.test(webUsada)) {
+      // No es que fallara: no se abre a propósito. Decir "no se pudo abrir"
+      // hacía parecer un problema técnico lo que en realidad es el dato más
+      // útil que tenemos de este negocio.
+      traza.push(`su única "web" es una red social (${webUsada}) — atiende por mensaje directo`);
+    } else if (ES_MARKETPLACE.test(webUsada)) {
+      traza.push(`lo que teníamos como web es su página en un marketplace de delivery (${webUsada})`);
+    } else if (ES_DIRECTORIO.test(webUsada)) {
+      // Esto además avisa que el campo "web" del lead tiene un dato malo, que
+      // es algo que conviene arreglar a mano.
+      traza.push(`ese enlace no es su sitio, es un directorio de empresas (${webUsada}): no se leyó como si fuera de ellos`);
     } else {
       traza.push(`su sitio no se pudo abrir (${webUsada})`);
     }
@@ -259,9 +272,39 @@ export async function enriquecerLead(e: EntradaEnriquecimiento): Promise<Resulta
 
   // ── MOTOR 1 · ¿vale la pena venderle? Sobre el MISMO HTML ya bajado.
   const todo = htmls.join("\n<!--PAGINA-->\n");
+  // ── EL NEGOCIO QUE VIVE EN INSTAGRAM ──────────────────────────────────
+  //
+  // Bug encontrado en la corrida real del 4-sep-2026 sobre 50 leads.
+  //
+  // `leerWeb` bloquea instagram.com y facebook.com a propósito: no son sitios
+  // web y no se raspan. Pero el efecto secundario era que un negocio cuya
+  // ÚNICA presencia es Instagram entraba al sistema como "no se pudo abrir su
+  // sitio" — o sea, sin ninguna señal, puntuado igual que uno del que no
+  // sabemos nada.
+  //
+  // Y ese negocio es el mejor cliente que puede tener Respondo. Si toda su
+  // atención pasa por DM, alguien está contestando a mano todos los días.
+  // `enriquecimiento.ts` ya lo sabía (`solo_redes` → potencial alto); lo que
+  // faltaba era preguntarlo ANTES de intentar descargar.
+  //
+  // En la tanda de Tomás esto afectó a Cecinas Larita, Gestcap y Rafael
+  // Iturra: los tres salieron "No vale el tiempo ahora".
+  const web = String(e.web ?? "");
+  const soloRedes = !!web && ES_SOLO_REDES.test(web);
+  const marketplace = !!web && ES_MARKETPLACE.test(web);
+
   const senalesWeb: SenalesWeb | null = htmls.length
     ? { ...senalesDeHtml(todo, { hayIntencionAgenda: htmls.length > 1 }), visitada: true, paginas: htmls.length, potencial: "desconocido" }
-    : null;
+    : soloRedes || marketplace
+      ? {
+          visitada: false, solo_redes: soloRedes,
+          chatbot: null, reservas: null, formulario_hora: false, ecommerce: null,
+          crm: null, whatsapp_link: false, boton_wa_flotante: false,
+          // Si su vitrina ES Instagram, el enlace a Instagram sobra decirlo.
+          instagram_link: soloRedes, canales_dm: soloRedes ? 1 : 0, paginas: 0,
+          potencial: soloRedes ? "alto" : "desconocido",
+        }
+      : null;
   const negocio = senalesOportunidadDeHtml(todo, htmls.length, identidad?.reviews ?? null);
   const oportunidad = evaluarOportunidad({
     empresa: e.empresa,

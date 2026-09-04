@@ -20,6 +20,39 @@
 
 import { htmlDeLaWeb } from "@/lib/leerWeb";
 
+/**
+ * ¿Su única "web" es una red social? Entonces gestionan TODO a mano por DM,
+ * y son de los mejores prospectos que existen para Respondo.
+ *
+ * Vive acá y se exporta porque `enriquecerLead` necesita hacer la misma
+ * pregunta ANTES de intentar descargar nada: `leerWeb` bloquea estos dominios
+ * a propósito (no son sitios, y raspar Instagram no se hace), y el efecto
+ * secundario era que el mejor perfil de cliente que tenemos entraba al
+ * sistema como "no tiene web" — o sea, sin ninguna señal.
+ */
+export const ES_SOLO_REDES = /facebook\.com|instagram\.com|linktr\.ee|wa\.me\/|tiktok\.com/i;
+
+/**
+ * Marketplaces de delivery. NO es lo mismo que solo_redes: acá el negocio
+ * delegó la toma de pedidos en un tercero que le cobra comisión. Sigue
+ * atendiendo por WhatsApp lo que no pasa por ahí, así que sirve, pero no es
+ * la señal fuerte de "gestiona todo a mano".
+ */
+export const ES_MARKETPLACE = /ubereats\.com|rappi\.|pedidosya\.|justo\.mx|menu\.dine/i;
+
+/**
+ * Directorios de empresas y perfiles corporativos. Su HTML NO es el sitio del
+ * negocio: un teléfono ahí lo publicó un tercero, no la empresa.
+ *
+ * Salió de la corrida real del 4-sep-2026: a "Sociedad Comercial Riquelme
+ * Hermanos" le leímos portalchile.org y a "Servicios Transitorios San
+ * Cristóbal" su página de LinkedIn, las dos anotadas en la traza como "leí su
+ * portada". Cualquier número sacado de ahí habría entrado como si el negocio
+ * lo publicara, que es justamente la evidencia que más peso tiene.
+ */
+export const ES_DIRECTORIO =
+  /linkedin\.com|portalchile\.|paginasamarillas\.|amarillas\.|guiaempresas|empresite|einforma|dateas\.|mercadopublico\.|boletinconcursal|rutificador|chilecubica|opendata|infoempresa|cylex|yelp\.|foursquare\./i;
+
 export interface SenalesWeb {
   /** true si se pudo descargar el HTML */
   visitada: boolean;

@@ -594,13 +594,26 @@ export function veredictoDelLead(opts: {
   // contactable que sea. Es el principio que Marcelo puso arriba de todo.
   if (opts.nivelOportunidad === "no_ahora") return "no_ahora";
 
-  // Buen fit y ningún camino: no es un fracaso, es trabajo de escritorio.
-  if (opts.contactabilidad < 15) {
-    return opts.nivelOportunidad === "alta" ? "investigar" : "no_ahora";
-  }
+  // "Investigar" quiere decir UNA cosa: no hay por dónde entrar. Buen fit y
+  // ningún camino no es un fracaso, es trabajo de escritorio.
+  //
+  // CORRECCIÓN 4-sep-2026, salida de la corrida real sobre 50 leads.
+  // Antes esta rama también se disparaba cuando la prioridad quedaba baja
+  // AUNQUE hubiera un teléfono. Sotos aparecía con «Falta cómo contactarlo»
+  // y su número móvil impreso justo al lado. Además de leerse como un error
+  // de la herramienta, mandaba a la cola de escritorio a ocho empresas de
+  // buen encaje cuya única tarea pendiente era marcar un número.
+  //
+  // Un número sin verificar no es "falta de camino": es un camino barato.
+  // Probarlo CUESTA dos minutos y ES la investigación. Va a "llamar después",
+  // detrás de los verificados, con su etiqueta de SIN VERIFICAR a la vista.
+  const sinCamino = opts.contactabilidad <= 0;
+  if (sinCamino) return opts.nivelOportunidad === "alta" ? "investigar" : "no_ahora";
 
   const p = prioridadComercial(opts.oportunidad, opts.contactabilidad);
   if (p >= 55) return "llamar_ahora";
   if (p >= 35) return "llamar_despues";
-  return opts.nivelOportunidad === "alta" ? "investigar" : "no_ahora";
+  // Hay camino y el fit es bueno: se llama, aunque sea al final de la lista.
+  // Lo que NO se hace es fingir que no hay nada que probar.
+  return opts.nivelOportunidad === "alta" ? "llamar_despues" : "no_ahora";
 }
