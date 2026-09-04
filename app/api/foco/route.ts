@@ -88,10 +88,36 @@ export async function POST(req: Request) {
     // la cola de hoy con un número que ya se sabía malo, para siempre.
     // Al vaciarlo, `contactabilidad` (columna generada) se recalcula sola y el
     // lead baja hasta que alguien consiga el número bueno.
-    if (resultado === "equivocado" && lead.telefono) {
+    if ((resultado === "equivocado" || resultado === "no_existe") && lead.telefono) {
       upd.telefono = "";
-      const marca = `[${ahora.toLocaleDateString("es-CL")}] Número equivocado: ${lead.telefono} (se quitó de la ficha)`;
+      const marca = `[${ahora.toLocaleDateString("es-CL")}] Número ${resultado === "no_existe" ? "inexistente" : "equivocado"}: ${lead.telefono} (se quitó de la ficha)`;
       notaAcum = notaAcum ? `${notaAcum}\n${marca}` : marca;
+
+      // ── El circuito que faltaba ────────────────────────────────────────
+      // Hasta ahora esto se anotaba en la nota, en texto libre, donde ningún
+      // código lo podía leer: el enriquecimiento volvía a proponer el MISMO
+      // número al día siguiente, y el vendedor lo marcaba otra vez.
+      //
+      // Ahora queda en una tabla. `enriquecerLead` la consulta y ese número
+      // no vuelve a aparecer, venga de donde venga — ni de Apollo, ni del
+      // sitio del negocio, ni de la Ficha de Google. Una llamada perdida
+      // pasa a valer para todas las que vienen.
+      const claveMala = normalizarTelefono(lead.telefono);
+      if (claveMala) {
+        const { error: eM } = await s.from("numeros_malos").upsert(
+          {
+            clave: claveMala,
+            motivo: resultado === "no_existe" ? "la red dice que no existe" : "contestó otra persona o empresa",
+            lead_foco_id: lead.id,
+            empresa: lead.empresa ?? "",
+            reportado_por: actor,
+          },
+          { onConflict: "clave", ignoreDuplicates: true },
+        );
+        // Si la migración 037 todavía no corrió, esto no puede tumbar el
+        // registro de la llamada: lo importante es que quede anotada.
+        if (eM) console.warn("[foco] no se pudo anotar el número malo:", eM.message);
+      }
     }
     if (retirado) {
       const marca = `[${ahora.toLocaleDateString("es-CL")}] Retirado: ${MAX_SIN_CONTESTAR} llamadas sin contestar (regla de la base). Vuelve solo si se consigue otro número.`;

@@ -58,7 +58,8 @@ function conTasas(c: Cuenta) {
   };
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const detalle = new URL(req.url).searchParams.get("detalle") === "1";
   try {
     const s = db();
 
@@ -74,8 +75,8 @@ export async function GET() {
         .from("actividades")
         .select(
           conOrigen
-            ? "resultado,contacto,created_at,leads_foco(fuente_url,origen_telefono,telefonos)"
-            : "resultado,contacto,created_at,leads_foco(fuente_url,telefonos)",
+            ? "resultado,contacto,created_at,leads_foco(empresa,telefono,fuente_url,origen_telefono,telefonos)"
+            : "resultado,contacto,created_at,leads_foco(empresa,telefono,fuente_url,telefonos)",
         )
         .eq("canal", "llamada")
         .order("created_at", { ascending: false })
@@ -119,6 +120,27 @@ export async function GET() {
     }
 
     // ── 3. El inventario de las dos listas ─────────────────────────────────
+    // Con 17 llamadas los porcentajes no significan nada, pero mirarlas de a
+    // una sí. `?detalle=1` las lista: qué número se marcó, de dónde salió y
+    // cómo terminó. Es la diferencia entre una tasa y un hecho.
+    const listado = !detalle ? [] : (acts ?? []).slice(0, 60).map((a: any) => {
+      const tel = String(a.contacto ?? "").trim();
+      const lead = a.leads_foco ?? {};
+      return {
+        cuando: String(a.created_at ?? "").slice(0, 16).replace("T", " "),
+        empresa: lead.empresa ?? "—",
+        marcado: tel || "— sin número registrado —",
+        tipo: !tel ? "—" : esCelularChileno(tel) ? "celular" : "fijo",
+        resultado: a.resultado,
+        desenlace: DESENLACE[a.resultado] ?? "—",
+        origen: String(lead.origen_telefono ?? "").trim() || String(lead.fuente_url ?? "").slice(0, 40) || "sin registrar",
+        telefono_actual_del_lead: lead.telefono ?? "—",
+        numeros_que_tiene_el_lead: Array.isArray(lead.telefonos)
+          ? lead.telefonos.map((t: any) => `${t?.valor} (${t?.tipo}/${t?.fuente})`).join(" | ") || "ninguno"
+          : "ninguno",
+      };
+    });
+
     const { data: foco, error: eF } = await s
       .from("leads_foco")
       .select("telefono,contacto,estado,encaje")
@@ -171,6 +193,8 @@ export async function GET() {
           Object.entries(repartoFoco).sort((a, b) => b[0].localeCompare(a[0])),
         ),
       },
+
+      ...(detalle ? { las_llamadas_una_por_una: listado } : {}),
 
       prospects: {
         nota:

@@ -137,6 +137,11 @@ export interface LeadFoco {
   alcance: number;
   /** De dónde salió el número que se va a marcar: apollo, places, cascada, a mano. */
   origen_telefono: string;
+  /** Contactos con evidencia (migración 037). Lo llena /api/foco/enriquecer. */
+  contactos: import("@/lib/contactos").ContactoConEvidencia[];
+  /** En qué montón va: excelente, buena, via_central… */
+  calidad: import("@/lib/contactabilidad").EstadoLead;
+  enriquecido_at: string | null;
   encaje: NivelEncaje;
   encaje_motivo: string;
   encaje_manual: boolean;
@@ -155,7 +160,7 @@ const SELECT =
   "id,empresa,razon_social,rut,web,linkedin_empresa,industria,n_empleados,comuna,region," +
   "contacto,cargo,telefono,email,linkedin_contacto,lista,estado,ultimo_resultado,tags,nota," +
   "recordatorio,intentos,sin_contestar,ultimo_intento,senal,confianza,fuente_url,ficha,contactabilidad," +
-  "alcance,origen_telefono," +
+  "alcance,origen_telefono,contactos,calidad,enriquecido_at," +
   "encaje,encaje_motivo,encaje_manual," +
   "senal_reciente,senal_reciente_url,senal_reciente_at,senal_vigente_hasta," +
   "telefonos,emails";
@@ -169,7 +174,7 @@ const SELECT =
  * filas y parecía que no había nadie de dirección. Un solo mapa, cero drift.
  */
 /** El mismo SELECT sin lo que agrega la migración 036, para el reintento. */
-const SELECT_SIN_036 = SELECT.replace("alcance,origen_telefono,", "");
+const SELECT_SIN_036 = SELECT.replace("alcance,origen_telefono,contactos,calidad,enriquecido_at,", "");
 
 export const GRUPOS_CARGO: Record<string, string[]> = {
   "Gerencia general": ["gerente general", "director ejecutivo", "ceo", "general manager"],
@@ -294,8 +299,15 @@ export async function listarFoco(f: FiltrosFoco = {}): Promise<LeadFoco[]> {
       // `alcance` (migración 036) responde la pregunta que importa antes de
       // marcar: ¿contesta el que decide? Y contiene a la anterior — un lead sin
       // teléfono o sin persona ya queda abajo igual.
-      qo = conAlcance
-      ? qo.order("alcance", { ascending: false })
+      // La CALIDAD manda por sobre el alcance. `alcance` mira el formato del
+    // número (móvil o fijo); `calidad` mira la evidencia: si el negocio lo
+    // publica él mismo, si lo confirman dos fuentes, si alguien ya lo llamó y
+    // resultó malo. Es estrictamente más información.
+    //
+    // `alcance` se queda como desempate: entre dos leads igual de buenos,
+    // primero el que tiene móvil.
+    qo = conAlcance
+      ? qo.order("calidad_rank", { ascending: false }).order("alcance", { ascending: false })
       : qo.order("contactabilidad", { ascending: false });
       // Fase 3: entre los que se pueden marcar, primero los que tienen una señal
       // VIGENTE. Un aviso buscando recepcionista publicado esta semana es un
@@ -321,10 +333,10 @@ export async function listarFoco(f: FiltrosFoco = {}): Promise<LeadFoco[]> {
   };
 
   let r = await traer(true);
-  if (r.error && /alcance|origen_telefono/i.test(r.error.message)) {
+  if (r.error && /alcance|origen_telefono|contactos|calidad|enriquecido_at/i.test(r.error.message)) {
     console.warn(
-      "[foco] falta la migración 036: se ordena como antes y `alcance` se calcula en la app. " +
-      "Corre supabase/migrations/036_alcance_del_lead.sql para recuperar el orden por quién contesta.",
+      "[foco] faltan columnas de las migraciones 036/037: se ordena como antes y lo que falta se calcula en la app. " +
+      "Corre supabase/migrations/036_alcance_del_lead.sql y 037_contactos_con_evidencia.sql.",
     );
     r = await traer(false);
   }
@@ -342,6 +354,8 @@ export async function listarFoco(f: FiltrosFoco = {}): Promise<LeadFoco[]> {
   for (const fila of filas) {
     if (typeof fila.alcance !== "number") fila.alcance = alcanceDe(fila);
     if (typeof fila.origen_telefono !== "string") fila.origen_telefono = "";
+    if (!Array.isArray(fila.contactos)) fila.contactos = [];
+    if (typeof fila.calidad !== "string") fila.calidad = "insuficiente";
   }
   if (f.cargo === "Otros") filas = filas.filter((x) => grupoDeCargo(x.cargo) === "Otros");
   for (const fila of filas) {

@@ -18,6 +18,8 @@
  * Falla silencioso (visitada:false) para no bloquear el scoring.
  */
 
+import { htmlDeLaWeb } from "@/lib/leerWeb";
+
 export interface SenalesWeb {
   /** true si se pudo descargar el HTML */
   visitada: boolean;
@@ -186,30 +188,16 @@ const TIMEOUT_MS = 5000;
 // un Dentalink real (caso ohmydent.com, jul-2026) → score 100 falso.
 const MAX_BYTES = 1_500_000;
 
+/**
+ * Antes esto tenía su propio fetch, SIN ninguna guarda: aceptaba cualquier
+ * URL, incluida una dirección interna o una IP pelada. Se alimenta de
+ * `prospects.web`, que viene de Places, así que el riesgo era acotado — pero
+ * era un segundo camino de salida a internet con reglas distintas al primero.
+ * Ahora hay uno solo, el de `leerWeb.ts`, con la guarda puesta.
+ */
 async function fetchHtml(url: string): Promise<string | null> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch(url, {
-      signal: controller.signal,
-      redirect: "follow",
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
-        Accept: "text/html,application/xhtml+xml",
-        "Accept-Language": "es-CL,es;q=0.9",
-      },
-    });
-    if (!res.ok) return null;
-    const type = res.headers.get("content-type") ?? "";
-    if (type && !type.includes("html")) return null;
-    const text = await res.text();
-    return text.slice(0, MAX_BYTES);
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
+  const html = await htmlDeLaWeb(url, TIMEOUT_MS);
+  return html ? html.slice(0, MAX_BYTES) : null;
 }
 
 /** Extrae hasta `max` links internos de agenda/reserva de la portada. */

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ENCAJE_LABEL, NIVELES_ENCAJE, senalesDeGuia, type NivelEncaje } from "@/lib/encaje";
 import { ALCANCE_QUE_ESPERAR, ALCANCE_TONO, esCelularChileno } from "@/lib/alcance";
+import PlanDeContacto from "@/components/PlanDeContacto";
+import { ESTADO_LEAD_LABEL, ESTADO_LEAD_TONO } from "@/lib/contactabilidad";
 import { secuenciaPara, verticalDe } from "@/lib/secuencias";
 import {
   CONECTA_FOCO,
@@ -713,14 +715,33 @@ export default function LeadsFoco({
                               celular publicado por un negocio es el teléfono
                               del dueño; un fijo es el mesón. Verlo en la lista
                               evita gastar el intento en una recepción. */}
-                          <div
-                            className={`mt-0.5 font-mono text-[9px] tracking-wider ${
-                              esCelularChileno(f.telefono) ? "text-ok" : "text-warn"
-                            }`}
-                            title={ALCANCE_QUE_ESPERAR[f.alcance] ?? ""}
-                          >
-                            {esCelularChileno(f.telefono) ? "CELULAR" : "FIJO · MESÓN"}
-                          </div>
+                          {/* Si el lead ya pasó por el enriquecimiento, se
+                              muestra la CALIDAD —que mira la evidencia— en vez
+                              del formato del número, que dice mucho menos.
+                              Mientras no haya pasado, se sigue mostrando lo
+                              que hay. */}
+                          {f.contactos?.length ? (
+                            <div
+                              className={`mt-0.5 font-mono text-[9px] tracking-wider ${
+                                ESTADO_LEAD_TONO[f.calidad] === "ok" ? "text-ok"
+                                : ESTADO_LEAD_TONO[f.calidad] === "warn" ? "text-warn"
+                                : ESTADO_LEAD_TONO[f.calidad] === "danger" ? "text-danger"
+                                : "text-ink-faint"
+                              }`}
+                              title={`${ESTADO_LEAD_LABEL[f.calidad]} · ${f.contactos.length} contacto(s) con evidencia`}
+                            >
+                              {ESTADO_LEAD_LABEL[f.calidad].toUpperCase()}
+                            </div>
+                          ) : (
+                            <div
+                              className={`mt-0.5 font-mono text-[9px] tracking-wider ${
+                                esCelularChileno(f.telefono) ? "text-ok" : "text-warn"
+                              }`}
+                              title={ALCANCE_QUE_ESPERAR[f.alcance] ?? ""}
+                            >
+                              {esCelularChileno(f.telefono) ? "CELULAR" : "FIJO · MESÓN"}
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <span className="text-[10.5px] text-ink-faint">sin número</span>
@@ -1009,10 +1030,22 @@ export default function LeadsFoco({
                   </>
                 )}
 
-                {/* Qué esperar al marcar. Va ANTES de las señales porque es lo
-                    primero que decide cómo se abre la llamada: no se saluda
-                    igual a un dueño que a una recepcionista. */}
-                {lead.telefono && (
+                {/* El plan completo: qué número usar, con qué frase abrir, y
+                    qué hacer si no contesta. Va ANTES de todo lo demás porque
+                    es lo único que el vendedor necesita para marcar AHORA. */}
+                <PlanDeContacto
+                  contactos={lead.contactos ?? []}
+                  decisor={{ nombre: lead.contacto, cargo: lead.cargo }}
+                  empresa={lead.empresa}
+                  rubro={lead.industria}
+                  web={lead.web}
+                  linkedin={lead.linkedin_contacto}
+                  suprimido={lead.suprimido}
+                />
+
+                {/* Respaldo para los leads que todavía no pasaron por el
+                    enriquecimiento: al menos decir qué esperar del número. */}
+                {lead.telefono && !lead.contactos?.length && (
                   <div
                     className={`mt-3 rounded-md border px-2.5 py-2 text-[11.5px] leading-snug ${
                       ALCANCE_TONO[lead.alcance] === "ok"

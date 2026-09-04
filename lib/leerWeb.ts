@@ -59,7 +59,20 @@ const MAX_BYTES = 4 * 1024 * 1024;
  * justifica esa complejidad hoy — pero si algún día esto se expone sin sesión,
  * hay que arreglarlo ANTES.
  */
-export async function textoDeLaWeb(web: string, maxMs = 12_000): Promise<string | null> {
+/**
+ * Baja el HTML CRUDO de una página, con todas las guardas puestas.
+ *
+ * Se separó de `textoDeLaWeb` el 4-sep-2026 porque el HTML sin tocar contiene
+ * exactamente lo que más vale y que el texto plano destruye: los `href` de
+ * `wa.me`, los `tel:`, y el JSON-LD de schema.org donde el negocio declara su
+ * propio teléfono. Convertir a texto primero y buscar números después es
+ * quedarse con la parte pobre del dato.
+ *
+ * Ojo: esta es la ÚNICA función que debería descargar sitios de terceros.
+ * `enriquecimiento.ts` tenía su propio `fetchHtml` sin ninguna guarda —
+ * cualquier URL, incluida una interna. Ahora usa esta.
+ */
+export async function htmlDeLaWeb(web: string, maxMs = 12_000): Promise<string | null> {
   let url: URL;
   try {
     url = new URL(/^https?:\/\//i.test(web) ? web : `https://${web}`);
@@ -68,17 +81,17 @@ export async function textoDeLaWeb(web: string, maxMs = 12_000): Promise<string 
   }
   if (!destinoPermitido(url)) return null;
 
-  // Una red social no es un sitio que se pueda leer así: devuelve el cascarón
-  // de la app, no el contenido del perfil.
-  if (/facebook\.com|instagram\.com|linktr\.ee|wa\.me\//i.test(url.href)) return null;
-
   try {
     const ctrl = new AbortController();
     const corte = setTimeout(() => ctrl.abort(), maxMs);
     const r = await fetch(url.href, {
       signal: ctrl.signal,
       redirect: "follow",
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; RespondoHQ/1.0)" },
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; RespondoHQ/1.0)",
+        Accept: "text/html,application/xhtml+xml",
+        "Accept-Language": "es-CL,es;q=0.9",
+      },
     });
 
     try {
@@ -107,24 +120,46 @@ export async function textoDeLaWeb(web: string, maxMs = 12_000): Promise<string 
         }
         trozos.push(value);
       }
-      const html = new TextDecoder("utf-8", { fatal: false }).decode(
+      return new TextDecoder("utf-8", { fatal: false }).decode(
         await new Blob(trozos as BlobPart[]).arrayBuffer(),
       );
-
-      return html
-        .replace(/<script[\s\S]*?<\/script>/gi, " ")
-        .replace(/<style[\s\S]*?<\/style>/gi, " ")
-        .replace(/<[^>]+>/g, " ")
-        .replace(/&nbsp;/g, " ")
-        .replace(/&amp;/g, "&")
-        .replace(/\s+/g, " ")
-        .slice(0, 120_000);
     } finally {
       clearTimeout(corte);
     }
   } catch {
     return null;
   }
+}
+
+/**
+ * Baja la portada y la convierte en texto plano.
+ *
+ * Nunca lanza: un sitio caído es un dato ("no se pudo leer"), no un error de la
+ * corrida. Devuelve null cuando no hay nada legible.
+ *
+ * Lo que queda fuera del alcance, y lo digo para que quede escrito: se siguen
+ * las redirecciones, así que un dominio válido que redirija a una dirección
+ * interna se colaría. Cerrarlo obliga a resolver cada salto a mano. Con el
+ * endpoint detrás del login y un equipo de cuatro personas, el riesgo no
+ * justifica esa complejidad hoy — pero si algún día esto se expone sin sesión,
+ * hay que arreglarlo ANTES.
+ */
+export async function textoDeLaWeb(web: string, maxMs = 12_000): Promise<string | null> {
+  // Una red social no es un sitio que se pueda leer así: devuelve el cascarón
+  // de la app, no el contenido del perfil.
+  if (/facebook\.com|instagram\.com|linktr\.ee|wa\.me\//i.test(web)) return null;
+
+  const html = await htmlDeLaWeb(web, maxMs);
+  if (!html) return null;
+
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ")
+    .slice(0, 120_000);
 }
 
 // ---------------------------------------------------------------------------
