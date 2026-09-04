@@ -39,14 +39,43 @@ import { evaluarOportunidad, senalesOportunidadDeHtml, type Oportunidad } from "
 const RUTAS_DE_CONTACTO =
   /(contacto|contactanos|contact|nosotros|quienes-?somos|about|equipo|team|sucursales|ubicacion)/i;
 
+/**
+ * ...y las que NO, aunque calcen con la de arriba.
+ *
+ * "trabaja-con-nosotros" contiene "nosotros". Parece un detalle y costó el
+ * lead de mejor encaje de la tanda del 4-sep-2026: la portada de Bikesport
+ * (encaje 82, el más alto de las 50) enlaza UNA sola página que calce, y es
+ * la de empleos. Se llevó todo el presupuesto de páginas internas, y su
+ * /pages/contacto —que existe y tiene datos— no la miramos nunca.
+ *
+ * Además, el teléfono de una página de empleos es el de recursos humanos.
+ * Es literalmente el número que no queremos: la recepción con otro nombre.
+ */
+const RUTAS_DE_EMPLEO =
+  /(trabaj[ae]-?con-?nosotros|trabaja-con|empleo|empleos|vacante|postula|reclut|careers?|jobs?|unete|únete|rrhh|recursos-?humanos)/i;
+
 /** Hasta 3 páginas internas: pasado eso el rendimiento cae y el tiempo sube. */
 const MAX_INTERNAS = 3;
+
+/**
+ * Si la portada no enlaza NINGUNA página de contacto, se prueban estas dos a
+ * ciegas antes de rendirse.
+ *
+ * No es adivinar: en las tiendas Shopify —que son la mitad de las pymes con
+ * e-commerce en Chile— el menú se arma con JavaScript y en el HTML crudo no
+ * hay enlaces. La página existe y está siempre en la misma ruta.
+ *
+ * Son solo dos, y solo cuando no encontramos nada, para no gastar el tiempo
+ * de la tanda en sitios que igual no van a dar nada.
+ */
+const A_CIEGAS = ["/contacto", "/pages/contacto"];
 
 function linksDeContacto(html: string, base: URL): string[] {
   const out = new Set<string>();
   for (const m of html.matchAll(/href\s*=\s*["']([^"'#]+)["']/gi)) {
     const href = m[1];
     if (!RUTAS_DE_CONTACTO.test(href)) continue;
+    if (RUTAS_DE_EMPLEO.test(href)) continue;
     if (/\.(pdf|jpe?g|png|svg|webp|zip)$/i.test(href)) continue;
     try {
       const u = new URL(href, base);
@@ -156,12 +185,26 @@ export async function enriquecerLead(e: EntradaEnriquecimiento): Promise<Resulta
       traza.push(`leí su portada (${webUsada})`);
 
       if (base) {
-        for (const link of linksDeContacto(html, base)) {
+        const links = linksDeContacto(html, base);
+        for (const link of links) {
           const interna = await htmlDeLaWeb(link, 8000);
           if (!interna) continue;
           listas.push(extraerContactos(interna, link));
           htmls.push(interna);
           traza.push(`leí ${link.replace(base.origin, "")}`);
+        }
+        // La portada no enlazaba ninguna: se prueba a ciegas. Ver A_CIEGAS.
+        if (!links.length) {
+          for (const ruta of A_CIEGAS) {
+            const interna = await htmlDeLaWeb(base.origin + ruta, 6000);
+            // Una página de 200 bytes es un cascarón de JavaScript, no una
+            // página de contacto. No vale la pena procesarla ni anotarla.
+            if (!interna || interna.length < 2000) continue;
+            listas.push(extraerContactos(interna, base.origin + ruta));
+            htmls.push(interna);
+            traza.push(`su portada no enlazaba contacto; probé ${ruta} y ahí estaba`);
+            break;
+          }
         }
       }
     } else if (ES_SOLO_REDES.test(webUsada)) {
