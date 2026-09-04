@@ -482,12 +482,17 @@ export const ESTADOS_LEAD = [
 export type EstadoLead = (typeof ESTADOS_LEAD)[number];
 
 export const ESTADO_LEAD_LABEL: Record<EstadoLead, string> = {
-  excelente: "Excelente para llamar",
-  buena: "Buena probabilidad",
+  // OJO con estos textos: describen EL NÚMERO, no lo que hay que hacer.
+  // Eso lo dice el veredicto. Antes acá decía "Excelente para llamar" y en
+  // la misma ficha el veredicto decía "Llamar después" — dos frases que
+  // suenan a orden y se contradicen. Una herramienta que da dos órdenes
+  // distintas para el mismo lead deja de usarse.
+  excelente: "Número verificado",
+  buena: "Número probable",
   sin_verificar: "Número sin verificar",
-  via_central: "Contactable vía central",
-  mejor_por_escrito: "Mejor por correo o LinkedIn",
-  insuficiente: "Información insuficiente",
+  via_central: "Número de mesa central",
+  mejor_por_escrito: "Sin teléfono: correo o LinkedIn",
+  insuficiente: "Sin datos de contacto",
   no_usar: "No usar",
 };
 
@@ -572,17 +577,19 @@ export function prioridadComercial(
  * existía: el lead con buen fit y sin camino de contacto se mezclaba con los
  * llamables y le gastaba el turno a Tomás.
  */
-export type Veredicto = "llamar_ahora" | "llamar_despues" | "investigar" | "no_ahora";
+export type Veredicto =
+  | "llamar_ahora" | "llamar_despues" | "probar" | "investigar" | "no_ahora";
 
 export const VEREDICTO_LABEL: Record<Veredicto, string> = {
   llamar_ahora: "Llamar ahora",
   llamar_despues: "Llamar después",
+  probar: "Vale el intento",
   investigar: "Falta cómo contactarlo",
   no_ahora: "No vale el tiempo ahora",
 };
 
 export const VEREDICTO_TONO: Record<Veredicto, "ok" | "warn" | "mut" | "danger"> = {
-  llamar_ahora: "ok", llamar_despues: "warn", investigar: "mut", no_ahora: "danger",
+  llamar_ahora: "ok", llamar_despues: "warn", probar: "mut", investigar: "mut", no_ahora: "danger",
 };
 
 export function veredictoDelLead(opts: {
@@ -613,7 +620,23 @@ export function veredictoDelLead(opts: {
   const p = prioridadComercial(opts.oportunidad, opts.contactabilidad);
   if (p >= 55) return "llamar_ahora";
   if (p >= 35) return "llamar_despues";
-  // Hay camino y el fit es bueno: se llama, aunque sea al final de la lista.
-  // Lo que NO se hace es fingir que no hay nada que probar.
-  return opts.nivelOportunidad === "alta" ? "llamar_despues" : "no_ahora";
+
+  // ── "VALE EL INTENTO" — 4-sep-2026, corrigiendo mi propio arreglo ──────
+  //
+  // Hace dos días saqué de "investigar" a los leads que sí tenían teléfono, y
+  // estaba bien: decir "falta cómo contactarlo" con el número impreso al lado
+  // es un error. Pero los mandé a todos a "llamar después" y eso rompió el
+  // grupo: en la tanda de 84 quedaron 19 leads ahí, con prioridades de 24 a
+  // 52. En la misma bolsa, la clínica de Temuco con teléfono publicado y
+  // nombre del director, y un número de Apollo sin verificar de una empresa
+  // sin sitio. No son la misma tarea y no se hacen con la misma cabeza.
+  //
+  // Este tercer grupo dice lo que de verdad es: una apuesta barata. Buen
+  // encaje, un número que nadie ha confirmado, dos minutos de llamada. Vale
+  // hacerla —no hay otro camino hacia esa empresa— pero después de las que
+  // sí tienen evidencia, y sabiendo que es una apuesta.
+  //
+  // Sirve además para lo práctico: en un día corto, Tomás para antes de este
+  // grupo y no siente que dejó trabajo bueno sin hacer.
+  return opts.nivelOportunidad === "alta" ? "probar" : "no_ahora";
 }

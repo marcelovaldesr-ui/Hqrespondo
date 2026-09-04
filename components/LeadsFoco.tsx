@@ -74,6 +74,9 @@ const ENCAJE_CORTO: Record<NivelEncaje, string> = {
 const VEREDICTO_CHIP: Record<string, string> = {
   llamar_ahora: "border-ok/45 bg-ok/10 text-ok",
   llamar_despues: "border-warn/45 bg-warn/10 text-warn",
+  // "Probar" es una apuesta, no una recomendación: gris con borde, no color
+  // de estado. Que se vea que está un escalón más abajo.
+  probar: "border-line2 bg-surface-3 text-ink-dim",
   investigar: "border-brand/40 bg-brand/10 text-brand",
   no_ahora: "border-line2 bg-surface-4 text-ink-dim",
   sin_evaluar: "border-line2 bg-surface-4 text-ink-mut",
@@ -81,6 +84,7 @@ const VEREDICTO_CHIP: Record<string, string> = {
 const VEREDICTO_CORTO: Record<string, string> = {
   llamar_ahora: "LLAMAR",
   llamar_despues: "DESPUÉS",
+  probar: "PROBAR",
   investigar: "BUSCAR",
   no_ahora: "NO AHORA",
   sin_evaluar: "SIN VER",
