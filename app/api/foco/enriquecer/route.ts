@@ -3,8 +3,10 @@ import { db } from "@/lib/db";
 import { enriquecerLead } from "@/lib/enriquecerLead";
 import {
   ajustarPorHistorial, estadoDelLead, armarPlan,
-  ESTADO_LEAD_LABEL, type TipoContactoAjuste,
+  ESTADO_LEAD_LABEL, VEREDICTO_LABEL, type TipoContactoAjuste,
 } from "@/lib/contactabilidad";
+import { OPORTUNIDAD_LABEL } from "@/lib/oportunidad";
+import { actualizarLead } from "@/lib/insertarLeads";
 import { digitosCL } from "@/lib/alcance";
 import type { ContactoConEvidencia, TipoContacto } from "@/lib/contactos";
 
@@ -39,6 +41,10 @@ export async function GET(req: Request) {
   // para la corrida siguiente: no se pierde, solo espera.
   const limiteMs = 270_000;
   const t0 = Date.now();
+  // Columnas que la base todavía no conoce. Se junta para decirlo UNA vez al
+  // final en vez de 200 veces en el log, y para que la respuesta diga en
+  // castellano qué migración falta.
+  const faltantes = new Set<string>();
 
   try {
     const s = db();
@@ -99,6 +105,11 @@ export async function GET(req: Request) {
         antes: l.calidad ?? "—",
         ahora: ESTADO_LEAD_LABEL[r.estado],
         contactos: r.contactos.length,
+        // Los dos motores, separados, para poder auditar cuál mandó.
+        fit: `${r.oportunidad.puntos} (${OPORTUNIDAD_LABEL[r.oportunidad.nivel]})`,
+        contacto: r.contactoPts,
+        prioridad: r.prioridad,
+        veredicto: VEREDICTO_LABEL[r.veredicto],
         mejor_camino: mejor ? `${mejor.puntos} pts · ${mejor.valor}` : "ninguno",
         con_que_abrir: mejor?.guion,
         traza: r.traza,
@@ -109,6 +120,20 @@ export async function GET(req: Request) {
           contactos: r.contactos,
           calidad: r.estado,
           enriquecido_at: new Date().toISOString(),
+          // Los dos motores. `prioridad` NO se manda: es columna generada
+          // (migración 039) y la calcula la base a partir de estos dos.
+          oportunidad: r.oportunidad.puntos,
+          oportunidad_nivel: r.oportunidad.nivel,
+          contacto_pts: r.contactoPts,
+          veredicto: r.veredicto,
+          // Por qué, en castellano. Es lo que se muestra en la ficha para que
+          // el vendedor pueda no estar de acuerdo con el sistema.
+          porque: {
+            aFavor: r.oportunidad.aFavor,
+            enContra: r.oportunidad.enContra,
+            encaje: r.oportunidad.encaje,
+            encajeMotivo: r.oportunidad.encajeMotivo,
+          },
         };
         // Solo se rellena el teléfono principal si estaba VACÍO. Si hay uno
         // puesto, es trabajo de una persona o un dato que alguien eligió, y
@@ -119,8 +144,9 @@ export async function GET(req: Request) {
           patch.telefono = mejorTel.valor;
           patch.origen_telefono = "enriquecimiento (sitio del negocio)";
         }
-        const { error: e2 } = await s.from("leads_foco").update(patch).eq("id", l.id);
+        const { error: e2, columnasIgnoradas } = await actualizarLead(l.id, patch);
         if (!e2) escritos++;
+        for (const c of columnasIgnoradas) faltantes.add(c);
       }
     }
 
@@ -137,6 +163,9 @@ export async function GET(req: Request) {
       costo_places_usd: Number((costoPlaces * 0.035).toFixed(4)),
       ajustes_aprendidos: Object.keys(ajustes).length ? ajustes : "todavía no hay llamadas suficientes para corregir nada",
       como_quedaron: conteo,
+      falta_migracion: faltantes.size
+        ? `la base no conoce ${[...faltantes].join(", ")} — corre supabase/migrations/039_prioridad_comercial.sql y vuelve a enriquecer para guardar el fit`
+        : undefined,
       detalle: resultados.slice(0, 40),
     });
   } catch (e) {

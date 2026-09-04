@@ -142,6 +142,32 @@ export interface LeadFoco {
   /** En qué montón va: excelente, buena, via_central… */
   calidad: import("@/lib/contactabilidad").EstadoLead;
   enriquecido_at: string | null;
+
+  // ── Los dos motores (migración 039) ──────────────────────────────────────
+  // Van NULL mientras el lead no se haya enriquecido. Null no es cero: un
+  // lead sin evaluar es desconocido, no descartado, y la pantalla tiene que
+  // decir eso y no inventar un puntaje.
+  /** Motor 1 · 0-100: ¿le sirve Respondo a esta empresa? */
+  oportunidad: number | null;
+  oportunidad_nivel: import("@/lib/oportunidad").NivelOportunidad | "sin_evaluar" | null;
+  /** Motor 2 · 0-100: ¿vamos a hablar con alguien que pueda decidir? */
+  contacto_pts: number | null;
+  /** Media geométrica de los dos. Sin fit no hay prioridad. */
+  prioridad: number | null;
+  /**
+   * El número que ordena a este lead DENTRO de su grupo, y el que se muestra
+   * en la lista. Es la prioridad, salvo en "investigar": ahí la prioridad es
+   * cero por definición (falta el contacto) y lo que ordena es cuánto nos
+   * interesa la empresa. Que el número visible sea el mismo que explica el
+   * orden visible no es cosmético: es lo que hace que la pantalla se pueda
+   * creer.
+   */
+  orden_dentro: number | null;
+  veredicto: import("@/lib/contactabilidad").Veredicto | null;
+  veredicto_rank: number | null;
+  /** Por qué el sistema dice lo que dice, en castellano, para poder discutirlo. */
+  porque: { aFavor?: string[]; enContra?: string[]; encaje?: string; encajeMotivo?: string } | null;
+
   encaje: NivelEncaje;
   encaje_motivo: string;
   encaje_manual: boolean;
@@ -161,6 +187,7 @@ const SELECT =
   "contacto,cargo,telefono,email,linkedin_contacto,lista,estado,ultimo_resultado,tags,nota," +
   "recordatorio,intentos,sin_contestar,ultimo_intento,senal,confianza,fuente_url,ficha,contactabilidad," +
   "alcance,origen_telefono,contactos,calidad,enriquecido_at," +
+  "oportunidad,oportunidad_nivel,contacto_pts,prioridad,orden_dentro,veredicto,veredicto_rank,porque," +
   "encaje,encaje_motivo,encaje_manual," +
   "senal_reciente,senal_reciente_url,senal_reciente_at,senal_vigente_hasta," +
   "telefonos,emails";
@@ -173,8 +200,11 @@ const SELECT =
  * —con tilde— contra datos sin tilde. Resultado: el filtro devolvía cero
  * filas y parecía que no había nadie de dirección. Un solo mapa, cero drift.
  */
-/** El mismo SELECT sin lo que agrega la migración 036, para el reintento. */
-const SELECT_SIN_036 = SELECT.replace("alcance,origen_telefono,contactos,calidad,enriquecido_at,", "");
+/** El mismo SELECT sin lo que agrega la migración 039, para el 1er reintento. */
+const SELECT_SIN_039 = SELECT.replace(
+  "oportunidad,oportunidad_nivel,contacto_pts,prioridad,orden_dentro,veredicto,veredicto_rank,porque,", "");
+/** Y sin lo de la 036/037, para el 2do. */
+const SELECT_SIN_036 = SELECT_SIN_039.replace("alcance,origen_telefono,contactos,calidad,enriquecido_at,", "");
 
 export const GRUPOS_CARGO: Record<string, string[]> = {
   "Gerencia general": ["gerente general", "director ejecutivo", "ceo", "general manager"],
@@ -225,8 +255,10 @@ export async function listarFoco(f: FiltrosFoco = {}): Promise<LeadFoco[]> {
    * lo mismo que la columna generada: 14/14 en `pruebas/alcance.ts`). Se pierde
    * el orden nuevo hasta que se corra la migración, no la herramienta.
    */
-  const traer = async (conAlcance: boolean) => {
-    let q = db().from("leads_foco").select(conAlcance ? SELECT : SELECT_SIN_036);
+  const traer = async (nivel: 2 | 1 | 0) => {
+    const conAlcance = nivel >= 1;
+    let q = db().from("leads_foco")
+      .select(nivel === 2 ? SELECT : nivel === 1 ? SELECT_SIN_039 : SELECT_SIN_036);
 
     if (f.lista && f.lista !== "todas") q = q.eq("lista", f.lista);
 
@@ -306,6 +338,28 @@ export async function listarFoco(f: FiltrosFoco = {}): Promise<LeadFoco[]> {
     //
     // `alcance` se queda como desempate: entre dos leads igual de buenos,
     // primero el que tiene móvil.
+    // ── 4-sep-2026 · LO PRIMERO ES SI VALE LA PENA LLAMAR ────────────────
+    //
+    // Marcelo: "CONTACTABILIDAD NO REEMPLAZA EL FIT COMERCIAL. Un lead
+    // perfectamente enriquecido sigue siendo un mal lead si esa empresa no
+    // tiene sentido comercial para Respondo."
+    //
+    // Todo lo que había acá arriba —contactabilidad, alcance, calidad— mide
+    // lo mismo con distinta finura: qué tan probable es que ALGUIEN conteste.
+    // Ninguna preguntaba si a esa empresa le sirve el producto. Por eso
+    // Clínica Alemana (3.000 empleados, mesa central, área de compras)
+    // competía de igual a igual con una clínica de 10 donde el dueño contesta
+    // su propio WhatsApp, y ganaba cuando tenía mejor dato.
+    //
+    // Ahora manda `veredicto_rank` —qué hay que HACER con este lead— y dentro
+    // de cada grupo ordena `prioridad`, que es la media geométrica de los dos
+    // motores: sin fit no hay prioridad, por muy bueno que sea el teléfono.
+    //
+    // `calidad_rank` y `alcance` NO desaparecen: quedan de desempate, y son
+    // los que ordenan de verdad mientras haya leads sin enriquecer (que caen
+    // todos en veredicto_rank 2 con prioridad nula).
+    if (nivel === 2) qo = qo.order("veredicto_rank", { ascending: false })
+                             .order("orden_dentro", { ascending: false, nullsFirst: false });
     qo = conAlcance
       ? qo.order("calidad_rank", { ascending: false }).order("alcance", { ascending: false })
       : qo.order("contactabilidad", { ascending: false });
@@ -317,6 +371,11 @@ export async function listarFoco(f: FiltrosFoco = {}): Promise<LeadFoco[]> {
       qo = qo.order("senal_vigente_hasta", { ascending: false, nullsFirst: false });
       qo = qo.order("encaje_rank", { ascending: false });
     } else {
+      // Escritorio ("Todos" y "Por investigar"): acá se está eligiendo a quién
+      // vale la pena perseguir, así que el fit manda todavía más claro. La
+      // prioridad va primero y el encaje queda de desempate para lo que aún
+      // no se ha enriquecido.
+      if (nivel === 2) qo = qo.order("orden_dentro", { ascending: false, nullsFirst: false });
       qo = qo.order("encaje_rank", { ascending: false });
       qo = qo.order("contactabilidad", { ascending: false });
     }
@@ -332,13 +391,24 @@ export async function listarFoco(f: FiltrosFoco = {}): Promise<LeadFoco[]> {
     ).limit(f.limite ?? 300);
   };
 
-  let r = await traer(true);
+  // Tres niveles de reintento, uno por migración que puede faltar. El código
+  // se despliega solo (push a Vercel) y las migraciones se corren a mano en
+  // Supabase: entre una cosa y la otra hay una ventana, y en esa ventana la
+  // pantalla de la que trabaja el equipo NO se puede quedar en blanco.
+  let r = await traer(2);
+  if (r.error && /oportunidad|contacto_pts|prioridad|orden_dentro|veredicto|porque/i.test(r.error.message)) {
+    console.warn(
+      "[foco] falta la migración 039: se ordena por calidad del dato como antes, sin mirar el fit. " +
+      "Corre supabase/migrations/039_prioridad_comercial.sql.",
+    );
+    r = await traer(1);
+  }
   if (r.error && /alcance|origen_telefono|contactos|calidad|enriquecido_at/i.test(r.error.message)) {
     console.warn(
       "[foco] faltan columnas de las migraciones 036/037: se ordena como antes y lo que falta se calcula en la app. " +
       "Corre supabase/migrations/036_alcance_del_lead.sql y 037_contactos_con_evidencia.sql.",
     );
-    r = await traer(false);
+    r = await traer(0);
   }
   const suprimidos = await telefonosSuprimidos();
   const { data, error } = r;
@@ -356,6 +426,14 @@ export async function listarFoco(f: FiltrosFoco = {}): Promise<LeadFoco[]> {
     if (typeof fila.origen_telefono !== "string") fila.origen_telefono = "";
     if (!Array.isArray(fila.contactos)) fila.contactos = [];
     if (typeof fila.calidad !== "string") fila.calidad = "insuficiente";
+    // Y si cayó al respaldo de la 039, los dos motores quedan explícitamente
+    // en null. Es la diferencia entre "este lead no vale" y "todavía no lo
+    // hemos mirado", y la pantalla dice cosas distintas para cada uno.
+    if (typeof fila.oportunidad !== "number") fila.oportunidad = null;
+    if (typeof fila.contacto_pts !== "number") fila.contacto_pts = null;
+    if (typeof fila.prioridad !== "number") fila.prioridad = null;
+    if (typeof fila.orden_dentro !== "number") fila.orden_dentro = null;
+    if (typeof fila.veredicto !== "string") fila.veredicto = null;
   }
   if (f.cargo === "Otros") filas = filas.filter((x) => grupoDeCargo(x.cargo) === "Otros");
   for (const fila of filas) {

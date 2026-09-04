@@ -27,9 +27,11 @@ import {
 } from "@/lib/contactos";
 import { digitosCL } from "@/lib/alcance";
 import {
-  armarPlan, estadoDelLead, type EstadoLead, type Paso,
-  type EstadoLinea, type TipoContactoAjuste,
+  armarPlan, estadoDelLead, veredictoDelLead, prioridadComercial,
+  type EstadoLead, type Paso, type EstadoLinea, type TipoContactoAjuste, type Veredicto,
 } from "@/lib/contactabilidad";
+import { senalesDeHtml, type SenalesWeb } from "@/lib/enriquecimiento";
+import { evaluarOportunidad, senalesOportunidadDeHtml, type Oportunidad } from "@/lib/oportunidad";
 
 /** Páginas donde un negocio pone sus datos de contacto y a su gente. */
 const RUTAS_DE_CONTACTO =
@@ -76,12 +78,30 @@ export interface EntradaEnriquecimiento {
   ajustes?: TipoContactoAjuste;
   /** Si es false no se llama a Places (para correr gratis sobre muchas). */
   usarPlaces?: boolean;
+  razonSocial?: string | null;
+  nEmpleados?: number | null;
+  senal?: string | null;
 }
 
 export interface ResultadoEnriquecimiento {
   contactos: ContactoConEvidencia[];
   pasos: Paso[];
   estado: EstadoLead;
+  /** Motor 1: ¿vale la pena venderle a esta empresa? */
+  oportunidad: Oportunidad;
+  /**
+   * Motor 2, en puntos (0-100): el mejor camino telefónico que encontramos.
+   * Se devuelve aparte porque es lo que se guarda en `contacto_pts` y lo que
+   * la base usa para calcular `prioridad`. Antes cada llamador lo volvía a
+   * derivar de `pasos` con su propio filtro, y dos filtros distintos sobre
+   * lo mismo terminan dando dos números distintos.
+   */
+  contactoPts: number;
+  /** Los dos motores juntos: ¿a quién llama Tomás primero? */
+  prioridad: number;
+  veredicto: Veredicto;
+  /** Lo que se detectó del sitio, para poder auditar el juicio. */
+  senalesWeb: SenalesWeb | null;
   /** Qué se hizo y qué costó. Sirve para auditar el gasto y para depurar. */
   traza: string[];
   /** Datos canónicos si Places resolvió la identidad. */
@@ -94,6 +114,10 @@ export async function enriquecerLead(e: EntradaEnriquecimiento): Promise<Resulta
   const listas: ContactoConEvidencia[][] = [];
   let costoPlaces = 0;
   let identidad: ResultadoEnriquecimiento["identidad"];
+  // El HTML se acumula UNA vez y lo leen los dos motores. Bajarlo de nuevo
+  // para detectar chatbot y tamaño sería pagar y esperar dos veces por lo
+  // mismo.
+  const htmls: string[] = [];
 
   // ── Lo que ya teníamos entra como AFIRMACIÓN, no como hecho ──────────────
   // Un número de Apollo no viene con un lugar donde ir a comprobarlo. Se
@@ -126,6 +150,7 @@ export async function enriquecerLead(e: EntradaEnriquecimiento): Promise<Resulta
       let base: URL | null = null;
       try { base = new URL(/^https?:\/\//i.test(webUsada) ? webUsada : `https://${webUsada}`); } catch { /* no válida */ }
       listas.push(extraerContactos(html, base?.href ?? webUsada));
+      htmls.push(html);
       traza.push(`leí su portada (${webUsada})`);
 
       if (base) {
@@ -133,6 +158,7 @@ export async function enriquecerLead(e: EntradaEnriquecimiento): Promise<Resulta
           const interna = await htmlDeLaWeb(link, 8000);
           if (!interna) continue;
           listas.push(extraerContactos(interna, link));
+          htmls.push(interna);
           traza.push(`leí ${link.replace(base.origin, "")}`);
         }
       }
@@ -201,6 +227,7 @@ export async function enriquecerLead(e: EntradaEnriquecimiento): Promise<Resulta
           const html = await htmlDeLaWeb(elegido.web);
           if (html) {
             listas.push(extraerContactos(html, elegido.web));
+            htmls.push(html);
             traza.push(`leí el sitio que traía su ficha (${elegido.web})`);
             webUsada = elegido.web;
           }
@@ -230,7 +257,36 @@ export async function enriquecerLead(e: EntradaEnriquecimiento): Promise<Resulta
     e.rubro,
   );
 
-  return { contactos, pasos, estado: estadoDelLead(pasos), traza, identidad, costoPlaces };
+  // ── MOTOR 1 · ¿vale la pena venderle? Sobre el MISMO HTML ya bajado.
+  const todo = htmls.join("\n<!--PAGINA-->\n");
+  const senalesWeb: SenalesWeb | null = htmls.length
+    ? { ...senalesDeHtml(todo, { hayIntencionAgenda: htmls.length > 1 }), visitada: true, paginas: htmls.length, potencial: "desconocido" }
+    : null;
+  const negocio = senalesOportunidadDeHtml(todo, htmls.length, identidad?.reviews ?? null);
+  const oportunidad = evaluarOportunidad({
+    empresa: e.empresa,
+    razon_social: e.razonSocial,
+    industria: e.rubro,
+    senal: e.senal,
+    nEmpleados: e.nEmpleados,
+    web: senalesWeb,
+    negocio,
+  });
+
+  const mejorContacto = pasos.find((p) => p.via !== "email" && p.via !== "linkedin" && p.via !== "formulario");
+  const contactabilidad = mejorContacto?.puntos ?? 0;
+  const prioridad = prioridadComercial(oportunidad.puntos, contactabilidad);
+  const veredicto = veredictoDelLead({
+    oportunidad: oportunidad.puntos,
+    nivelOportunidad: oportunidad.nivel,
+    contactabilidad,
+  });
+
+  return {
+    contactos, pasos, estado: estadoDelLead(pasos),
+    oportunidad, contactoPts: contactabilidad, prioridad, veredicto, senalesWeb,
+    traza, identidad, costoPlaces,
+  };
 }
 
 /**

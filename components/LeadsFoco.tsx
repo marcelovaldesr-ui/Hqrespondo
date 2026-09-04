@@ -58,6 +58,47 @@ const ENCAJE_CORTO: Record<NivelEncaje, string> = {
   alto: "ALTO", medio: "MEDIO", sin_evaluar: "SIN RUBRO", bajo: "BAJO", nulo: "NO",
 };
 
+/**
+ * LA COLUMNA QUE ORDENA LA PANTALLA — 4-sep-2026
+ *
+ * Antes la primera columna era el ENCAJE del rubro, que responde "¿este tipo
+ * de negocio nos sirve?". Es media pregunta. La otra media —"¿vamos a hablar
+ * con alguien que pueda decidir?"— vivía tres columnas más allá, en el color
+ * del teléfono, y nadie las juntaba mirando.
+ *
+ * Ahora la primera columna es el VEREDICTO: qué hacer con este lead. Y el
+ * número al lado es la prioridad comercial, que multiplica los dos motores.
+ * El encaje no se pierde: baja a la línea de abajo de la empresa, que es
+ * donde va el contexto.
+ */
+const VEREDICTO_CHIP: Record<string, string> = {
+  llamar_ahora: "border-ok/45 bg-ok/10 text-ok",
+  llamar_despues: "border-warn/45 bg-warn/10 text-warn",
+  investigar: "border-brand/40 bg-brand/10 text-brand",
+  no_ahora: "border-line2 bg-surface-4 text-ink-dim",
+  sin_evaluar: "border-line2 bg-surface-4 text-ink-mut",
+};
+const VEREDICTO_CORTO: Record<string, string> = {
+  llamar_ahora: "LLAMAR",
+  llamar_despues: "DESPUÉS",
+  investigar: "BUSCAR",
+  no_ahora: "NO AHORA",
+  sin_evaluar: "SIN VER",
+};
+/** El texto largo del tooltip: por qué el sistema dice eso. */
+function porQueEsteVeredicto(f: {
+  veredicto: string | null; oportunidad: number | null; contacto_pts: number | null;
+  porque: { aFavor?: string[]; enContra?: string[] } | null;
+}): string {
+  if (!f.veredicto) return "Todavía no se ha enriquecido: no sabemos si vale la pena. Córrelo por Enriquecer.";
+  const l = [
+    `Encaje comercial ${f.oportunidad ?? "?"}/100 · Llegar al que decide ${f.contacto_pts ?? "?"}/100`,
+  ];
+  for (const x of f.porque?.aFavor ?? []) l.push(`+ ${x}`);
+  for (const x of f.porque?.enContra ?? []) l.push(`− ${x}`);
+  return l.join("\n");
+}
+
 const LED_ESTADO: Record<EstadoFoco, string> = {
   nuevo: "bg-brand led-glow-cyan",
   contactando: "bg-warn led-glow-amber",
@@ -660,7 +701,7 @@ export default function LeadsFoco({
             <table className="w-full text-left text-[12.5px]">
               <thead className="sticky top-0 z-10 bg-surface-3">
                 <tr className="lbl">
-                  <th className="px-2 py-2 font-medium">Encaje</th>
+                  <th className="px-2 py-2 font-medium" title="Qué hacer con este lead, y qué tan arriba va">Qué hacer</th>
                   <th className="px-3 py-2 font-medium">Empresa</th>
                   <th className="px-3 py-2 font-medium">Contacto</th>
                   <th className="px-3 py-2 font-medium">Teléfono</th>
@@ -677,20 +718,41 @@ export default function LeadsFoco({
                       f.id === sel ? "bg-brand/10" : ""
                     }`}
                   >
-                    <td className="px-2 py-2">
-                      <span
-                        title={f.encaje_motivo}
-                        className={`inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[9.5px] tracking-wider ${ENCAJE_CHIP[f.encaje]}`}
-                      >
-                        {ENCAJE_CORTO[f.encaje]}
-                      </span>
+                    <td className="whitespace-nowrap px-2 py-2" title={porQueEsteVeredicto(f)}>
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[9.5px] tracking-wider ${
+                            VEREDICTO_CHIP[f.veredicto ?? "sin_evaluar"]
+                          }`}
+                        >
+                          {VEREDICTO_CORTO[f.veredicto ?? "sin_evaluar"]}
+                        </span>
+                        {/* El número solo aparece si de verdad lo sabemos. Un
+                            "0" para un lead sin evaluar diría que es malo, y
+                            lo que pasa es que nadie lo ha mirado.
+                            Se muestra `orden_dentro` y no `prioridad` porque
+                            es el que explica el orden que se está viendo. */}
+                        <span className="w-[18px] text-right font-mono text-[11px] tabular-nums text-ink-mut">
+                          {f.orden_dentro ?? "—"}
+                        </span>
+                      </div>
                     </td>
                     <td className="max-w-[230px] px-3 py-2">
                       <div className="flex items-center gap-2">
                         <span className={`led ${LED_ESTADO[f.estado]}`} title={ESTADO_FOCO_LABEL[f.estado]} />
                         <span className="truncate text-ink">{f.empresa}</span>
                       </div>
-                      <div className="mt-0.5 truncate pl-[15px] text-[10.5px] text-ink-faint">
+                      {/* Acá vivía el chip de ENCAJE del rubro. Se sacó el
+                          4-sep-2026 después de mirar la pantalla armada:
+                          Clínica Alemana mostraba "ALTO" en verde justo al
+                          lado de "NO AHORA" en gris. Las dos cosas eran
+                          ciertas —el rubro calza, la empresa de 3.000
+                          personas no— pero puestas juntas en una fila se
+                          leen como que la herramienta se contradice, y una
+                          herramienta que parece contradecirse no se usa.
+                          El encaje del rubro sigue en la ficha, que es donde
+                          además se puede corregir. Acá van los hechos. */}
+                      <div className="mt-0.5 truncate pl-[15px] text-[10.5px] text-ink-dim">
                         {[f.comuna, f.n_empleados ? `${f.n_empleados} trab.` : "", f.industria]
                           .filter(Boolean)
                           .join(" · ")}
@@ -991,6 +1053,60 @@ export default function LeadsFoco({
                     </a>
                   )}
                 </div>
+
+                {/* ── LOS DOS MOTORES, SEPARADOS ──────────────────────────
+                    Se muestran aparte a propósito. Juntarlos en un solo
+                    puntaje esconde el caso que más importa distinguir: una
+                    empresa que calza perfecto y a la que no sabemos cómo
+                    llegar (hay que buscar el número) no es lo mismo que una
+                    con teléfono directo a la que no le sirve el producto
+                    (no hay nada que buscar). El vendedor tiene que poder ver
+                    cuál de las dos tiene al frente. */}
+                <div className="hairline my-3" />
+                <div className="mb-1.5 lbl">Prioridad comercial</div>
+                {lead.prioridad === null ? (
+                  <p className="text-[12px] leading-relaxed text-ink-mut">
+                    Este lead no se ha evaluado todavía. No es que sea malo:
+                    es que nadie lo ha mirado. Pásalo por <b>Enriquecer</b> y
+                    el sistema dice si vale la pena y por dónde entrarle.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-baseline gap-2">
+                      <span
+                        className={`inline-flex items-center rounded border px-2 py-0.5 font-mono text-[10px] tracking-wider ${
+                          VEREDICTO_CHIP[lead.veredicto ?? "sin_evaluar"]
+                        }`}
+                      >
+                        {VEREDICTO_CORTO[lead.veredicto ?? "sin_evaluar"]}
+                      </span>
+                      <span className="font-mono text-[18px] tabular-nums text-ink">{lead.prioridad}</span>
+                      <span className="text-[10.5px] text-ink-faint">de 100</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Motor
+                        titulo="¿Le sirve Respondo?"
+                        pts={lead.oportunidad}
+                        pie="encaje comercial"
+                        razones={[
+                          ...(lead.porque?.aFavor ?? []).map((x) => ["+", x] as const),
+                          ...(lead.porque?.enContra ?? []).map((x) => ["−", x] as const),
+                        ]}
+                      />
+                      <Motor
+                        titulo="¿Llegamos al que decide?"
+                        pts={lead.contacto_pts}
+                        pie="contactabilidad"
+                        razones={[]}
+                      />
+                    </div>
+                    <p className="text-[10.5px] leading-relaxed text-ink-faint">
+                      La prioridad multiplica los dos, no los promedia: un
+                      teléfono buenísimo de una empresa que no compraría
+                      Respondo sigue sin ser prioridad.
+                    </p>
+                  </div>
+                )}
 
                 <div className="hairline my-3" />
                 <div className="mb-1.5 flex items-center justify-between gap-2">
@@ -1516,6 +1632,39 @@ export default function LeadsFoco({
             {guardando && <div className="mt-2 text-[12px] text-ink-faint">Guardando…</div>}
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Un motor, con su puntaje y sus razones. Las razones importan más que el
+ * número: un vendedor que ve "62" no aprende nada, uno que ve "10 empleados ·
+ * atiende por WhatsApp · sin sistema de reservas" sabe con qué abrir.
+ */
+function Motor({
+  titulo, pts, pie, razones,
+}: {
+  titulo: string;
+  pts: number | null;
+  pie: string;
+  razones: readonly (readonly [string, string])[];
+}) {
+  const tono = pts === null ? "text-ink-faint" : pts >= 60 ? "text-ok" : pts >= 35 ? "text-warn" : "text-danger";
+  return (
+    <div className="rounded border border-line bg-surface-2 p-2">
+      <div className="text-[10.5px] leading-tight text-ink-mut">{titulo}</div>
+      <div className={`font-mono text-[15px] tabular-nums ${tono}`}>{pts ?? "—"}</div>
+      <div className="lbl mb-1 text-[8.5px]">{pie}</div>
+      {razones.length > 0 && (
+        <ul className="space-y-0.5">
+          {razones.slice(0, 5).map(([signo, txt], i) => (
+            <li key={i} className="flex gap-1 text-[10px] leading-snug text-ink-faint">
+              <span className={signo === "+" ? "text-ok" : "text-danger"}>{signo}</span>
+              <span>{txt}</span>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

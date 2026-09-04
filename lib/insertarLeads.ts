@@ -102,3 +102,45 @@ export async function insertarLead<T = Record<string, unknown>>(
     columnasIgnoradas: ignoradas,
   };
 }
+
+/**
+ * Y para ACTUALIZAR una fila, con la misma tolerancia.
+ *
+ * El enriquecimiento escribe columnas de tres migraciones distintas (037
+ * contactos, 038 calidad, 039 prioridad). Sin esto, desplegar el código antes
+ * de correr la 039 hace que una corrida sobre 200 leads no escriba NADA —ni
+ * siquiera los contactos, que sí existían— porque PostgREST rechaza el patch
+ * entero por una columna que no conoce. Con esto se pierde la columna nueva
+ * hasta que se corra la migración; el trabajo del enriquecimiento se guarda.
+ */
+export async function actualizarLead(
+  id: number | string,
+  patch: Record<string, unknown>,
+): Promise<{ error: ErrorPostgrest; columnasIgnoradas: string[] }> {
+  let actual = patch;
+  const ignoradas: string[] = [];
+
+  for (let intento = 0; intento < 4; intento++) {
+    if (!Object.keys(actual).length) return { error: null, columnasIgnoradas: ignoradas };
+    const { error } = await db().from("leads_foco").update(actual).eq("id", id);
+    if (!error) return { error: null, columnasIgnoradas: ignoradas };
+
+    const m = COLUMNA_DESCONOCIDA.exec(error.message ?? "");
+    if (!m) return { error, columnasIgnoradas: ignoradas };
+
+    const col = m[1];
+    console.warn(
+      `[leads] la base no conoce la columna "${col}": se actualiza sin ella. ` +
+        `Falta correr una migración (036 origen_telefono · 037 contactos/calidad · 039 prioridad).`,
+    );
+    ignoradas.push(col);
+    const copia = { ...actual };
+    delete copia[col];
+    actual = copia;
+  }
+
+  return {
+    error: { message: `no se pudo actualizar tras quitar ${ignoradas.join(", ")}` },
+    columnasIgnoradas: ignoradas,
+  };
+}

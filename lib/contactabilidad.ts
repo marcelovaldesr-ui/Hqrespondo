@@ -103,12 +103,41 @@ export function pesoDelCargo(cargo: string | undefined | null): { peso: number; 
   return { peso: 0.4, etiqueta: "otro cargo" };
 }
 
+/**
+ * Las TRES dimensiones, conservadas por separado.
+ *
+ * POR QUÉ NO UN SOLO NÚMERO — Marcelo, 4-sep-2026:
+ * "Un WhatsApp publicado puede tener contactabilidad excelente + acceso al
+ * decisor desconocido. Eso sigue siendo muchísimo mejor que un número muerto,
+ * pero HQ debe comunicarlo correctamente."
+ *
+ * Tenía razón y yo lo estaba escondiendo. La versión anterior afirmaba que un
+ * móvil publicado "lo contesta el dueño" y le ponía 0,8. Eso no es un dato: es
+ * una suposición sobre un número que perfectamente puede ser el de la
+ * recepcionista, la community manager o el turno de reservas.
+ *
+ * Ahora son tres preguntas distintas que no se pueden responder una con otra:
+ *
+ *   · CONFIANZA  — ¿estamos seguros de que este número es de esta empresa?
+ *     Es la que manda sobre todas: si el dato no es de ellos, nada más importa.
+ *   · ALCANCE    — si marco, ¿va a contestar alguien?
+ *   · CERCANÍA   — quien conteste, ¿decide, o me puede pasar con quien decide?
+ *
+ * El puntaje agregado sigue existiendo para ordenar, pero las tres viajan
+ * enteras hasta la ficha para que el vendedor vea DÓNDE está la debilidad.
+ */
 export interface Evaluacion {
-  /** 0-100. Probabilidad estimada de terminar hablando con quien decide. */
+  /** 0-100 agregado. Solo para ordenar; no reemplaza a las tres de abajo. */
   puntos: number;
-  /** Las razones, en castellano, para mostrarlas al vendedor. */
+  /** ¿Es de esta empresa? 0-100. */
+  confianza: number;
+  /** ¿Contestará alguien? 0-100. */
+  alcance: number;
+  /** ¿Quien conteste sirve? 0-100. */
+  cercaniaDecisor: number;
+  /** false = no sabemos quién atiende ese número. Se dice, no se disimula. */
+  autoridadConocida: boolean;
   porQue: string[];
-  /** Lo que hay que saber antes de marcar. */
   advertencia?: string;
 }
 
@@ -117,81 +146,86 @@ export function evaluarContacto(
   ctx: ContextoEvaluacion = {},
 ): Evaluacion {
   const porQue: string[] = [];
-  if (c.tipo === "email") return { puntos: 0, porQue: ["es un correo, no un teléfono"] };
+  const cero = (motivo: string, aviso?: string): Evaluacion => ({
+    puntos: 0, confianza: 0, alcance: 0, cercaniaDecisor: 0,
+    autoridadConocida: false, porQue: [motivo], advertencia: aviso,
+  });
 
-  // ── Cortes duros. Un número que ya se comprobó malo no se muestra más,
-  //    por muy buena que sea su procedencia. Es la lección de la tanda de
-  //    llamadas del 4-sep: el sistema seguía ofreciendo lo que ya había fallado.
-  if (ctx.marcadoComoMalo) {
-    return { puntos: 0, porQue: ["alguien ya llamó y dijo que el número está equivocado"], advertencia: "no volver a marcar" };
-  }
-  if (ctx.estadoLinea === "inactivo") {
-    return { puntos: 0, porQue: ["la red dice que la línea no está asignada a nadie"], advertencia: "no volver a marcar" };
-  }
+  if (c.tipo === "email") return cero("es un correo, no un teléfono");
 
-  // ── 1. ¿Contesta alguien?
-  let contesta = PRIOR_CONTESTA[c.tipo] ?? 0.3;
+  // ── Cortes duros. Un número que ya se comprobó malo no se muestra más, por
+  //    muy buena que sea su procedencia.
+  if (ctx.marcadoComoMalo) return cero("alguien ya llamó y dijo que el número está equivocado", "no volver a marcar");
+  if (ctx.estadoLinea === "inactivo") return cero("la red dice que la línea no está asignada a nadie", "no volver a marcar");
+
+  /* ── DIMENSIÓN 1 · CONFIANZA: ¿es de esta empresa? ────────────────────── */
+  let confianza = PRIOR_CONTESTA[c.tipo] ?? 0.3;
   porQue.push(ETIQUETA_TIPO[c.tipo]);
 
   const ajuste = ctx.ajustes?.[c.tipo];
   if (typeof ajuste === "number") {
-    contesta = Math.max(0.05, Math.min(0.95, contesta * ajuste));
+    confianza = Math.max(0.05, Math.min(0.95, confianza * ajuste));
     porQue.push(`corregido con el resultado real de las llamadas (×${ajuste.toFixed(2)})`);
   }
-
   if (corroborado(c)) {
-    contesta = Math.min(0.95, contesta * 1.25);
+    confianza = Math.min(0.95, confianza * 1.25);
     porQue.push(`lo confirman ${metodosDistintos(c)} fuentes independientes`);
   }
-
   const meses = Math.min(...c.evidencias.map((e) => mesesDesde(e.cuando)));
-  if (meses > 12) {
-    contesta *= 0.7;
-    porQue.push("el dato tiene más de un año");
-  } else if (meses > 6) {
-    contesta *= 0.85;
-    porQue.push("el dato tiene más de seis meses");
-  }
+  if (meses > 12) { confianza *= 0.7; porQue.push("el dato tiene más de un año"); }
+  else if (meses > 6) { confianza *= 0.85; porQue.push("el dato tiene más de seis meses"); }
 
-  if (ctx.estadoLinea === "alcanzable") {
-    contesta = Math.min(0.97, contesta * 1.2);
-    porQue.push("la red confirma que el teléfono está encendido ahora");
-  } else if (ctx.estadoLinea === "activo") {
-    contesta = Math.min(0.95, contesta * 1.1);
-    porQue.push("la red confirma que la línea está activa");
-  }
+  /* ── DIMENSIÓN 2 · ALCANCE: ¿contestará alguien? ──────────────────────── */
+  // Un número publicado por el negocio para recibir clientes se contesta: de
+  // ahí le llega la venta. Uno que solo afirma una base, no se sabe.
+  const PUBLICADO = c.tipo === "whatsapp_publicado" || c.tipo === "telefono_publicado" || c.tipo === "ficha_google";
+  let alcance = PUBLICADO ? 0.85 : c.tipo === "telefono_en_texto" ? 0.6 : 0.5;
+  if (ctx.estadoLinea === "alcanzable") { alcance = Math.min(0.97, alcance * 1.15); porQue.push("la red confirma que el teléfono está encendido ahora"); }
+  else if (ctx.estadoLinea === "activo") { alcance = Math.min(0.95, alcance * 1.08); porQue.push("la red confirma que la línea está activa"); }
 
-  // ── 2. ¿Sirve quien contesta?
+  /* ── DIMENSIÓN 3 · CERCANÍA AL DECISOR ───────────────────────────────── */
   const movil = esMovil(c);
   const { peso: pesoCargo, etiqueta: etiquetaCargo } = pesoDelCargo(c.cargo);
   const conNombre = Boolean((c.persona ?? "").trim());
-
-  let sirve: number;
+  let cercania: number;
+  let autoridadConocida = false;
   let advertencia: string | undefined;
 
-  if (movil) {
-    // En una pyme chilena el móvil publicado del negocio lo contesta quien
-    // manda: es el mismo número con el que atiende clientes.
-    sirve = 0.8;
-    porQue.push("es un móvil: en una pyme lo contesta el dueño o quien atiende");
-    if (conNombre) { sirve = 0.9; porQue.push(`sabemos por quién preguntar: ${c.persona}`); }
-    if (pesoCargo >= 0.8) { sirve = Math.min(0.95, sirve + 0.05); porQue.push(`y su cargo decide (${etiquetaCargo})`); }
+  if (conNombre) {
+    // Sabemos a quién pertenece. Acá sí se puede afirmar algo.
+    autoridadConocida = true;
+    cercania = movil ? 0.88 : 0.55;
+    porQue.push(`sabemos de quién es: ${c.persona}`);
+    if (pesoCargo >= 0.8) { cercania = Math.min(0.95, cercania + 0.05); porQue.push(`y su cargo decide (${etiquetaCargo})`); }
+    else if (pesoCargo > 0 && pesoCargo < 0.3) { cercania *= 0.5; porQue.push("pero el cargo que tenemos es de recepción"); }
+    if (!movil) advertencia = `Es un fijo. Pide por ${c.persona}${etiquetaCargo ? ` (${etiquetaCargo})` : ""} de entrada.`;
+  } else if (movil && PUBLICADO) {
+    // El caso que estaba mal contado. Alcance altísimo, autoridad DESCONOCIDA:
+    // ese WhatsApp puede llevarlo el dueño, la recepción, ventas o quien
+    // gestiona las redes. En una pyme suele estar a un paso del que manda,
+    // pero eso es una probabilidad, no un hecho.
+    cercania = 0.6;
+    porQue.push("es el móvil que el negocio publica para sus clientes");
+    advertencia = "No sabemos quién atiende ese número: puede ser el dueño o quien lleva las redes. Pregunta por el encargado apenas contesten.";
+  } else if (movil) {
+    cercania = 0.55;
+    porQue.push("es un móvil, pero no sabemos de quién");
   } else {
-    sirve = 0.3;
-    advertencia = "Es un fijo: lo más probable es que conteste el mesón.";
-    porQue.push("es un fijo: probablemente el mesón");
-    if (conNombre) {
-      sirve = 0.55;
-      porQue.push(`pero sabemos por quién pedir: ${c.persona}`);
-      advertencia = `Es un fijo. Pide por ${c.persona}${etiquetaCargo ? ` (${etiquetaCargo})` : ""} de entrada.`;
-    }
-    if (pesoCargo > 0 && pesoCargo < 0.3) {
-      sirve *= 0.6;
-      porQue.push("y el cargo que tenemos es de recepción");
-    }
+    cercania = 0.28;
+    porQue.push("es un fijo y no sabemos por quién preguntar");
+    advertencia = "Es un fijo sin nombre: lo más probable es que conteste el mesón.";
   }
 
-  return { puntos: Math.round(contesta * sirve * 100), porQue, advertencia };
+  const puntos = Math.round(confianza * alcance * cercania * 100);
+  return {
+    puntos,
+    confianza: Math.round(confianza * 100),
+    alcance: Math.round(alcance * 100),
+    cercaniaDecisor: Math.round(cercania * 100),
+    autoridadConocida,
+    porQue,
+    advertencia,
+  };
 }
 
 const ETIQUETA_TIPO: Record<TipoContacto, string> = {
@@ -259,6 +293,12 @@ export interface Paso {
    * verificó — justo la categoría que ya había fallado en las llamadas.
    */
   verificable: boolean;
+  /** Las tres dimensiones, para que la ficha muestre dónde está la debilidad. */
+  confianza?: number;
+  alcance?: number;
+  cercaniaDecisor?: number;
+  /** false = no sabemos quién atiende ese número. */
+  autoridadConocida?: boolean;
   /** Qué decir. Literal, para leerlo en voz alta. */
   guion: string;
   puntos: number;
@@ -399,7 +439,12 @@ export function armarPlan(e: EntradaPlan, rubro?: string | null): Paso[] {
     const verificable = c.evidencias.some(
       (x) => x.metodo !== "base_externa" && x.metodo !== "a_mano",
     );
-    pasos.push({ via, valor: c.valor, guion, puntos: ev.puntos, porQue: ev.porQue, advertencia: ev.advertencia, verificable });
+    pasos.push({
+      via, valor: c.valor, guion, puntos: ev.puntos, porQue: ev.porQue,
+      advertencia: ev.advertencia, verificable,
+      confianza: ev.confianza, alcance: ev.alcance,
+      cercaniaDecisor: ev.cercaniaDecisor, autoridadConocida: ev.autoridadConocida,
+    });
   }
 
   const correo = e.contactos.find((c) => c.tipo === "email");
@@ -470,9 +515,14 @@ export function estadoDelLead(pasos: Paso[], suprimido = false): EstadoLead {
   // deja para el final del día.
   if (mejor && !mejor.verificable) return "sin_verificar";
 
-  if (puntos >= 60) return "excelente";
-  if (puntos >= 40) return "buena";
-  if (puntos >= 20) {
+  // Los umbrales bajaron respecto de la versión anterior porque el puntaje
+  // ahora es el producto de TRES dimensiones y no de dos: los mismos leads dan
+  // números más bajos sin haber empeorado. Se recalibró contra la corrida real
+  // sobre los 50 leads del 4-sep para que los montones sigan significando lo
+  // mismo.
+  if (puntos >= 45) return "excelente";
+  if (puntos >= 28) return "buena";
+  if (puntos >= 15) {
     // El nombre del montón describe el CAMINO, no solo la nota. Un móvil de 38
     // puntos no es "contactable vía central": no hay ninguna central de por
     // medio. Decirlo mal hace que el vendedor prepare la llamada equivocada.
@@ -481,4 +531,76 @@ export function estadoDelLead(pasos: Paso[], suprimido = false): EstadoLead {
   }
   if (pasos.some((p) => p.via === "email" || p.via === "linkedin")) return "mejor_por_escrito";
   return "insuficiente";
+}
+
+/* ═══════════════ 6. PRIORIDAD COMERCIAL — los dos motores juntos ═══════════ */
+
+/**
+ * A quién debe llamar Tomás PRIMERO.
+ *
+ * POR QUÉ NO ES NINGUNO DE LOS DOS SOLO — Marcelo, 4-sep-2026:
+ * "Un excelente contacto de una empresa que nunca compraría Respondo NO debe
+ * superar a una empresa de nuestro ICP simplemente porque tenga mejores datos."
+ *
+ * Y al revés tampoco: una empresa perfecta a la que no hay forma de llegar no
+ * merece el primer lugar de la lista de hoy — merece la cola de investigación.
+ *
+ * POR QUÉ SE MULTIPLICA Y NO SE PROMEDIA
+ * Porque las dos son necesarias. Un promedio deja que una tape a la otra: una
+ * empresa con oportunidad 95 y contactabilidad 10 promedia 52 y se cuela
+ * arriba, cuando en la práctica el vendedor no va a poder hablar con nadie.
+ * Multiplicando, el que falla en cualquiera de las dos cae — que es lo que
+ * pasa de verdad.
+ *
+ * La raíz cuadrada al final es cosmética: devuelve el resultado a una escala
+ * de 0-100 legible, sin cambiar el orden.
+ */
+export function prioridadComercial(
+  oportunidad: number,   // 0-100 · lib/oportunidad.ts
+  contactabilidad: number, // 0-100 · el mejor paso del plan
+): number {
+  const o = Math.max(0, Math.min(100, oportunidad)) / 100;
+  const c = Math.max(0, Math.min(100, contactabilidad)) / 100;
+  return Math.round(Math.sqrt(o * c) * 100);
+}
+
+/**
+ * Lo que el vendedor tiene que entender en un segundo: ¿esto merece mi tiempo
+ * AHORA, o es trabajo de escritorio?
+ *
+ * "Vale la pena investigar" es una respuesta legítima y hasta ahora no
+ * existía: el lead con buen fit y sin camino de contacto se mezclaba con los
+ * llamables y le gastaba el turno a Tomás.
+ */
+export type Veredicto = "llamar_ahora" | "llamar_despues" | "investigar" | "no_ahora";
+
+export const VEREDICTO_LABEL: Record<Veredicto, string> = {
+  llamar_ahora: "Llamar ahora",
+  llamar_despues: "Llamar después",
+  investigar: "Falta cómo contactarlo",
+  no_ahora: "No vale el tiempo ahora",
+};
+
+export const VEREDICTO_TONO: Record<Veredicto, "ok" | "warn" | "mut" | "danger"> = {
+  llamar_ahora: "ok", llamar_despues: "warn", investigar: "mut", no_ahora: "danger",
+};
+
+export function veredictoDelLead(opts: {
+  oportunidad: number;
+  nivelOportunidad: "alta" | "media" | "baja" | "no_ahora";
+  contactabilidad: number;
+}): Veredicto {
+  // El fit manda primero: si la empresa no nos sirve, da lo mismo lo bien
+  // contactable que sea. Es el principio que Marcelo puso arriba de todo.
+  if (opts.nivelOportunidad === "no_ahora") return "no_ahora";
+
+  // Buen fit y ningún camino: no es un fracaso, es trabajo de escritorio.
+  if (opts.contactabilidad < 15) {
+    return opts.nivelOportunidad === "alta" ? "investigar" : "no_ahora";
+  }
+
+  const p = prioridadComercial(opts.oportunidad, opts.contactabilidad);
+  if (p >= 55) return "llamar_ahora";
+  if (p >= 35) return "llamar_despues";
+  return opts.nivelOportunidad === "alta" ? "investigar" : "no_ahora";
 }

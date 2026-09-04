@@ -224,6 +224,47 @@ function linksAgenda(html: string, base: URL, max = 2): string[] {
   return [...urls];
 }
 
+/**
+ * Detecta las señales sobre HTML YA DESCARGADO.
+ *
+ * Se separó del descargador el 4-sep-2026 por una razón concreta: el
+ * enriquecimiento de leads (`lib/enriquecerLead.ts`) ya baja la portada y las
+ * páginas internas para sacar teléfonos. Hacer una SEGUNDA descarga de las
+ * mismas páginas para detectar chatbot y reservas era pagar dos veces el
+ * mismo viaje —y sobre todo, tardar el doble— por información que ya estaba
+ * en memoria.
+ *
+ * Un fetch, dos motores: los contactos y el encaje comercial salen del mismo
+ * HTML.
+ */
+export function senalesDeHtml(
+  todo: string,
+  opts: { hayIntencionAgenda?: boolean } = {},
+): Omit<SenalesWeb, "visitada" | "paginas" | "potencial"> {
+  const chatbot = detectar(todo, CHATBOTS);
+  const reservas = detectar(todo, RESERVAS);
+  const ecommerce = detectar(todo, ECOMMERCE);
+  const crm = detectar(todo, CRM);
+
+  // Formulario de hora: solo cuenta si hay intención de agenda (una página
+  // interna de reservas, o el texto en la portada) SIN sistema real detrás.
+  const hayIntencionAgenda =
+    opts.hayIntencionAgenda ||
+    /agenda\s?tu|reserva\s?tu|pide\s?tu\s?hora|solicita\s?tu\s?hora/i.test(todo);
+  const formulario_hora =
+    !reservas && hayIntencionAgenda && detectar(todo, FORMULARIOS) !== null;
+
+  const whatsapp_link = WHATSAPP_LINK.test(todo);
+  const boton_wa_flotante = BOTON_WA.test(todo);
+  const instagram_link = INSTAGRAM_LINK.test(todo);
+
+  return {
+    chatbot, reservas, formulario_hora, ecommerce, crm,
+    whatsapp_link, boton_wa_flotante, instagram_link,
+    canales_dm: (whatsapp_link ? 1 : 0) + (boton_wa_flotante ? 1 : 0) + (instagram_link ? 1 : 0),
+  };
+}
+
 /** Enriquece UNA web (portada + hasta 2 páginas de agenda). Nunca lanza. */
 export async function enriquecerWeb(web: string | null): Promise<SenalesWeb> {
   const vacio: SenalesWeb = {
@@ -269,36 +310,7 @@ export async function enriquecerWeb(web: string | null): Promise<SenalesWeb> {
   }
   const todo = paginas.join("\n<!--PAGINA-->\n");
 
-  const chatbot = detectar(todo, CHATBOTS);
-  const reservas = detectar(todo, RESERVAS);
-  const ecommerce = detectar(todo, ECOMMERCE);
-  const crm = detectar(todo, CRM);
-
-  // Formulario de hora: solo cuenta si hay página de agenda (o texto de
-  // agendar en portada) SIN sistema de reservas real detrás.
-  const hayIntencionAgenda =
-    paginas.length > 1 ||
-    /agenda\s?tu|reserva\s?tu|pide\s?tu\s?hora|solicita\s?tu\s?hora/i.test(home);
-  const formulario_hora =
-    !reservas && hayIntencionAgenda && detectar(todo, FORMULARIOS) !== null;
-
-  const parcial = {
-    visitada: true,
-    chatbot,
-    reservas,
-    formulario_hora,
-    ecommerce,
-    crm,
-    whatsapp_link: WHATSAPP_LINK.test(todo),
-    boton_wa_flotante: BOTON_WA.test(todo),
-    instagram_link: INSTAGRAM_LINK.test(todo),
-    canales_dm: 0,
-    paginas: paginas.length,
-  };
-  parcial.canales_dm =
-    (parcial.whatsapp_link ? 1 : 0) +
-    (parcial.boton_wa_flotante ? 1 : 0) +
-    (parcial.instagram_link ? 1 : 0);
+  const parcial = { ...senalesDeHtml(todo, { hayIntencionAgenda: paginas.length > 1 }), visitada: true, paginas: paginas.length };
   return { ...parcial, potencial: clasificarPotencial(parcial) };
 }
 
