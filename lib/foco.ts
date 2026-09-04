@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { ENCAJE_RANK, type NivelEncaje } from "@/lib/encaje";
+import { alcanceDe } from "@/lib/alcance";
 import { normalizarTelefono, telefonosSuprimidos } from "@/lib/actividades";
 
 /**
@@ -129,6 +130,13 @@ export interface LeadFoco {
   sin_contestar: number;
   /** 3 = teléfono + persona · 2 = solo teléfono · 1 = solo persona · 0 = nada. */
   contactabilidad: number;
+  /**
+   * 0-4: ¿lo contesta quien decide? Celular publicado = el dueño; fijo = mesón.
+   * Es lo que ordena la cola de llamadas desde el 4-sep-2026 (migración 036).
+   */
+  alcance: number;
+  /** De dónde salió el número que se va a marcar: apollo, places, cascada, a mano. */
+  origen_telefono: string;
   encaje: NivelEncaje;
   encaje_motivo: string;
   encaje_manual: boolean;
@@ -147,6 +155,7 @@ const SELECT =
   "id,empresa,razon_social,rut,web,linkedin_empresa,industria,n_empleados,comuna,region," +
   "contacto,cargo,telefono,email,linkedin_contacto,lista,estado,ultimo_resultado,tags,nota," +
   "recordatorio,intentos,sin_contestar,ultimo_intento,senal,confianza,fuente_url,ficha,contactabilidad," +
+  "alcance,origen_telefono," +
   "encaje,encaje_motivo,encaje_manual," +
   "senal_reciente,senal_reciente_url,senal_reciente_at,senal_vigente_hasta," +
   "telefonos,emails";
@@ -159,6 +168,9 @@ const SELECT =
  * —con tilde— contra datos sin tilde. Resultado: el filtro devolvía cero
  * filas y parecía que no había nadie de dirección. Un solo mapa, cero drift.
  */
+/** El mismo SELECT sin lo que agrega la migración 036, para el reintento. */
+const SELECT_SIN_036 = SELECT.replace("alcance,origen_telefono,", "");
+
 export const GRUPOS_CARGO: Record<string, string[]> = {
   "Gerencia general": ["gerente general", "director ejecutivo", "ceo", "general manager"],
   Comercial: ["comercial", "ventas", "sales"],
@@ -194,89 +206,130 @@ export interface FiltrosFoco {
 }
 
 export async function listarFoco(f: FiltrosFoco = {}): Promise<LeadFoco[]> {
-  let q = db().from("leads_foco").select(SELECT);
+  /**
+   * Se consulta dos veces si hace falta, y esto no es paranoia de más.
+   *
+   * `alcance` y `origen_telefono` llegan con la migración 036. Si el código
+   * se despliega ANTES de correr la migración —el orden en que estas cosas
+   * pasan en la vida real— PostgREST responde "column does not exist" y la
+   * pantalla de Leads Foco queda en blanco. No un dato faltante: la pantalla
+   * completa, que es de la que trabaja el equipo todos los días.
+   *
+   * Así que si la columna no está todavía, se reintenta con el orden anterior
+   * y `alcance` se calcula en la aplicación (`lib/alcance.ts` da exactamente
+   * lo mismo que la columna generada: 14/14 en `pruebas/alcance.ts`). Se pierde
+   * el orden nuevo hasta que se corra la migración, no la herramienta.
+   */
+  const traer = async (conAlcance: boolean) => {
+    let q = db().from("leads_foco").select(conAlcance ? SELECT : SELECT_SIN_036);
 
-  if (f.lista && f.lista !== "todas") q = q.eq("lista", f.lista);
+    if (f.lista && f.lista !== "todas") q = q.eq("lista", f.lista);
 
-  // "Activos" y "Procesados" son los dos montones que importan al trabajar:
-  // lo que queda por tocar y lo que ya tuvo un desenlace.
-  if (f.estado === "activos") q = q.in("estado", ["nuevo", "contactando"]);
-  else if (f.estado === "procesados") q = q.in("estado", ["agendado", "ganado", "descartado"]);
-  else if (f.estado) q = q.eq("estado", f.estado);
+    // "Activos" y "Procesados" son los dos montones que importan al trabajar:
+    // lo que queda por tocar y lo que ya tuvo un desenlace.
+    if (f.estado === "activos") q = q.in("estado", ["nuevo", "contactando"]);
+    else if (f.estado === "procesados") q = q.in("estado", ["agendado", "ganado", "descartado"]);
+    else if (f.estado) q = q.eq("estado", f.estado);
 
-  if (!f.encaje || f.encaje === "sirven") q = q.in("encaje", ["alto", "medio", "sin_evaluar"]);
-  else if (f.encaje !== "todos") q = q.eq("encaje", f.encaje);
+    if (!f.encaje || f.encaje === "sirven") q = q.in("encaje", ["alto", "medio", "sin_evaluar"]);
+    else if (f.encaje !== "todos") q = q.eq("encaje", f.encaje);
 
-  if (f.cargo && f.cargo !== "todos") {
-    const terminos = GRUPOS_CARGO[f.cargo];
-    if (terminos) {
-      q = q.or(terminos.map((t) => `cargo.ilike.%${t}%`).join(","));
-    } else if (f.cargo === "Otros") {
-      // "Otros" no se puede expresar como un ilike; se filtra al volver.
-    } else {
-      q = q.ilike("cargo", `%${f.cargo}%`);
+    if (f.cargo && f.cargo !== "todos") {
+      const terminos = GRUPOS_CARGO[f.cargo];
+      if (terminos) {
+        q = q.or(terminos.map((t) => `cargo.ilike.%${t}%`).join(","));
+      } else if (f.cargo === "Otros") {
+        // "Otros" no se puede expresar como un ilike; se filtra al volver.
+      } else {
+        q = q.ilike("cargo", `%${f.cargo}%`);
+      }
     }
-  }
-  if (f.q) {
-    const t = f.q.replace(/[%,()]/g, "");
-    q = q.or(`empresa.ilike.%${t}%,contacto.ilike.%${t}%,cargo.ilike.%${t}%,telefono.ilike.%${t}%`);
-  }
+    if (f.q) {
+      const t = f.q.replace(/[%,()]/g, "");
+      q = q.or(`empresa.ilike.%${t}%,contacto.ilike.%${t}%,cargo.ilike.%${t}%,telefono.ilike.%${t}%`);
+    }
 
-  // La cola "hoy" esconde lo que está agendado para más adelante: un lead con
-  // recordatorio al viernes no es trabajo de hoy y en la lista solo estorba.
-  if (f.cola === "investigar") {
-    // Los que SÍ sirven pero no se pueden marcar: falta el teléfono, la
-    // persona, o las dos cosas. Es la cola de escritorio: se trabaja con
-    // LinkedIn y el sitio, no con el teléfono.
-    q = q.in("estado", ["nuevo", "contactando"]).lt("contactabilidad", 3);
-  } else if (f.cola !== "todos") {
-    q = q.or(`recordatorio.is.null,recordatorio.lte.${new Date().toISOString()}`);
-  }
+    // La cola "hoy" esconde lo que está agendado para más adelante: un lead con
+    // recordatorio al viernes no es trabajo de hoy y en la lista solo estorba.
+    if (f.cola === "investigar") {
+      // Los que SÍ sirven pero no se pueden marcar: falta el teléfono, la
+      // persona, o las dos cosas. Es la cola de escritorio: se trabaja con
+      // LinkedIn y el sitio, no con el teléfono.
+      q = q.in("estado", ["nuevo", "contactando"]).lt("contactabilidad", 3);
+    } else if (f.cola !== "todos") {
+      q = q.or(`recordatorio.is.null,recordatorio.lte.${new Date().toISOString()}`);
+    }
 
-  // Orden de trabajo. PRIMERO las promesas: un recordatorio vencido es una
-  // palabra empeñada ("llámame el jueves") y en la cola de hoy todos los
-  // recordatorios visibles ya vencieron, así que van arriba, el más viejo
-  // primero. (Bug real: al meter el orden por encaje, las promesas quedaron
-  // enterradas bajo leads frescos durante una versión.)
-  //
-  // Después, y acá está la corrección del 25-ago-2026: en la COLA DE HOY manda
-  // la contactabilidad, no el encaje.
-  //
-  // El orden anterior ponía el encaje primero, con el argumento de que "de nada
-  // sirve un teléfono directo si el negocio no se puede atender". Suena bien y
-  // está mal para esta pantalla: dejaba un lead con teléfono Y persona —o sea,
-  // marcable AHORA— debajo de diez leads de encaje alto que dicen "sin número".
-  // Un lead que no se puede llamar no es trabajo de la cola de llamadas; es
-  // trabajo de escritorio, y para eso existe la cola "Por investigar", que
-  // filtra justamente por contactabilidad < 3.
-  //
-  // El encaje no desaparece: sigue decidiendo el orden ENTRE los que sí se
-  // pueden marcar, y sigue filtrando de entrada (bajo y nulo no se muestran).
-  // En las demás vistas —"Todos" y "Por investigar"— el encaje manda como
-  // antes, porque ahí sí se está eligiendo a quién vale la pena perseguir.
-  let qo = q;
-  const colaDeLlamadas = f.cola !== "investigar" && f.cola !== "todos";
-  if (colaDeLlamadas) {
-    qo = qo.order("recordatorio", { ascending: true, nullsFirst: false });
-    qo = qo.order("contactabilidad", { ascending: false });
-    // Fase 3: entre los que se pueden marcar, primero los que tienen una señal
-    // VIGENTE. Un aviso buscando recepcionista publicado esta semana es un
-    // negocio diciendo que tiene el problema AHORA; llamarlo hoy no es lo mismo
-    // que llamarlo en tres meses. Las vencidas las borra el worker antes de
-    // detectar nuevas, así que lo que quede acá está vivo.
-    qo = qo.order("senal_vigente_hasta", { ascending: false, nullsFirst: false });
-    qo = qo.order("encaje_rank", { ascending: false });
-  } else {
-    qo = qo.order("encaje_rank", { ascending: false });
-    qo = qo.order("contactabilidad", { ascending: false });
+    // Orden de trabajo. PRIMERO las promesas: un recordatorio vencido es una
+    // palabra empeñada ("llámame el jueves") y en la cola de hoy todos los
+    // recordatorios visibles ya vencieron, así que van arriba, el más viejo
+    // primero. (Bug real: al meter el orden por encaje, las promesas quedaron
+    // enterradas bajo leads frescos durante una versión.)
+    //
+    // Después, y acá está la corrección del 25-ago-2026: en la COLA DE HOY manda
+    // la contactabilidad, no el encaje.
+    //
+    // El orden anterior ponía el encaje primero, con el argumento de que "de nada
+    // sirve un teléfono directo si el negocio no se puede atender". Suena bien y
+    // está mal para esta pantalla: dejaba un lead con teléfono Y persona —o sea,
+    // marcable AHORA— debajo de diez leads de encaje alto que dicen "sin número".
+    // Un lead que no se puede llamar no es trabajo de la cola de llamadas; es
+    // trabajo de escritorio, y para eso existe la cola "Por investigar", que
+    // filtra justamente por contactabilidad < 3.
+    //
+    // El encaje no desaparece: sigue decidiendo el orden ENTRE los que sí se
+    // pueden marcar, y sigue filtrando de entrada (bajo y nulo no se muestran).
+    // En las demás vistas —"Todos" y "Por investigar"— el encaje manda como
+    // antes, porque ahí sí se está eligiendo a quién vale la pena perseguir.
+    let qo = q;
+    const colaDeLlamadas = f.cola !== "investigar" && f.cola !== "todos";
+    if (colaDeLlamadas) {
+      qo = qo.order("recordatorio", { ascending: true, nullsFirst: false });
+      // Corrección del 4-sep-2026, después de la tanda de llamadas de Tomás en
+      // la que no alcanzó a nadie: acá mandaba `contactabilidad`, que cuenta si
+      // HAY teléfono y si HAY persona pero nunca preguntó QUÉ teléfono.
+      // Resultado: un fijo con nombre puntúa 3 —el máximo— y encabezaba la cola.
+      // Eso es el mesón, y es exactamente lo que contestó.
+      //
+      // `alcance` (migración 036) responde la pregunta que importa antes de
+      // marcar: ¿contesta el que decide? Y contiene a la anterior — un lead sin
+      // teléfono o sin persona ya queda abajo igual.
+      qo = conAlcance
+      ? qo.order("alcance", { ascending: false })
+      : qo.order("contactabilidad", { ascending: false });
+      // Fase 3: entre los que se pueden marcar, primero los que tienen una señal
+      // VIGENTE. Un aviso buscando recepcionista publicado esta semana es un
+      // negocio diciendo que tiene el problema AHORA; llamarlo hoy no es lo mismo
+      // que llamarlo en tres meses. Las vencidas las borra el worker antes de
+      // detectar nuevas, así que lo que quede acá está vivo.
+      qo = qo.order("senal_vigente_hasta", { ascending: false, nullsFirst: false });
+      qo = qo.order("encaje_rank", { ascending: false });
+    } else {
+      qo = qo.order("encaje_rank", { ascending: false });
+      qo = qo.order("contactabilidad", { ascending: false });
+    }
+    // El desempate final por `n_empleados` descendente se quedó SOLO en las
+    // vistas de escritorio. En la cola de llamadas era, literalmente, la
+    // instrucción "llama primero a las empresas más grandes" — o sea, primero a
+    // las que tienen recepcionista. Es la misma raíz del problema del 4-sep:
+    // ahí sirve para decidir a quién perseguir; acá servía para no alcanzar a
+    // nadie.
+    return await (colaDeLlamadas
+      ? qo.order("intentos", { ascending: true })
+      : qo.order("intentos", { ascending: true }).order("n_empleados", { ascending: false, nullsFirst: false })
+    ).limit(f.limite ?? 300);
+  };
+
+  let r = await traer(true);
+  if (r.error && /alcance|origen_telefono/i.test(r.error.message)) {
+    console.warn(
+      "[foco] falta la migración 036: se ordena como antes y `alcance` se calcula en la app. " +
+      "Corre supabase/migrations/036_alcance_del_lead.sql para recuperar el orden por quién contesta.",
+    );
+    r = await traer(false);
   }
-  const [{ data, error }, suprimidos] = await Promise.all([
-    qo
-      .order("intentos", { ascending: true })
-      .order("n_empleados", { ascending: false, nullsFirst: false })
-      .limit(f.limite ?? 300),
-    telefonosSuprimidos(),
-  ]);
+  const suprimidos = await telefonosSuprimidos();
+  const { data, error } = r;
   if (error) throw new Error(error.message);
 
   // La supresión es GLOBAL entre los dos motores: si un número pidió no ser
@@ -284,6 +337,12 @@ export async function listarFoco(f: FiltrosFoco = {}): Promise<LeadFoco[]> {
   // marca en vez de esconderse: el lead sigue siendo trabajable por otro
   // canal (correo, LinkedIn), lo vetado es el teléfono.
   let filas = (data ?? []) as unknown as LeadFoco[];
+  // Si la consulta cayó al respaldo, las columnas de la 036 no vienen. Se
+  // calculan acá para que la lista, los badges y la ficha se vean igual.
+  for (const fila of filas) {
+    if (typeof fila.alcance !== "number") fila.alcance = alcanceDe(fila);
+    if (typeof fila.origen_telefono !== "string") fila.origen_telefono = "";
+  }
   if (f.cargo === "Otros") filas = filas.filter((x) => grupoDeCargo(x.cargo) === "Otros");
   for (const fila of filas) {
     const tel = normalizarTelefono(fila.telefono ?? "");

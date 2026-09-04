@@ -16,6 +16,7 @@
 
 import { db } from "@/lib/db";
 import { evaluarEncaje } from "@/lib/encaje";
+import { insertarLead } from "@/lib/insertarLeads";
 import { normalizarTelefono } from "@/lib/actividades";
 
 /** La lista donde caen. Separada para poder medirla aparte del resto de Foco. */
@@ -106,17 +107,17 @@ export async function promoverAFoco(rut: string): Promise<ResultadoPromocion> {
     // ver de dónde salió y, si dice "es un FIJO", saberlo antes de marcar.
     senal: e.telefono_directo_origen || "teléfono directo hallado por la cascada",
     fuente_url: "cascada de enriquecimiento",
+    // El origen queda marcado como SII a propósito, aunque el número lo haya
+    // encontrado la web o Places: lo que se está midiendo es el CAMINO
+    // completo, y este camino empieza en el padrón del SII.
+    origen_telefono: "cascada (SII)",
     confianza: "media",
     creado_por: "cascada de enriquecimiento",
     encaje: encaje.nivel,
     encaje_motivo: encaje.motivo,
   };
 
-  const { data: creado, error: e2 } = await s
-    .from("leads_foco")
-    .insert(fila)
-    .select("id")
-    .single();
+  const { data: creado, error: e2 } = await insertarLead<{ id: string }>(fila, "id");
 
   if (e2) {
     // 23505 = ya existe un lead con (lista, empresa, contacto). Pasa si alguien

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { insertarLead } from "@/lib/insertarLeads";
 import { evaluarEncaje } from "@/lib/encaje";
 import { normalizarTelefono } from "@/lib/actividades";
 import { quienEs } from "@/lib/equipo";
@@ -99,9 +100,8 @@ export async function POST(req: Request) {
       n_empleados: nEmpleados ?? undefined,
     } as Parameters<typeof evaluarEncaje>[0]);
 
-    const { data, error } = await s
-      .from("leads_foco")
-      .insert({
+    const { data, error } = await insertarLead<{ id: string; empresa: string; contacto: string; encaje: string }>(
+      {
         empresa,
         contacto,
         cargo,
@@ -127,14 +127,15 @@ export async function POST(req: Request) {
         // Queda anotado que lo puso una persona: si mañana se reimporta un CSV
         // que traiga esta misma empresa, se puede distinguir qué vino de dónde.
         fuente_url: "alta manual en HQ",
+        origen_telefono: telefono ? "a mano" : "",
         creado_por: quienEs(req) ?? "alta manual",
         confianza: "media",
         encaje: encaje.nivel,
         encaje_motivo: encaje.motivo,
         estado: "nuevo",
-      })
-      .select("id,empresa,contacto,encaje")
-      .single();
+      },
+      "id,empresa,contacto,encaje",
+    );
     if (error) throw new Error(error.message);
 
     return NextResponse.json({ ok: true, lead: data, encaje: encaje.nivel, motivo: encaje.motivo });

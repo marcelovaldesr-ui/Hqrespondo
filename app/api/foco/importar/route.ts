@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { insertarLeads } from "@/lib/insertarLeads";
 import { evaluarEncaje } from "@/lib/encaje";
 import { normalizarTelefono } from "@/lib/actividades";
 
@@ -241,12 +242,20 @@ export async function POST(req: Request) {
 
       if (tels.length) {
         const movil = tels.find((t) => t.tipo === "movil");
-        r.telefono = (movil ?? tels[0]).valor;
+        const elegido = movil ?? tels[0];
+        r.telefono = elegido.valor;
         r.telefonos = tels;
+        // Queda anotado de qué COLUMNA salió el número que se va a marcar. Sin
+        // esto no se puede responder "¿los móviles de Apollo sirven o están
+        // viejos?" más que de memoria: es lo que después cruza el diagnóstico
+        // de alcance contra el resultado real de las llamadas.
+        r.origen_telefono = elegido.tipo === "movil" ? "apollo/csv · móvil" : `apollo/csv · ${elegido.tipo}`;
       } else if (String(r.telefono ?? "").trim()) {
         r.telefonos = [{ valor: String(r.telefono), tipo: "otro", fuente: "importacion" }];
+        r.origen_telefono = "apollo/csv · columna genérica";
       } else {
         r.telefonos = [];
+        r.origen_telefono = "";
       }
 
       if (mails.length) {
@@ -318,7 +327,7 @@ export async function POST(req: Request) {
 
     for (let i = 0; i < aInsertar.length; i += 200) {
       const trozo = aInsertar.slice(i, i + 200);
-      const { error } = await s.from("leads_foco").insert(trozo);
+      const { error } = await insertarLeads(trozo);
       if (error) throw new Error(error.message || "no se pudieron insertar las filas");
       insertados += trozo.length;
     }

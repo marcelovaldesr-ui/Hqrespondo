@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ENCAJE_LABEL, NIVELES_ENCAJE, senalesDeGuia, type NivelEncaje } from "@/lib/encaje";
+import { ALCANCE_QUE_ESPERAR, ALCANCE_TONO, esCelularChileno } from "@/lib/alcance";
 import { secuenciaPara, verticalDe } from "@/lib/secuencias";
 import {
   CONECTA_FOCO,
@@ -706,7 +707,21 @@ export default function LeadsFoco({
                           SUPRIMIDO
                         </span>
                       ) : f.telefono ? (
-                        <span className="num text-ink-mut">{f.telefono}</span>
+                        <div>
+                          <span className="num text-ink-mut">{f.telefono}</span>
+                          {/* Lo que hay que saber ANTES de marcar. En Chile un
+                              celular publicado por un negocio es el teléfono
+                              del dueño; un fijo es el mesón. Verlo en la lista
+                              evita gastar el intento en una recepción. */}
+                          <div
+                            className={`mt-0.5 font-mono text-[9px] tracking-wider ${
+                              esCelularChileno(f.telefono) ? "text-ok" : "text-warn"
+                            }`}
+                            title={ALCANCE_QUE_ESPERAR[f.alcance] ?? ""}
+                          >
+                            {esCelularChileno(f.telefono) ? "CELULAR" : "FIJO · MESÓN"}
+                          </div>
+                        </div>
                       ) : (
                         <span className="text-[10.5px] text-ink-faint">sin número</span>
                       )}
@@ -992,6 +1007,26 @@ export default function LeadsFoco({
                       </p>
                     )}
                   </>
+                )}
+
+                {/* Qué esperar al marcar. Va ANTES de las señales porque es lo
+                    primero que decide cómo se abre la llamada: no se saluda
+                    igual a un dueño que a una recepcionista. */}
+                {lead.telefono && (
+                  <div
+                    className={`mt-3 rounded-md border px-2.5 py-2 text-[11.5px] leading-snug ${
+                      ALCANCE_TONO[lead.alcance] === "ok"
+                        ? "border-ok/40 bg-ok/10 text-ok"
+                        : ALCANCE_TONO[lead.alcance] === "warn"
+                          ? "border-warn/40 bg-warn/10 text-warn"
+                          : "border-danger/40 bg-danger/10 text-danger"
+                    }`}
+                  >
+                    {ALCANCE_QUE_ESPERAR[lead.alcance]}
+                    {lead.origen_telefono ? (
+                      <span className="ml-1 opacity-70">· número de {lead.origen_telefono}</span>
+                    ) : null}
+                  </div>
                 )}
 
                 {senalesDeGuia(`${lead.senal} ${lead.encaje_motivo}`).length > 0 && (
