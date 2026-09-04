@@ -80,6 +80,9 @@ export async function htmlDeLaWeb(web: string, maxMs = 12_000): Promise<string |
     return null;
   }
   if (!destinoPermitido(url)) return null;
+  // Una red social devuelve el cascarón de su aplicación, no el perfil. Leer
+  // eso y extraerle números produce datos inventados con cara de verdaderos.
+  if (/facebook\.com|instagram\.com|linktr\.ee|tiktok\.com|youtube\.com|x\.com|twitter\.com/i.test(url.hostname)) return null;
 
   try {
     const ctrl = new AbortController();
@@ -147,7 +150,11 @@ export async function htmlDeLaWeb(web: string, maxMs = 12_000): Promise<string |
 export async function textoDeLaWeb(web: string, maxMs = 12_000): Promise<string | null> {
   // Una red social no es un sitio que se pueda leer así: devuelve el cascarón
   // de la app, no el contenido del perfil.
-  if (/facebook\.com|instagram\.com|linktr\.ee|wa\.me\//i.test(web)) return null;
+  // Se agregó TikTok el 4-sep: la corrida real intentó "leer" el perfil de
+  // Go Models Chile en tiktok.com y se trajo el cascarón de la aplicación, no
+  // el contenido. Cualquier número sacado de ahí es basura con apariencia de
+  // dato.
+  if (/facebook\.com|instagram\.com|linktr\.ee|wa\.me\/|tiktok\.com|youtube\.com|x\.com|twitter\.com/i.test(web)) return null;
 
   const html = await htmlDeLaWeb(web, maxMs);
   if (!html) return null;

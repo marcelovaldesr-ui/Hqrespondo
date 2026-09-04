@@ -25,6 +25,7 @@
  * manda el argumento. Cuando lo haya, mandan los datos.
  */
 
+import { pareceNombreDePersona, podarNombre } from "@/lib/nombrePersona";
 import {
   corroborado,
   esMovil,
@@ -52,7 +53,7 @@ const PRIOR_CONTESTA: Record<TipoContacto, number> = {
   ficha_google: 0.70,
   telefono_publicado: 0.70,
   telefono_en_texto: 0.45,
-  afirmado_por_base: 0.40,
+  afirmado_por_base: 0.32,
   email: 0,
 };
 
@@ -250,6 +251,14 @@ export type Via =
 export interface Paso {
   via: Via;
   valor: string;
+  /**
+   * ¿Se puede señalar el lugar donde este número está publicado?
+   * false = lo afirma una base externa y no hay dónde ir a comprobarlo. Es la
+   * diferencia que la corrida del 4-sep dejó a la vista: leads sin sitio web
+   * salían como "Buena probabilidad" apoyados solo en un número que nadie
+   * verificó — justo la categoría que ya había fallado en las llamadas.
+   */
+  verificable: boolean;
   /** Qué decir. Literal, para leerlo en voz alta. */
   guion: string;
   puntos: number;
@@ -281,8 +290,36 @@ export function cargoObjetivo(rubro: string | null | undefined): string {
   return "el dueño o el encargado comercial";
 }
 
+/**
+ * ¿Se le puede decir "¿hablo con X?" a esto?
+ *
+ * La corrida real del 4-sep sobre 20 leads devolvió estos guiones:
+ *   «Hola, ¿hablo con CECINAS SAN ANDRES 💪💪💪💪?»
+ *   «Hola, ¿hablo con V?»
+ *   «Hola, ¿hablo con Go Models Chile 💛🖤?»
+ *
+ * El campo `contacto` de la base no siempre trae una persona: a veces trae el
+ * nombre del negocio copiado de Instagram, con emojis, o una inicial suelta.
+ * Un guion así no es un detalle feo — hace quedar en ridículo al vendedor en
+ * el primer segundo de la llamada, que es justo donde se juega todo.
+ *
+ * `pareceNombreDePersona` ya existía en el proyecto y sirve exacto: pide entre
+ * dos y cuatro palabras, todas de letras, ninguna de rubro ni de relleno web.
+ */
+function nombreUsable(bruto: string | null | undefined): string {
+  const n = podarNombre((bruto ?? "").trim());
+  if (!n || !pareceNombreDePersona(n)) return "";
+  // "JAIME PEREZ" en mayúsculas se lee como un grito. Se pasa a capitalización
+  // normal, respetando las partículas.
+  return n
+    .toLocaleLowerCase("es-CL")
+    .split(/\s+/)
+    .map((w) => (["de", "del", "la", "las", "los", "y"].includes(w) ? w : w.charAt(0).toLocaleUpperCase("es-CL") + w.slice(1)))
+    .join(" ");
+}
+
 export function armarPlan(e: EntradaPlan, rubro?: string | null): Paso[] {
-  const nombre = (e.decisor?.nombre ?? "").trim();
+  const nombre = nombreUsable(e.decisor?.nombre);
   const cargo = (e.decisor?.cargo ?? "").trim();
   const { etiqueta } = pesoDelCargo(cargo);
   const pasos: Paso[] = [];
@@ -303,7 +340,7 @@ export function armarPlan(e: EntradaPlan, rubro?: string | null): Paso[] {
   for (const { c, ev } of evaluados) {
     const esWa = c.tipo === "whatsapp_publicado";
     const movil = esMovil(c);
-    const quien = c.persona || nombre;
+    const quien = nombreUsable(c.persona) || nombre;
 
     let via: Via;
     let guion: string;
@@ -337,7 +374,10 @@ export function armarPlan(e: EntradaPlan, rubro?: string | null): Paso[] {
       via = "fijo_con_cargo";
       guion = `Llamar y pedir por cargo: «Hola, ¿podría comunicarme con ${cargoObjetivo(rubro)}?»`;
     }
-    pasos.push({ via, valor: c.valor, guion, puntos: ev.puntos, porQue: ev.porQue, advertencia: ev.advertencia });
+    const verificable = c.evidencias.some(
+      (x) => x.metodo !== "base_externa" && x.metodo !== "a_mano",
+    );
+    pasos.push({ via, valor: c.valor, guion, puntos: ev.puntos, porQue: ev.porQue, advertencia: ev.advertencia, verificable });
   }
 
   const correo = e.contactos.find((c) => c.tipo === "email");
@@ -350,27 +390,34 @@ export function armarPlan(e: EntradaPlan, rubro?: string | null): Paso[] {
         : `Correo al buzón general. Pedir que lo deriven a ${cargoObjetivo(rubro)}.`,
       puntos: 15,
       porQue: ["hay correo publicado"],
+      verificable: true,
     });
   }
   if (e.linkedin) {
-    pasos.push({ via: "linkedin", valor: e.linkedin, guion: "Mensaje por LinkedIn, sin pitch: una pregunta.", puntos: 10, porQue: ["hay perfil de LinkedIn"] });
+    pasos.push({ via: "linkedin", valor: e.linkedin, guion: "Mensaje por LinkedIn, sin pitch: una pregunta.", puntos: 10, porQue: ["hay perfil de LinkedIn"], verificable: true });
   }
   if (e.web) {
-    pasos.push({ via: "formulario", valor: e.web, guion: "Último recurso: el formulario de su web.", puntos: 5, porQue: ["tiene sitio con formulario"] });
+    pasos.push({ via: "formulario", valor: e.web, guion: "Último recurso: el formulario de su web.", puntos: 5, porQue: ["tiene sitio con formulario"], verificable: true });
   }
-  return pasos;
+  // Se ordena TODO por puntaje, no primero los teléfonos y después lo escrito.
+  // Si el mejor teléfono da 14 puntos y hay un correo publicado que da 15, el
+  // correo va primero — y así el rótulo del lead ("Mejor por correo") deja de
+  // contradecir al primer paso de su propio plan, que es lo que pasaba con
+  // Instituto Médico Schilkrut en la corrida del 4-sep.
+  return pasos.sort((a, b) => b.puntos - a.puntos);
 }
 
 /* ═══════════════ 5. EN QUÉ MONTÓN VA ESTE LEAD ═══════════════ */
 
 export const ESTADOS_LEAD = [
-  "excelente", "buena", "via_central", "mejor_por_escrito", "insuficiente", "no_usar",
+  "excelente", "buena", "sin_verificar", "via_central", "mejor_por_escrito", "insuficiente", "no_usar",
 ] as const;
 export type EstadoLead = (typeof ESTADOS_LEAD)[number];
 
 export const ESTADO_LEAD_LABEL: Record<EstadoLead, string> = {
   excelente: "Excelente para llamar",
   buena: "Buena probabilidad",
+  sin_verificar: "Número sin verificar",
   via_central: "Contactable vía central",
   mejor_por_escrito: "Mejor por correo o LinkedIn",
   insuficiente: "Información insuficiente",
@@ -379,7 +426,7 @@ export const ESTADO_LEAD_LABEL: Record<EstadoLead, string> = {
 
 /** Verde/ámbar/gris/rojo. El vendedor trabaja de arriba hacia abajo. */
 export const ESTADO_LEAD_TONO: Record<EstadoLead, "ok" | "warn" | "mut" | "danger"> = {
-  excelente: "ok", buena: "ok", via_central: "warn",
+  excelente: "ok", buena: "ok", sin_verificar: "warn", via_central: "warn",
   mejor_por_escrito: "mut", insuficiente: "mut", no_usar: "danger",
 };
 
@@ -392,6 +439,15 @@ export function estadoDelLead(pasos: Paso[], suprimido = false): EstadoLead {
   const llamables = pasos.filter((p) => p.via !== "email" && p.via !== "linkedin" && p.via !== "formulario");
   const mejor = llamables[0];
   const puntos = mejor?.puntos ?? 0;
+
+  // Un número que nadie verificó no puede presentarse como "buena
+  // probabilidad", por muy móvil que sea y por mucho nombre que traiga al
+  // lado. Es exactamente lo que ya falló: de 13 llamadas a móviles, 9 no
+  // hablaron con nadie. Decirle al vendedor lo que de verdad tenemos —un
+  // número sin respaldo— es lo que le permite decidir si lo marca ahora o lo
+  // deja para el final del día.
+  if (mejor && !mejor.verificable) return "sin_verificar";
+
   if (puntos >= 60) return "excelente";
   if (puntos >= 40) return "buena";
   if (puntos >= 20) {

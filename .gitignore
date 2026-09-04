@@ -23,3 +23,7 @@ _to_delete/
 # Uno se colo en el commit 048f827 por un `git add -A`; que no vuelva a pasar.
 *.tgz
 *.tar.gz
+
+# Donde la app de escritorio deja los archivos que Claude entrega (capturas,
+# informes). No es codigo del proyecto.
+Claude outputs/
