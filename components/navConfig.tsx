@@ -3,38 +3,44 @@
 export type NavLink = { href: string; label: string; icon: string; hint?: string };
 export type NavGroup = { titulo: string; links: NavLink[] };
 
-/** Agrupada por el momento del día en que se usa, no por módulo técnico. */
+/** Agrupada por jerarquía operacional y de negocio B2B SaaS. */
 export const NAV_GROUPS: NavGroup[] = [
   {
-    titulo: "Hoy",
+    titulo: "Operación",
     links: [
       { href: "/dashboard", label: "Centro de mando", icon: "dashboard", hint: "Estado general y prioridades" },
-      { href: "/llamadas", label: "Llamadas del día", icon: "phone", hint: "Lista para marcar" },
-      { href: "/foco", label: "Leads Foco", icon: "foco", hint: "Decisores en empresas medianas" },
-      { href: "/brief", label: "Brief del día", icon: "file", hint: "Resumen generado" },
-      { href: "/metricas", label: "Métricas propias", icon: "metricas", hint: "Calibración, embudo y capacidad" },
-      { href: "/equipo", label: "Objetivos del equipo", icon: "equipo", hint: "Qué se comprometió cada socio esta semana" },
-      { href: "/isabel", label: "Isabel", icon: "isabel", hint: "La 4ª del equipo — pregúntale lo que sea del negocio" },
+      { href: "/pipeline", label: "Pipeline Comercial", icon: "kanban", hint: "11 etapas comerciales activas" },
+      { href: "/reuniones", label: "Reuniones & Discovery", icon: "calendar", hint: "Discovery y demos agendadas" },
+      { href: "/pilotos", label: "Pilotos 14 Días", icon: "flag", hint: "Success Plan y seguimiento de prueba" },
+      { href: "/propuestas", label: "Propuestas & Cierres", icon: "document", hint: "Trazabilidad de ofertas enviadas" },
+      { href: "/llamadas", label: "Llamadas del día", icon: "phone", hint: "Lista diaria para marcar" },
+      { href: "/brief", label: "Brief del día", icon: "file", hint: "Resumen diario generado" },
     ],
   },
   {
-    titulo: "Vender",
+    titulo: "Crecimiento",
     links: [
-      { href: "/prospeccion", label: "Prospección", icon: "target", hint: "Buscar y calificar" },
-      { href: "/pipeline", label: "Pipeline", icon: "kanban", hint: "Oportunidades por etapa" },
+      { href: "/prospeccion", label: "Prospección", icon: "target", hint: "Buscar y calificar Places" },
+      { href: "/foco", label: "Leads Foco", icon: "foco", hint: "Decisores en empresas medianas" },
       { href: "/clientes", label: "Clientes & Bots", icon: "bot", hint: "Cuentas y salud de bots" },
+      { href: "/growth", label: "Growth Studio", icon: "spark", hint: "Contenido e ideas de adquisición" },
     ],
   },
   {
-    titulo: "Crecer",
-    links: [{ href: "/growth", label: "Growth Studio", icon: "spark", hint: "Contenido e ideas" }],
+    titulo: "Inteligencia",
+    links: [
+      { href: "/playbook", label: "Sales Playbook", icon: "shield", hint: "Competidores, scripts y objeciones" },
+      { href: "/isabel", label: "Isabel (IA)", icon: "isabel", hint: "La 4ª del equipo — copiloto de negocio" },
+      { href: "/metricas", label: "Métricas", icon: "metricas", hint: "Calibración, embudo y capacidad" },
+    ],
   },
   {
     titulo: "Gestión",
     links: [
       { href: "/finanzas", label: "Finanzas", icon: "money", hint: "Cobros y gastos" },
-      { href: "/proyeccion", label: "Proyección", icon: "curva", hint: "En qué mes esto le paga a cada socio" },
       { href: "/roadmap", label: "Roadmap", icon: "map", hint: "Qué se construye" },
+      { href: "/equipo", label: "Objetivos de Equipo", icon: "equipo", hint: "Compromisos semanales de socios" },
+      { href: "/proyeccion", label: "Proyección", icon: "curva", hint: "Modelo financiero y punto de equilibrio" },
       { href: "/decisiones", label: "Decisiones", icon: "check", hint: "Bitácora de acuerdos" },
     ],
   },
@@ -172,6 +178,32 @@ export function NavIcon({ name, size = 14 }: { name: string; size?: number }) {
       return (
         <svg {...p}>
           <path d="M3.2 2.3h2.5l1.3 3.1-1.6 1.3a9.4 9.4 0 0 0 3.9 3.9l1.3-1.6 3.1 1.3v2.5c0 .7-.6 1.3-1.3 1.3C7 14.1 1.9 9 1.9 3.6c0-.7.6-1.3 1.3-1.3z" />
+        </svg>
+      );
+    case "calendar":
+      return (
+        <svg {...p}>
+          <rect x="2" y="3" width="12" height="11" rx="2" />
+          <path d="M2 7h12M5 1.5v3M11 1.5v3" />
+        </svg>
+      );
+    case "flag":
+      return (
+        <svg {...p}>
+          <path d="M3 14V2m0 1h9l-2 3.5 2 3.5H3" />
+        </svg>
+      );
+    case "document":
+      return (
+        <svg {...p}>
+          <path d="M3.5 2h6l3.5 3.5V14h-9.5z" />
+          <path d="M9.5 2v3.5h3.5M6 8h4M6 11h4" />
+        </svg>
+      );
+    case "shield":
+      return (
+        <svg {...p}>
+          <path d="M8 1.5l5.5 2.5v4.5c0 3.5-3 6-5.5 6.8-2.5-.8-5.5-3.3-5.5-6.8V4z" />
         </svg>
       );
     default:

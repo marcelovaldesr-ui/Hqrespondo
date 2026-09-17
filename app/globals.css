@@ -3,14 +3,9 @@
 @tailwind utilities;
 
 /* ============================================================
-   RespondoHQ — "Libreta"
-   Papel tibio, tinta oscura, serif en el texto y mono en los números.
-   La jerarquía la hacen el tamaño y el aire, no el color ni la luz.
-
-   Regla de oro de este archivo: en claro, NADA se separa con brillo.
-   Todo lo que antes era un halo, un neón o un borde luminoso ahora es
-   una línea de tinta diluida o una sombra corta. Si algo tiene que
-   destacar, se le da espacio, no se le enciende una luz.
+   Respondo HQ — Visual System V2 (Revenue Command Center)
+   Lienzo claro #F8FAFC, paneles blancos puros #FFFFFF, bordes Slate nítidos,
+   tipografía Inter precisa y números IBM Plex Mono tabulares.
    ============================================================ */
 
 :root {
@@ -18,18 +13,16 @@
 }
 
 html {
-  background: #f5f2eb;
+  background: #f8fafc;
 }
 
 body {
   @apply bg-bg text-ink antialiased;
   min-height: 100vh;
-  /* La serif de lectura pide un pelo más de interlínea que una sans. */
-  line-height: 1.55;
+  line-height: 1.5;
 }
 
-/* Cifras tabulares en TODO lo monoespaciado: es lo que permite escanear
-   una columna de números de arriba abajo sin que bailen. */
+/* Cifras tabulares en TODO lo monoespaciado: permite escanear columnas con números alineados */
 .font-mono,
 code,
 pre,
@@ -45,44 +38,36 @@ kbd {
   }
 
   /* ---------- Superficies ---------- */
-  /* El panel es una hoja sobre el escritorio: casi blanca, con una línea
-     de canto y una sombra de 1px. Nada más. */
   .panel {
-    @apply relative rounded-xl border border-line bg-surface-2 shadow-card;
+    @apply relative rounded-xl border border-line bg-surface shadow-card;
   }
 
-  /* Panel protagónico. Antes llevaba un hairline de neón morado→coral
-     arriba; ahora es una línea de tinta de marca al costado, como el
-     margen rojo de un cuaderno. Se usa con cuentagotas — si todo
-     destaca, nada destaca. */
   .panel-hot {
     @apply panel overflow-hidden;
-    border-left: 2px solid rgba(92, 66, 196, 0.55);
+    border-left: 3px solid #4f46e5;
   }
 
   .metric-card {
-    @apply panel p-4 transition duration-200;
+    @apply panel p-4 transition-all duration-150;
   }
   .metric-card:hover {
-    @apply border-line2 bg-surface-3;
+    @apply border-line2 shadow-raise;
   }
 
   .subpanel {
-    @apply rounded-lg border border-line bg-surface-3/70;
+    @apply rounded-lg border border-line bg-surface-3;
   }
 
   .glass {
-    /* Ya no es vidrio: es una hoja levantada. El desenfoque se queda
-       porque ayuda a separar el modal de la página que hay detrás. */
-    @apply rounded-xl border border-line2 bg-surface-2 shadow-pop backdrop-blur-sm;
+    @apply rounded-xl border border-line2 bg-surface shadow-pop backdrop-blur-md;
   }
 
-  /* Escuadras de esquina — el detalle que dice "documento" sin disfraz. */
+  /* Escuadras sutiles */
   .brackets::after,
   .brackets::before {
     content: "";
     @apply pointer-events-none absolute h-2.5 w-2.5;
-    border-color: rgba(92, 66, 196, 0.4);
+    border-color: rgba(79, 70, 229, 0.35);
   }
   .brackets::before {
     @apply left-1.5 top-1.5 border-l border-t;
@@ -94,17 +79,14 @@ kbd {
   }
 
   /* ---------- Tipografía de sistema ---------- */
-  /* Las etiquetas van en mono: son el contrapunto de la serif y lo que
-     mantiene el aire técnico donde hace falta. */
   .lbl {
-    @apply font-mono text-[10px] font-medium uppercase tracking-[0.15em] text-ink-dim;
+    @apply font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-dim;
   }
   .ttl {
-    @apply font-display font-semibold tracking-tight text-ink;
+    @apply font-sans font-semibold tracking-tight text-ink;
   }
-  /* Un número que se lee de lejos. Uno por vista, no más. */
   .hero-num {
-    @apply font-mono text-[2.6rem] font-semibold leading-none tracking-tight text-ink;
+    @apply font-mono text-[2.4rem] font-bold leading-none tracking-tight text-ink;
   }
   .num {
     @apply font-mono tabular-nums;
@@ -112,46 +94,24 @@ kbd {
 
   .hairline {
     height: 1px;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(29, 27, 22, 0.16),
-      transparent
-    );
+    background: rgba(15, 23, 42, 0.08);
   }
 
   /* ---------- Controles ---------- */
   .chip {
-    @apply inline-flex items-center gap-1.5 rounded-md border border-line2 bg-surface-3 px-2 py-0.5 font-mono text-[10.5px] uppercase tracking-wider text-ink-mut;
+    @apply inline-flex items-center gap-1.5 rounded-md border border-line bg-surface-3 px-2 py-0.5 font-mono text-[11px] font-medium text-ink-mut;
   }
 
-  /* El botón primario era un degradado morado→coral con halo. En claro
-     eso se ve de plástico: ahora es tinta de marca sólida, que además
-     deja el texto blanco con contraste de sobra (7.9:1). */
   .btn-primary {
-    @apply relative inline-flex items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition disabled:opacity-40;
-    box-shadow: 0 1px 2px rgba(29, 27, 22, 0.14);
-  }
-  .btn-primary:hover:not(:disabled) {
-    @apply bg-brand-dark;
-  }
-  .btn-primary:active:not(:disabled) {
-    transform: translateY(1px);
-    box-shadow: none;
+    @apply relative inline-flex items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2 text-xs font-semibold text-white transition-all shadow-xs hover:bg-brand-dark active:translate-y-px disabled:opacity-40;
   }
 
   .btn-ghost {
-    @apply inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-line2 bg-surface-2 px-2.5 py-1 text-xs text-ink-mut transition hover:border-brand/50 hover:bg-surface-3 hover:text-ink disabled:opacity-40;
+    @apply inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink-mut transition hover:border-line2 hover:bg-surface-3 hover:text-ink disabled:opacity-40;
   }
 
-  /* Los campos son lo ÚNICO blanco puro de la interfaz. Es a propósito:
-     el blanco dice "acá se escribe" sin necesidad de explicarlo. */
   .input {
-    @apply w-full rounded-lg border border-line2 bg-white px-3 py-2 text-sm text-ink outline-none transition placeholder:text-ink-faint;
-  }
-  .input:focus {
-    @apply border-brand;
-    box-shadow: 0 0 0 3px rgba(92, 66, 196, 0.15);
+    @apply w-full rounded-lg border border-line bg-white px-3 py-2 text-xs text-ink outline-none transition placeholder:text-ink-faint focus:border-brand focus:ring-2 focus:ring-brand/10;
   }
 
   .kbd {
@@ -159,32 +119,27 @@ kbd {
   }
 
   /* ---------- Estado ---------- */
-  /* Un LED es una luz, y una luz sobre papel no existe. Lo que sí se lee
-     es un punto de color con un aro claro alrededor, como una chapita.
-     Se conservan los nombres `led-glow-*` porque los usan treinta y tantos
-     lugares; lo que cambió es qué dibujan. */
   .led {
     @apply inline-block h-[7px] w-[7px] shrink-0 rounded-full;
   }
   .led-glow-green {
-    box-shadow: 0 0 0 2.5px rgba(47, 107, 69, 0.18);
+    box-shadow: 0 0 0 2.5px rgba(16, 185, 129, 0.20);
   }
   .led-glow-cyan {
-    box-shadow: 0 0 0 2.5px rgba(24, 111, 128, 0.18);
+    box-shadow: 0 0 0 2.5px rgba(0, 194, 203, 0.25);
   }
   .led-glow-red {
-    box-shadow: 0 0 0 2.5px rgba(163, 43, 54, 0.18);
+    box-shadow: 0 0 0 2.5px rgba(239, 68, 68, 0.20);
   }
   .led-glow-amber {
-    box-shadow: 0 0 0 2.5px rgba(127, 87, 22, 0.18);
+    box-shadow: 0 0 0 2.5px rgba(245, 158, 11, 0.20);
   }
   .led-pulse {
     animation: breathe 2.4s ease-in-out infinite;
   }
 
-  /* Medidor: el relleno lleva la severidad, la pista es material apagado. */
   .meter {
-    @apply relative block h-1 w-full overflow-hidden rounded-full bg-surface-4;
+    @apply relative block h-1.5 w-full overflow-hidden rounded-full bg-surface-4;
   }
   .meter-fill {
     @apply absolute inset-y-0 left-0 rounded-full bg-brand;
@@ -192,69 +147,61 @@ kbd {
 
   /* ---------- Datos ---------- */
   .data-row {
-    @apply transition duration-150;
+    @apply transition-colors duration-100;
   }
   .data-row:hover {
     @apply bg-surface-3;
   }
 
-  /* Marcador de "esto está vivo ahora". Antes era un barrido de escáner
-     cruzando el panel; sobre papel eso se ve como una mancha que pasa.
-     Ahora es una hoja apenas más cálida: se nota, no distrae. */
   .scanline {
-    @apply relative overflow-hidden;
-    background-color: #fdfaf3;
+    @apply relative overflow-hidden bg-surface-3/50;
   }
 
-  /* Los <select> nativos traen la flecha del sistema operativo y rompen
-     el conjunto. Se la quitamos y dibujamos una propia, en tinta. */
   select {
     -webkit-appearance: none;
     appearance: none;
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%23625E54' stroke-width='1.5'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%23475569' stroke-width='1.5'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 0.6rem center;
     padding-right: 1.75rem !important;
   }
   select option {
-    background: #fdfbf7;
-    color: #1d1b16;
+    background: #ffffff;
+    color: #0f172a;
   }
 
-  /* Las tablas heredan el ritmo del sistema sin tocar cada página. */
   table {
     border-collapse: separate;
     border-spacing: 0;
   }
   tbody tr + tr > td {
-    border-top: 1px solid rgba(29, 27, 22, 0.08);
+    border-top: 1px solid rgba(15, 23, 42, 0.06);
   }
 }
 
 /* ---------- Cromo del navegador ---------- */
 ::selection {
-  background: rgba(92, 66, 196, 0.18);
-  color: #1d1b16;
+  background: rgba(79, 70, 229, 0.15);
+  color: #0f172a;
 }
 
 ::-webkit-scrollbar {
-  width: 9px;
-  height: 9px;
+  width: 7px;
+  height: 7px;
 }
 ::-webkit-scrollbar-track {
-  background: #f0ece3;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cdc6b6;
-  border: 2px solid #f0ece3;
-  border-radius: 6px;
+  background: #cbd5e1;
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #b3ab98;
+  background: #94a3b8;
 }
 
 :focus-visible {
-  outline: 2px solid rgba(92, 66, 196, 0.85);
+  outline: 2px solid rgba(79, 70, 229, 0.8);
   outline-offset: 2px;
 }
 

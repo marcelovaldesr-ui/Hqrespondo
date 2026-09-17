@@ -1,20 +1,17 @@
-import { db } from "@/lib/db";
-import type { Deal } from "@/lib/types";
-import PageHeader from "@/components/PageHeader";
-import Kanban from "@/components/Kanban";
+import { getRevenueStore } from "@/lib/revenue/store";
+import PipelineV2 from "@/components/PipelineV2";
+import RevenueErrorState from "@/components/RevenueErrorState";
 
 export const dynamic = "force-dynamic";
 
 export default async function PipelinePage() {
-  const { data } = await db()
-    .from("deals")
-    .select("*")
-    .order("created_at", { ascending: true });
+  try {
+    const store = getRevenueStore();
+    const deals = await store.getDeals();
 
-  return (
-    <div className="mx-auto max-w-7xl">
-      <PageHeader title="Pipeline" sub="Ventas" />
-      <Kanban deals={(data ?? []) as Deal[]} />
-    </div>
-  );
+    return <PipelineV2 initialDeals={deals} />;
+  } catch (err: any) {
+    console.error("[PipelinePage] Error cargando deals:", err);
+    return <RevenueErrorState error={err?.message || "Error al conectar con la base de datos"} route="/pipeline" />;
+  }
 }

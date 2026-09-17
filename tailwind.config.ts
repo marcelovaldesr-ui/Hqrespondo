@@ -41,43 +41,42 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // El escritorio y los papeles encima — cinco pasos, ahora de más
-        // oscuro (el fondo) a más claro (el panel) y de vuelta al material.
-        bg: "#F5F2EB",
+        // Lienzo y superficies de alta densidad SaaS (estilo Linear / Stripe)
+        bg: "#F8FAFC",
         surface: {
-          1: "#F0ECE3", // cromo: barra lateral, encabezados
-          2: "#FDFBF7", // panel: la hoja
-          3: "#F4F0E7", // subpanel, hover de fila — hundido, no elevado
-          4: "#E9E3D6", // pista de barras, teclas, relleno material
+          DEFAULT: "#FFFFFF",
+          1: "#0B1220", // Cromo oscuro: barra lateral
+          2: "#FFFFFF", // Paneles, tarjetas y modales
+          3: "#F1F5F9", // Subpanel, hover de fila, chip neutro
+          4: "#E2E8F0", // Pista de barras, teclas, separadores
         },
-        // Líneas: tinta diluida, no luz. En claro un borde blanco no existe.
-        line: "rgba(29,27,22,0.10)",
-        line2: "rgba(29,27,22,0.20)",
-        // Tinta
+        // Bordes nítidos y líneas de separación
+        line: "rgba(15, 23, 42, 0.08)",
+        line2: "rgba(15, 23, 42, 0.16)",
+        // Tinta y jerarquía tipográfica Slate
         ink: {
-          DEFAULT: "#1D1B16", // negro cálido, nunca #000
-          soft: "#3E3B33",
-          mut: "#625E54",
-          dim: "#6A655B",
-          faint: "#868274",
+          DEFAULT: "#0F172A", // Slate 900: texto principal nítido
+          soft: "#334155",    // Slate 700
+          mut: "#475569",     // Slate 600
+          dim: "#64748B",     // Slate 500
+          faint: "#94A3B8",   // Slate 400
         },
-        // Marca Respondo, bajada a papel. El violeta original (#8B6BFF) sobre
-        // crudo se ve de juguete; este mantiene el tono y gana cuerpo.
-        brand: { DEFAULT: "#5C42C4", dark: "#452F9E" },
-        violet: "#5C42C4",
-        coral: "#A8482F",
-        cyan: "#186F80",
-        // Estado (reservados)
-        ok: "#2F6B45",
-        warn: "#7F5716",
-        danger: "#A32B36",
-        accent: "#2D5A9E",
-        // Paleta categórica revalidada para papel
+        // Marca Respondo & Acentos técnicos
+        brand: { DEFAULT: "#4F46E5", dark: "#4338CA" },
+        violet: "#6366F1",
+        coral: "#F97316",
+        cyan: { DEFAULT: "#00C2CB", dark: "#0891B2" },
+        accent: { DEFAULT: "#00C2CB", dark: "#0891B2" },
+        // Estados semánticos (reservados)
+        ok: "#10B981",       // Emerald: saludable / ganado
+        warn: "#F59E0B",     // Amber: advertencia / stalled
+        danger: "#EF4444",   // Red: crítico / perdido / errores
+        // Series categóricas para visualizaciones
         series: {
-          1: "#5C42C4",
-          2: "#1B7F92",
-          3: "#B4553F",
-          4: "#2F6B45",
+          1: "#4F46E5",
+          2: "#00C2CB",
+          3: "#F59E0B",
+          4: "#10B981",
         },
       },
       borderRadius: {
@@ -85,23 +84,18 @@ const config: Config = {
         xl: "0.625rem",
       },
       boxShadow: {
-        // En oscuro la separación la hacía un brillo interior arriba. En claro
-        // eso no se ve: acá el papel se levanta con una sombra real, corta y
-        // de tinta cálida, no negra.
-        card: "0 1px 2px rgba(29,27,22,0.05)",
-        raise: "0 1px 2px rgba(29,27,22,0.05), 0 6px 16px -10px rgba(29,27,22,0.18)",
-        glow: "0 0 0 1px rgba(92,66,196,0.30), 0 2px 10px -4px rgba(92,66,196,0.22)",
-        cyan: "0 0 0 1px rgba(24,111,128,0.30), 0 2px 10px -4px rgba(24,111,128,0.20)",
-        pop: "0 18px 44px -18px rgba(29,27,22,0.28), 0 2px 6px rgba(29,27,22,0.07)",
+        "2xs": "0 1px 2px 0 rgba(15, 23, 42, 0.04)",
+        xs: "0 1px 2px 0 rgba(15, 23, 42, 0.05)",
+        card: "0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04)",
+        raise: "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)",
+        glow: "0 0 0 1px rgba(79, 70, 229, 0.25), 0 2px 10px -4px rgba(79, 70, 229, 0.20)",
+        cyan: "0 0 0 1px rgba(0, 194, 203, 0.30), 0 2px 10px -4px rgba(0, 194, 203, 0.20)",
+        pop: "0 12px 28px -6px rgba(15, 23, 42, 0.12), 0 2px 4px rgba(15, 23, 42, 0.04)",
       },
       fontFamily: {
-        // Newsreader es una serif de lectura: acá va en el TEXTO CORRIDO, no
-        // solo en los títulos. Es la decisión que hace que el brief se lea
-        // como una nota escrita por alguien y no como salida de sistema.
-        // Las variables las define next/font en app/layout.tsx.
-        sans: ["var(--fuente-sans)", "Georgia", "serif"],
-        display: ["var(--fuente-display)", "var(--fuente-sans)", "Georgia", "serif"],
-        mono: ["var(--fuente-mono)", "ui-monospace", "monospace"],
+        sans: ["var(--fuente-sans)", "Inter", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
+        display: ["var(--fuente-display)", "var(--fuente-sans)", "Inter", "sans-serif"],
+        mono: ["var(--fuente-mono)", "IBM Plex Mono", "ui-monospace", "monospace"],
       },
       keyframes: {
         breathe: { "0%,100%": { opacity: "1" }, "50%": { opacity: "0.4" } },
@@ -111,8 +105,6 @@ const config: Config = {
         },
       },
       animation: {
-        // `sweep` se fue con el barrido de escáner: era un efecto de sala de
-        // control y sobre papel se ve como una mancha.
         breathe: "breathe 2.4s ease-in-out infinite",
         rise: "rise 0.32s cubic-bezier(0.22,1,0.36,1) both",
       },
