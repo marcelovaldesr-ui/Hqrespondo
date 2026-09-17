@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
+import Fronts from "@/components/Fronts";
 import Cohortes from "@/components/Cohortes";
 import type { Cohorte } from "@/lib/actividades";
 import { clp, fechaCorta, timeAgo } from "@/lib/format";
@@ -122,6 +123,7 @@ export default function CommandCenterV2({
       />
 
       {/* Alerta visible si hubo errores en consultas de base de datos Supabase (Fail-Visible) */}
+      <Fronts compact />
       {legacyOps?.supabaseErrors && legacyOps.supabaseErrors.length > 0 && (
         <div className="rounded-xl border border-danger/30 bg-danger/[0.03] p-4 text-xs text-ink shadow-xs">
           <div className="flex items-center gap-2 font-bold text-danger">

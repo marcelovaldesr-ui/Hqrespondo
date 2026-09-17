@@ -9,6 +9,7 @@ export const NAV_GROUPS: NavGroup[] = [
     titulo: "Operación",
     links: [
       { href: "/dashboard", label: "Centro de mando", icon: "dashboard", hint: "Estado general y prioridades" },
+      { href: "/frentes", label: "Frentes", icon: "flag", hint: "Iniciativas, hitos y acciones pendientes" },
       { href: "/pipeline", label: "Pipeline Comercial", icon: "kanban", hint: "11 etapas comerciales activas" },
       { href: "/reuniones", label: "Reuniones & Discovery", icon: "calendar", hint: "Discovery y demos agendadas" },
       { href: "/pilotos", label: "Pilotos 14 Días", icon: "flag", hint: "Success Plan y seguimiento de prueba" },
