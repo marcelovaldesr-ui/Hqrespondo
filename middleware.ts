@@ -47,10 +47,23 @@ import { evaluarAutenticacionHq } from "@/lib/auth/hqAuth";
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  const outboundMachineEndpoints = [
+    "/api/outbound/dispatch",
+    "/api/outbound/ingest",
+    "/api/outbound/pipeline/sync",
+    "/api/outbound/replies/check",
+    "/api/outbound/bounces/check",
+    "/api/outbound/health",
+    "/api/outbound/watch/renew",
+    "/api/outbound/pubsub",
+    "/api/outbound/suppressions",
+  ];
+
   if (
     pathname.startsWith("/api/hooks") ||
     pathname.startsWith("/api/prospeccion") ||
-    pathname.startsWith("/api/cola")
+    pathname.startsWith("/api/cola") ||
+    outboundMachineEndpoints.some((endpoint) => pathname === endpoint)
   )
     return NextResponse.next();
 

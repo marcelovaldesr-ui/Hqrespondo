@@ -1,0 +1,126 @@
+{
+  "name": "Outbound V1 - Workflow D: Bounce Detector",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "id": "node-bounce-cron",
+      "name": "Cron Cada 30 Minutos",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.HQ_BASE_URL || 'http://localhost:3000' }}/api/outbound/bounces/check",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-hq-token",
+              "value": "={{ $env.HQ_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 45000
+        }
+      },
+      "id": "node-check-bounces",
+      "name": "Chequear NDRs y Bounces",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-has-bounces",
+              "leftValue": "={{ $json.hard_bounces }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "node-if-hard-bounces",
+      "name": "¿Hay Hard Bounces?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=⚠️ <b>Alerta de Deliverability: Hard Bounce Detectado</b>\n\nHard Bounces: {{ $json.hard_bounces }}\nLos contactos fueron marcados como inválidos y agregados a la lista de supresión permanente.",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "node-bounce-alert",
+      "name": "Alerta Telegram Hard Bounce",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [900, 280]
+    }
+  ],
+  "connections": {
+    "Cron Cada 30 Minutos": {
+      "main": [
+        [
+          {
+            "node": "Chequear NDRs y Bounces",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chequear NDRs y Bounces": {
+      "main": [
+        [
+          {
+            "node": "¿Hay Hard Bounces?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Hay Hard Bounces?": {
+      "main": [
+        [
+          {
+            "node": "Alerta Telegram Hard Bounce",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "name": "Outbound V1 - Workflow B: Dispatcher",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "outbound-dispatch",
+        "options": {}
+      },
+      "id": "node-webhook-dispatch",
+      "name": "Webhook Dispatch",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.HQ_BASE_URL || 'http://localhost:3000' }}/api/outbound/dispatch",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-hq-token",
+              "value": "={{ $env.HQ_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"workerId\": \"n8n_dispatcher_{{ $now.toMillis() }}\",\n  \"limiteLote\": {{ $json.body.limiteLote || 6 }}\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "node-http-call",
+      "name": "Ejecutar Guardrails y Despacho",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "node-respond",
+      "name": "Responder Resultado",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Dispatch": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar Guardrails y Despacho",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ejecutar Guardrails y Despacho": {
+      "main": [
+        [
+          {
+            "node": "Responder Resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

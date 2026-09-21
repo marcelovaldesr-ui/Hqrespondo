@@ -1,0 +1,116 @@
+{
+  "name": "Outbound V1 - Workflow A: Scheduler",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "*/15 9-17 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "node-cron-trigger",
+      "name": "Cron Cada 15 Minutos",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-business-hours",
+              "leftValue": "={{ new Date().toLocaleTimeString('es-CL', { timeZone: 'America/Santiago', hour: '2-digit', hour12: false }) }}",
+              "rightValue": "18",
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            },
+            {
+              "id": "cond-business-start",
+              "leftValue": "={{ new Date().toLocaleTimeString('es-CL', { timeZone: 'America/Santiago', hour: '2-digit', hour12: false }) }}",
+              "rightValue": "09",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "node-business-hours",
+      "name": "Verificar Horario Hábil Chile (09-18)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.HQ_BASE_URL || 'http://localhost:3000' }}/api/outbound/dispatch",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-hq-token",
+              "value": "={{ $env.HQ_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"workerId\": \"n8n_scheduler_{{ $now.toMillis() }}\",\n  \"limiteLote\": 6\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "node-dispatch-call",
+      "name": "Ejecutar Dispatch en HQ",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 280]
+    }
+  ],
+  "settings": {
+    "timezone": "America/Santiago"
+  },
+  "connections": {
+    "Cron Cada 15 Minutos": {
+      "main": [
+        [
+          {
+            "node": "Verificar Horario Hábil Chile (09-18)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar Horario Hábil Chile (09-18)": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar Dispatch en HQ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

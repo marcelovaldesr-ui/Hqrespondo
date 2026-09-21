@@ -1,0 +1,83 @@
+{
+  "name": "[DISABLED] Outbound V1 - Workflow E: State Updater (pipeline contract pending)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "outbound-state-update",
+        "options": {}
+      },
+      "id": "node-state-webhook",
+      "name": "Webhook Actualización Estado",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.HQ_BASE_URL || 'http://localhost:3000' }}/api/outbound/pipeline/sync",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-hq-token",
+              "value": "={{ $env.HQ_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.body }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "node-sync-hq",
+      "name": "Sincronizar Pipeline en HQ",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "node-respond-state",
+      "name": "Responder Sync",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Actualización Estado": {
+      "main": [
+        [
+          {
+            "node": "Sincronizar Pipeline en HQ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sincronizar Pipeline en HQ": {
+      "main": [
+        [
+          {
+            "node": "Responder Sync",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

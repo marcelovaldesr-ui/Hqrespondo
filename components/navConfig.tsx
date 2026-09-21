@@ -21,7 +21,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     titulo: "Crecimiento",
     links: [
-      // Restaurar /outbound cuando el módulo esté desplegado oficialmente.
+      { href: "/outbound", label: "Outbound", icon: "target", hint: "Cola, buzones, respuestas y guardrails" },
       { href: "/prospeccion", label: "Prospección", icon: "target", hint: "Buscar y calificar Places" },
       { href: "/foco", label: "Leads Foco", icon: "foco", hint: "Decisores en empresas medianas" },
       { href: "/clientes", label: "Clientes & Bots", icon: "bot", hint: "Cuentas y salud de bots" },

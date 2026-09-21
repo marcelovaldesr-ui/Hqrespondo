@@ -1,0 +1,122 @@
+{
+  "name": "Outbound V1 - Workflow G: Health Checks & Alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      },
+      "id": "node-health-cron",
+      "name": "Cron Cada 4 Horas",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.HQ_BASE_URL || 'http://localhost:3000' }}/api/outbound/health",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-hq-token",
+              "value": "={{ $env.HQ_API_TOKEN }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "node-check-health",
+      "name": "Consultar Salud DNS y Senders en HQ",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-has-warning-or-fail",
+              "leftValue": "={{ $json.dns.estadoGeneral }}",
+              "rightValue": "pass",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "or"
+        }
+      },
+      "id": "node-if-health-issue",
+      "name": "¿Alerta de Salud / DNS?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=🚨 <b>Alerta de Salud Outbound — respon.do</b>\n\nEstado DNS: {{ $json.dns.estadoGeneral }}\nSPF: {{ $json.dns.spf.estado }} ({{ $json.dns.spf.mensaje }})\nDKIM: {{ $json.dns.dkim.estado }} ({{ $json.dns.dkim.mensaje }})\nDMARC: {{ $json.dns.dmarc.estado }} ({{ $json.dns.dmarc.mensaje }})\nMX: {{ $json.dns.mx.estado }}\n\nEnvíos hoy acumulados: {{ $json.dominio.sent_today }} / {{ $json.dominio.domain_daily_limit }}",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "node-health-alert",
+      "name": "Alerta Telegram Salud",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [900, 280]
+    }
+  ],
+  "connections": {
+    "Cron Cada 4 Horas": {
+      "main": [
+        [
+          {
+            "node": "Consultar Salud DNS y Senders en HQ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar Salud DNS y Senders en HQ": {
+      "main": [
+        [
+          {
+            "node": "¿Alerta de Salud / DNS?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Alerta de Salud / DNS?": {
+      "main": [
+        [
+          {
+            "node": "Alerta Telegram Salud",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "name": "Outbound V1 - Workflow F: Suppression & Opt-Out",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "outbound-optout",
+        "options": {}
+      },
+      "id": "node-optout-webhook",
+      "name": "Webhook Opt-Out",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.HQ_BASE_URL || 'http://localhost:3000' }}/api/outbound/suppressions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-hq-token",
+              "value": "={{ $env.HQ_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"tipo\": \"{{ $json.body.tipo || 'email' }}\",\n  \"valor\": \"{{ $json.body.valor }}\",\n  \"motivo\": \"{{ $json.body.motivo || 'opt_out' }}\",\n  \"origen\": \"{{ $json.body.origen || 'webhook_n8n' }}\",\n  \"notas\": \"{{ $json.body.notas || 'Baja solicitada' }}\"\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "node-add-suppression",
+      "name": "Registrar Supresión en HQ",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"ok\": true,\n  \"mensaje\": \"Supresión registrada exitosamente\"\n}",
+        "options": {}
+      },
+      "id": "node-respond-optout",
+      "name": "Responder Confirmación",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Opt-Out": {
+      "main": [
+        [
+          {
+            "node": "Registrar Supresión en HQ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar Supresión en HQ": {
+      "main": [
+        [
+          {
+            "node": "Responder Confirmación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
