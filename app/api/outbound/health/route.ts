@@ -4,6 +4,7 @@ import { getOutboundStore } from "@/lib/outbound/runtimeStore";
 import { chequearSaludDnsDominio } from "@/lib/outbound/dnsHealth";
 import { obtenerConfigSeguridad } from "@/lib/outbound/guardrails";
 import { estadoConfiguracionOAuth, verificarSaludWatchMailbox } from "@/lib/outbound/gmail";
+import { OUTBOUND_DOMAIN } from "@/lib/outbound/config";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -11,7 +12,7 @@ export const maxDuration = 45;
 
 /**
  * GET /api/outbound/health
- * Retorna el estado consolidado de salud de respon.do (SPF, DKIM, DMARC, MX),
+ * Retorna el estado consolidado de salud del dominio Outbound (SPF, DKIM, DMARC, MX),
  * estado de senders, métricas de hoy y kill switch.
  */
 export async function GET(req: Request) {
@@ -23,16 +24,16 @@ export async function GET(req: Request) {
     const store = getOutboundStore();
     const config = obtenerConfigSeguridad();
 
-    const dominio = await store.getDomain("respon.do");
+    const dominio = await store.getDomain(OUTBOUND_DOMAIN);
     const senders = await store.getSenders();
-    const dnsHealth = await chequearSaludDnsDominio({ dominio: "respon.do" });
+    const dnsHealth = await chequearSaludDnsDominio({ dominio: OUTBOUND_DOMAIN });
     const watches = await Promise.all(
       senders.map((sender) => verificarSaludWatchMailbox({ senderEmail: sender.email, store })),
     );
 
     // Actualizar estados DNS en el store
     if (dominio) {
-      await store.updateDomain("respon.do", {
+      await store.updateDomain(OUTBOUND_DOMAIN, {
         spf_status: dnsHealth.spf.estado,
         dkim_status: dnsHealth.dkim.estado,
         dmarc_status: dnsHealth.dmarc.estado,

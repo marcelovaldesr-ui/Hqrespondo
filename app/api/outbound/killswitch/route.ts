@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { verificarUsuarioHq } from "@/lib/outbound/auth";
 import { getOutboundStore } from "@/lib/outbound/runtimeStore";
 import { obtenerConfigSeguridad } from "@/lib/outbound/guardrails";
+import { OUTBOUND_DOMAIN } from "@/lib/outbound/config";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export async function GET(req: Request) {
 
   const store = getOutboundStore();
   const config = obtenerConfigSeguridad();
-  const dominio = await store.getDomain("respon.do");
+  const dominio = await store.getDomain(OUTBOUND_DOMAIN);
 
   return NextResponse.json({
     ok: true,
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
     const store = getOutboundStore();
 
     if (action === "pause_all") {
-      await store.updateDomain("respon.do", {
+      await store.updateDomain(OUTBOUND_DOMAIN, {
         paused: true,
         paused_reason: motivo,
       });
@@ -61,7 +62,7 @@ export async function POST(req: Request) {
 
     if (action === "resume") {
       // Reanudar dominio (pero OUTBOUND_ENABLED requiere configuración consciente)
-      await store.updateDomain("respon.do", {
+      await store.updateDomain(OUTBOUND_DOMAIN, {
         paused: false,
         paused_reason: null,
       });

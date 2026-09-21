@@ -12,6 +12,7 @@
  */
 
 import { type OutboundStore } from "./store";
+import { OUTBOUND_DOMAIN } from "./config";
 import { type OutboxItem, type SequenceStep } from "./types";
 import { validarAntesDeEnvio } from "./guardrails";
 import { enviarMensajeGmail } from "./gmail";
@@ -156,7 +157,7 @@ export async function despacharColaOutbound(params: {
       await store.releaseOutboxLock(item.id, "sent", null);
 
       await store.incrementSenderCounts(sender.id, esNuevoLead ? 1 : 0, 1);
-      await store.incrementDomainSent("respon.do", 1);
+      await store.incrementDomainSent(OUTBOUND_DOMAIN, 1);
 
       await store.logEvent({
         outbox_id: item.id,

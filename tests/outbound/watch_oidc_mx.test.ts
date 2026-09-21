@@ -70,7 +70,7 @@ test("REGRESIÓN SCHEDULER: Delays relativos entre pasos (D0 -> D4 -> D11 -> D21
 });
 
 test("PUB/SUB OIDC JWT: Verificación de claims, expiración y firma de Service Account", async () => {
-  process.env.PUBSUB_AUDIENCE = "https://hq.respon.do/api/outbound/pubsub";
+  process.env.PUBSUB_AUDIENCE = "https://hq.respon-do.com/api/outbound/pubsub";
   process.env.PUBSUB_SERVICE_ACCOUNT_EMAIL = "pubsub-invoker@respondo-prod.iam.gserviceaccount.com";
 
   // Helper para generar tokens de prueba
@@ -86,7 +86,7 @@ test("PUB/SUB OIDC JWT: Verificación de claims, expiración y firma de Service 
   // Caso 1: Token válido con claims correctos
   const tokenValido = generarTestJwt({
     iss: "https://accounts.google.com",
-    aud: "https://hq.respon.do/api/outbound/pubsub",
+    aud: "https://hq.respon-do.com/api/outbound/pubsub",
     email: "pubsub-invoker@respondo-prod.iam.gserviceaccount.com",
     email_verified: true,
     exp: ahoraSec + 3600,
@@ -100,7 +100,7 @@ test("PUB/SUB OIDC JWT: Verificación de claims, expiración y firma de Service 
   // Caso 2: Rechazar si email_verified = false
   const tokenNoVerificado = generarTestJwt({
     iss: "https://accounts.google.com",
-    aud: "https://hq.respon.do/api/outbound/pubsub",
+    aud: "https://hq.respon-do.com/api/outbound/pubsub",
     email: "pubsub-invoker@respondo-prod.iam.gserviceaccount.com",
     email_verified: false, // NO VERIFICADO
     exp: ahoraSec + 3600,
@@ -113,7 +113,7 @@ test("PUB/SUB OIDC JWT: Verificación de claims, expiración y firma de Service 
   // Caso 3: Rechazar si exp expiró
   const tokenExpirado = generarTestJwt({
     iss: "https://accounts.google.com",
-    aud: "https://hq.respon.do/api/outbound/pubsub",
+    aud: "https://hq.respon-do.com/api/outbound/pubsub",
     email: "pubsub-invoker@respondo-prod.iam.gserviceaccount.com",
     email_verified: true,
     exp: ahoraSec - 60, // EXPIRADO
@@ -137,7 +137,7 @@ test("PUB/SUB OIDC JWT: Verificación de claims, expiración y firma de Service 
   assert.match(resAudInvalida.motivo ?? "", /Audiencia/);
 
   // Caso 5: Integración en verificarAutorizacionPubSub con Bearer JWT
-  const fakeReq = new Request("https://hq.respon.do/api/outbound/pubsub", {
+  const fakeReq = new Request("https://hq.respon-do.com/api/outbound/pubsub", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${tokenValido}`,
@@ -149,7 +149,7 @@ test("PUB/SUB OIDC JWT: Verificación de claims, expiración y firma de Service 
 
 test("GMAIL WATCH RENEWAL: falla visible sin credenciales y diagnostica vigencia persistida", async () => {
   const store = new MemoryOutboundStore();
-  const testMailbox = "felipe@respon.do";
+  const testMailbox = "felipe@respon-do.com";
   const now = new Date("2026-09-15T12:00:00.000Z");
 
   // 1. Buzón sin configurar

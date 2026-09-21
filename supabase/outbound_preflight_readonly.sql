@@ -1,4 +1,4 @@
--- Read-only preflight. Safe to run before 041/042/045; it never changes data.
+-- Read-only preflight. Safe to run before 041/042/045/046; it never changes data.
 begin transaction read only;
 
 select name, to_regclass('public.' || name) as relation

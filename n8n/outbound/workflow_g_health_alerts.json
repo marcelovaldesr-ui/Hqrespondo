@@ -72,7 +72,7 @@
     {
       "parameters": {
         "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
-        "text": "=🚨 <b>Alerta de Salud Outbound — respon.do</b>\n\nEstado DNS: {{ $json.dns.estadoGeneral }}\nSPF: {{ $json.dns.spf.estado }} ({{ $json.dns.spf.mensaje }})\nDKIM: {{ $json.dns.dkim.estado }} ({{ $json.dns.dkim.mensaje }})\nDMARC: {{ $json.dns.dmarc.estado }} ({{ $json.dns.dmarc.mensaje }})\nMX: {{ $json.dns.mx.estado }}\n\nEnvíos hoy acumulados: {{ $json.dominio.sent_today }} / {{ $json.dominio.domain_daily_limit }}",
+        "text": "=🚨 <b>Alerta de Salud Outbound — {{ $json.dominio.domain }}</b>\n\nEstado DNS: {{ $json.dns.estadoGeneral }}\nSPF: {{ $json.dns.spf.estado }} ({{ $json.dns.spf.mensaje }})\nDKIM: {{ $json.dns.dkim.estado }} ({{ $json.dns.dkim.mensaje }})\nDMARC: {{ $json.dns.dmarc.estado }} ({{ $json.dns.dmarc.mensaje }})\nMX: {{ $json.dns.mx.estado }}\n\nEnvíos hoy acumulados: {{ $json.dominio.sent_today }} / {{ $json.dominio.domain_daily_limit }}",
         "additionalFields": {
           "parse_mode": "HTML"
         }

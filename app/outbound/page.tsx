@@ -5,6 +5,7 @@ import { chequearSaludDnsDominio } from "@/lib/outbound/dnsHealth";
 import { obtenerConfigSeguridad } from "@/lib/outbound/guardrails";
 import { estadoConfiguracionOAuth } from "@/lib/outbound/gmail";
 import type { OutboundStore } from "@/lib/outbound/store";
+import { OUTBOUND_DOMAIN } from "@/lib/outbound/config";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -20,7 +21,7 @@ export default async function OutboundPage() {
 
   const [dominio, senders, companies, contacts, outbox, replies, suppressions, mailboxWatches, dnsHealth] =
     await Promise.all([
-      store.getDomain("respon.do"),
+      store.getDomain(OUTBOUND_DOMAIN),
       store.getSenders(),
       store.listCompanies(100),
       store.listContacts(100),
@@ -28,7 +29,7 @@ export default async function OutboundPage() {
       store.listReplies(50),
       store.listSuppressions(),
       store.listMailboxWatches(),
-      chequearSaludDnsDominio({ dominio: "respon.do" }).catch(() => null),
+      chequearSaludDnsDominio({ dominio: OUTBOUND_DOMAIN }).catch(() => null),
     ]);
 
   return (
@@ -38,6 +39,7 @@ export default async function OutboundPage() {
           outboundEnabled: config.outboundEnabled,
           dryRun: config.dryRun,
         },
+        domainName: OUTBOUND_DOMAIN,
         dominio,
         senders,
         companies,

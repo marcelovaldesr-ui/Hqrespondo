@@ -9,7 +9,7 @@
  * 4. Control estricto de límites:
  *    - `new_leads_daily_limit`: Solo cuenta el paso 1 (nuevo lead).
  *    - `total_messages_daily_limit`: Cuenta todos los toques (pasos 1 a 4).
- *    - `domain_daily_limit`: Límite agregado de todo `respon.do`.
+ *    - `domain_daily_limit`: Límite agregado de todo `respon-do.com`.
  * 5. Ramp-up progresivo real (sin bots ni trampas):
  *    - Días 1-3: 2 msgs/día
  *    - Días 4-7: 3 msgs/día
@@ -421,7 +421,7 @@ export async function seleccionarSenderDeterminista(params: {
   return sendersCandidatos[0];
 }
 
-/** Verifica si el dominio corporativo respon.do tiene capacidad de envío */
+/** Verifica si el dominio corporativo tiene capacidad de envío */
 export function evaluarCapacidadDominio(domain: OutboundDomain): { disponible: boolean; motivo?: string } {
   if (!domain.active) {
     return { disponible: false, motivo: `Dominio ${domain.domain} inactivo` };

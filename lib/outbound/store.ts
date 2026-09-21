@@ -23,6 +23,7 @@ import {
   type MailboxWatchStatus,
 } from "./types";
 import { obtenerInicioDelDiaSantiago } from "./scheduler";
+import { OUTBOUND_DOMAIN } from "./config";
 
 /** Genera un hash SHA-256 para el contenido del copy aprobado en Review Mode */
 export function calcularHashCopy(subject: string, bodyText: string): string {
@@ -131,9 +132,9 @@ export class MemoryOutboundStore implements OutboundStore {
     const domainId = "00000000-0000-0000-0000-000000000001";
     const now = new Date().toISOString();
 
-    this.domains.set("respon.do", {
+    this.domains.set(OUTBOUND_DOMAIN, {
       id: domainId,
-      domain: "respon.do",
+      domain: OUTBOUND_DOMAIN,
       active: true,
       domain_daily_limit: 30,
       sent_today: 0,
@@ -153,7 +154,7 @@ export class MemoryOutboundStore implements OutboundStore {
     this.senders.set("11111111-1111-1111-1111-111111111111", {
       id: "11111111-1111-1111-1111-111111111111",
       name: "Marcelo Valdés",
-      email: "marcelo@respon.do",
+      email: `marcelo@${OUTBOUND_DOMAIN}`,
       domain_id: domainId,
       type: "founder",
       active: true,
@@ -179,8 +180,8 @@ export class MemoryOutboundStore implements OutboundStore {
     // Sender B - Outbound 1
     this.senders.set("22222222-2222-2222-2222-222222222222", {
       id: "22222222-2222-2222-2222-222222222222",
-      name: "Equipo Respondo",
-      email: "contacto@respon.do",
+      name: "Buzón de prueba Outbound 1",
+      email: "outbound-1@respon-do.test",
       domain_id: domainId,
       type: "outbound",
       active: true,
@@ -206,8 +207,8 @@ export class MemoryOutboundStore implements OutboundStore {
     // Sender C - Outbound 2
     this.senders.set("33333333-3333-3333-3333-333333333333", {
       id: "33333333-3333-3333-3333-333333333333",
-      name: "Ventas Respondo",
-      email: "crecimiento@respon.do",
+      name: "Buzón de prueba Outbound 2",
+      email: "outbound-2@respon-do.test",
       domain_id: domainId,
       type: "outbound",
       active: true,

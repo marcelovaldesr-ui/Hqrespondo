@@ -1,19 +1,20 @@
 /**
- * CHEQUEO DE AUTENTICACIÓN DNS — Outbound V1 (respon.do)
+ * CHEQUEO DE AUTENTICACIÓN DNS — Outbound V1 (respon-do.com)
  *
  * Correcciones y reglas mandatorias:
- * 1. DKIM Selector configurable: `${DKIM_SELECTOR}._domainkey.respon.do` (default "google" o leído de env/settings).
+ * 1. DKIM Selector configurable: `${DKIM_SELECTOR}._domainkey.respon-do.com` (default "google" o leído de env/settings).
  * 2. SPF: Validación semántica y sintáctica, NO comparación contra string exacta.
  *    - Detecta presencia de `v=spf1`.
  *    - Advierte si existen múltiples registros SPF (violación RFC 7208).
  *    - Comprueba si Google Workspace está autorizado (`include:_spf.google.com`).
  *    - Permite otros includes legítimos sin fallar.
- * 3. DMARC: Consulta `_dmarc.respon.do`, valida `v=DMARC1` y extrae política `p=none|quarantine|reject`.
+ * 3. DMARC: Consulta `_dmarc.respon-do.com`, valida `v=DMARC1` y extrae política `p=none|quarantine|reject`.
  * 4. MX: Comprueba existencia de registros MX y si apuntan a Google.
  * 5. Reporte con estados: PASS / WARNING / FAIL con diagnóstico detallado.
  */
 
 import dns from "node:dns/promises";
+import { OUTBOUND_DOMAIN } from "./config";
 import { type DnsCheckStatus } from "./types";
 
 export interface DiagnosticoDnsItem {
@@ -33,7 +34,7 @@ export interface ReporteSaludDns {
 }
 
 export interface OpcionesChequeoDns {
-  dominio?: string; // default "respon.do"
+  dominio?: string; // default OUTBOUND_DOMAIN
   dkimSelector?: string; // default process.env.DKIM_SELECTOR || "google"
   dnsResolver?: typeof dns;
 }
@@ -210,7 +211,7 @@ export function evaluarMx(mxRecords: RegistroMx[]): DiagnosticoDnsItem {
 export async function chequearSaludDnsDominio(
   opciones?: OpcionesChequeoDns,
 ): Promise<ReporteSaludDns> {
-  const dominio = opciones?.dominio ?? "respon.do";
+  const dominio = opciones?.dominio ?? OUTBOUND_DOMAIN;
   const selector = opciones?.dkimSelector ?? process.env.DKIM_SELECTOR ?? "google";
   const resolver = opciones?.dnsResolver ?? dns;
   const ahora = new Date().toISOString();

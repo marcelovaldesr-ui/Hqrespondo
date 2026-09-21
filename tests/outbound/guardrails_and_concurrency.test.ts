@@ -299,14 +299,14 @@ test("GLOBAL KILL SWITCH: OUTBOUND_ENABLED=false aborta todo envío", async () =
   assert.match(check.motivoBloqueo ?? "", /GLOBAL KILL SWITCH ACTIVO/);
 });
 
-test("LÍMITE DE DOMINIO: respon.do agregado alcanzado bloquea todos los envíos", async () => {
+test("LÍMITE DE DOMINIO: respon-do.com agregado alcanzado bloquea todos los envíos", async () => {
   const store = new MemoryOutboundStore();
   const { campana, contact, company } = await setupPruebaBase(store);
 
   process.env.OUTBOUND_ENABLED = "true";
 
   // Agotar límite de dominio (30/30)
-  await store.updateDomain("respon.do", { sent_today: 30, domain_daily_limit: 30 });
+  await store.updateDomain("respon-do.com", { sent_today: 30, domain_daily_limit: 30 });
 
   const item = await store.createOutboxItem({
     campaign_id: campana.id,

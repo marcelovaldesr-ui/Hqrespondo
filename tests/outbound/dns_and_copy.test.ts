@@ -45,11 +45,11 @@ test("DNS DKIM: Selector dinámico y configurable", () => {
 });
 
 test("DNS DMARC: Detección de política p=none (warning) vs p=quarantine/reject (pass)", () => {
-  const txtNone = [["v=DMARC1; p=none; rua=mailto:dmarc@respon.do"]];
+  const txtNone = [["v=DMARC1; p=none; rua=mailto:dmarc@respon-do.com"]];
   const diagNone = evaluarDmarc(txtNone);
   assert.equal(diagNone.estado, "warning");
 
-  const txtQuarantine = [["v=DMARC1; p=quarantine; rua=mailto:dmarc@respon.do"]];
+  const txtQuarantine = [["v=DMARC1; p=quarantine; rua=mailto:dmarc@respon-do.com"]];
   const diagQuarantine = evaluarDmarc(txtQuarantine);
   assert.equal(diagQuarantine.estado, "pass");
 });

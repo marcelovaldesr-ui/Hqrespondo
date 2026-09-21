@@ -14,6 +14,7 @@ import { type OutboxItem, type OutboundSender, type OutboundDomain, type Campaig
 import { type OutboundStore, calcularHashCopy } from "./store";
 import { evaluarCapacidadSender, evaluarCapacidadDominio } from "./senders";
 import { verificarFrescuraHiloEnGmail } from "./gmail";
+import { OUTBOUND_DOMAIN } from "./config";
 
 export interface ResultadoPreSendCheck {
   autorizado: boolean;
@@ -260,12 +261,12 @@ export async function validarAntesDeEnvio(params: {
     };
   }
 
-  // 12. Comprobar Dominio agregado (respon.do) con Ledger Transaccional
-  const dominio = await store.getDomain("respon.do");
+  // 12. Comprobar el dominio agregado con Ledger Transaccional
+  const dominio = await store.getDomain(OUTBOUND_DOMAIN);
   if (!dominio) {
     return {
       autorizado: false,
-      motivoBloqueo: "Dominio respon.do no encontrado en configuración.",
+      motivoBloqueo: `Dominio ${OUTBOUND_DOMAIN} no encontrado en configuración.`,
       accionRequerida: "pausar_cola",
     };
   }
@@ -292,7 +293,7 @@ export async function validarAntesDeEnvio(params: {
   if (domainSent >= dominio.domain_daily_limit) {
     return {
       autorizado: false,
-      motivoBloqueo: `Límite diario agregado del dominio respon.do alcanzado (${domainSent}/${dominio.domain_daily_limit}).`,
+      motivoBloqueo: `Límite diario agregado del dominio ${OUTBOUND_DOMAIN} alcanzado (${domainSent}/${dominio.domain_daily_limit}).`,
       accionRequerida: "posponer",
     };
   }

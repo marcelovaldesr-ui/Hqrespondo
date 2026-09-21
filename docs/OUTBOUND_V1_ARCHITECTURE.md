@@ -1,23 +1,23 @@
 # OUTBOUND V1: ARQUITECTURA TÉCNICA Y OPERATIVA (RESPONDO)
 
-> **Documento de Especificación de Arquitectura, Ingeniería y Operación**  
-> **Versión:** 1.0.0  
-> **Dominio Corporativo:** `respon.do`  
+> **Documento de Especificación de Arquitectura, Ingeniería y Operación**
+> **Versión:** 1.0.0
+> **Dominio Corporativo:** `respon-do.com`
 > **Estado de Guardrails por Defecto:** `OUTBOUND_ENABLED=false` | `DRY_RUN=true` | `REVIEW_MODE=true`
 
 > [!CAUTION]
-> Las direcciones incluidas en la migración 041 son seeds históricos y permanecen inactivas mediante 045 hasta que el Owner confirme que cada buzón existe y complete OAuth y Gmail Watch. La configuración de runtime no inventa direcciones por defecto.
+> La migración histórica 041 contiene el dominio anterior y tres seeds. La migración 045 los pausa y 046 corrige el dominio, conserva `marcelo@respon-do.com` como concepto inactivo y elimina los otros dos placeholders no referenciados. La configuración de runtime no inventa direcciones por defecto.
 
 ---
 
 ## 1. Resumen Ejecutivo y Principios de Diseño
 
-El sistema de Outbound V1 de Respondo (`respon.do`) es un motor de prospección comercial 1 a 1 de alta precisión, diseñado para abrir conversaciones comerciales de alto valor con fundadores, directores y gerentes de operaciones en Chile. 
+El sistema de Outbound V1 de Respondo (`respon-do.com`) es un motor de prospección comercial 1 a 1 de alta precisión, diseñado para abrir conversaciones comerciales de alto valor con fundadores, directores y gerentes de operaciones en Chile.
 
 A diferencia de herramientas de envío masivo ("spray & pray"), Outbound V1 se rige por los siguientes principios rectores:
 
 1. **Calidad y Trazabilidad sobre Volumen:** Máximo 10–25 mensajes diarios por buzón. Cero automatización ciega.
-2. **Protección Absoluta de la Reputación de `respon.do`:** Si la salud DNS (SPF, DKIM, DMARC, MX), tasa de rebote o límites diarios se ven comprometidos, los envíos se bloquean de inmediato de forma atómica.
+2. **Protección Absoluta de la Reputación de `respon-do.com`:** Si la salud DNS (SPF, DKIM, DMARC, MX), tasa de rebote o límites diarios se ven comprometidos, los envíos se bloquean de inmediato de forma atómica.
 3. **Separación Estricta entre IA y Lógica Determinista:**
    - **IA (Gemini Flash / Pro):** Se encarga únicamente de tareas cognitivas (resumen de actividad comercial de la empresa prospectada, borrador de copy adaptado al hecho observable y clasificación semántica de respuestas).
    - **Lógica Determinista (TypeScript / SQL):** Gobierna el 100% de las decisiones operativas: cálculo de fechas de envío, ventana horaria en Chile (09:00 - 18:00 CLT), exclusión de fines de semana, jitter temporal, control de límites diarios, detención inmediata de secuencias ante respuestas humanas, flags de supresión y kill switches.
@@ -104,12 +104,12 @@ El sistema reside en PostgreSQL bajo la migración `041_outbound_engine.sql`, as
 ### 3.1 Tablas Principales
 
 1. **`outbound_domains`**:
-   - Registro de dominios corporativos autorizados (`respon.do`).
+   - Registro de dominios corporativos autorizados (`respon-do.com`).
    - Monitorea estado DNS (`spf_status`, `dkim_status`, `dmarc_status`, `mx_status`), límite agregado de mensajes por dominio (`domain_daily_limit`, default 40) y contadores diarios.
 
 2. **`outbound_senders`**:
    - Mailboxes individuales vinculados al dominio.
-   - Tipos: `founder` (Marcelo Valdés) y `outbound` (`contacto@respon.do`, `crecimiento@respon.do`).
+   - Tipos: `founder` (Marcelo Valdés) y `outbound` (dos direcciones pendientes de confirmación por el Owner).
    - Límites independientes: `new_leads_daily_limit` (paso 1) vs `total_messages_daily_limit` (todos los toques).
    - Control de calentamiento: `warmup_stage` y `health_status` (`healthy`, `warning`, `critical`, `paused`).
 
@@ -162,7 +162,7 @@ El sistema reside en PostgreSQL bajo la migración `041_outbound_engine.sql`, as
 - **Email:** `trim()`, minúsculas, eliminación de espacios invisibles.
 - **Dominio:** Extracción de hostname limpio sin protocolo (`https://`), sin `www.` y sin paths.
 - **Teléfonos Chilenos:** Normalización estricta a formato E.164 (`+569XXXXXXXX` o `569XXXXXXXX`), eliminando prefijos erróneos (`+56 9`, `09`, etc.).
-- **Matching Key de Empresas:** 
+- **Matching Key de Empresas:**
   - Limpieza de caracteres especiales y acentos.
   - Eliminación de sufijos societarios chilenos (`SPA`, `S.P.A.`, `LTDA`, `LIMITADA`, `EIRL`, `S.A.`).
   - Generación de slug limpio para agrupar contactos bajo la misma entidad corporativa sin realizar "merges destructivos" automáticos.
@@ -241,20 +241,20 @@ El módulo `lib/outbound/scheduler.ts` implementa la cadencia de 4 toques:
 
 ## 9. Topología de Buzones, Límites y Rotación
 
-### 9.1 Buzones del Dominio `respon.do`
+### 9.1 Buzones del Dominio `respon-do.com`
 
 | Mailbox | Tipo | Rol | Límite Leads Nuevos/Día | Límite Total Mensajes/Día | Cold Outreach |
 | :--- | :--- | :--- | :---: | :---: | :---: |
-| `marcelo@respon.do` | `founder` | Relaciones Warm, Referidos, Experimentos Piloto | 5 (inicial) | 15 (inicial) | **DESACTIVADO (`false`)** |
-| `contacto@respon.do` | `outbound` | Prospección Fría B2B (ICP 1 Distribuidoras, Salud) | 5 (Sem 1) → 10 (Sem 2) | 15 (Sem 1) → 25 (Sem 2) | **ACTIVADO (`true`)** |
-| `crecimiento@respon.do` | `outbound` | Prospección Fría B2B (ICP Inmobiliarias, Servicios) | 5 (Sem 1) → 10 (Sem 2) | 15 (Sem 1) → 25 (Sem 2) | **ACTIVADO (`true`)** |
+| `marcelo@respon-do.com` (existencia por confirmar) | `founder` | Relaciones Warm, Referidos, Experimentos Piloto | 5 (inicial) | 15 (inicial) | **DESACTIVADO (`false`)** |
+| `OUTBOUND_SENDER_1_EMAIL` (sin valor) | `outbound` | Prospección Fría B2B | 5 (Sem 1) → 10 (Sem 2) | 15 (Sem 1) → 25 (Sem 2) | **INACTIVO hasta verificación** |
+| `OUTBOUND_SENDER_2_EMAIL` (sin valor) | `outbound` | Prospección Fría B2B | 5 (Sem 1) → 10 (Sem 2) | 15 (Sem 1) → 25 (Sem 2) | **INACTIVO hasta verificación** |
 
-- **Límite Agregado del Dominio (`respon.do`):** 40 mensajes diarios en total entre todos los buzones. Si se alcanza, ningún buzón puede enviar más mensajes ese día.
-- **Continuidad de Remitente:** Si un contacto inicia su secuencia con `marcelo@respon.do` o `contacto@respon.do`, **todos los pasos siguientes (2, 3 y 4) se enviarán obligatoriamente desde el mismo remitente**.
+- **Límite Agregado del Dominio (`respon-do.com`):** 40 mensajes diarios en total entre todos los buzones. Si se alcanza, ningún buzón puede enviar más mensajes ese día.
+- **Continuidad de Remitente:** Si un contacto inicia su secuencia con un sender verificado, **todos los pasos siguientes (2, 3 y 4) se enviarán obligatoriamente desde el mismo remitente**.
 
 ---
 
-## 10. Salud y Autenticación DNS (`respon.do`)
+## 10. Salud y Autenticación DNS (`respon-do.com`)
 
 El módulo `lib/outbound/dnsHealth.ts` valida semánticamente la configuración de correo:
 
@@ -262,10 +262,10 @@ El módulo `lib/outbound/dnsHealth.ts` valida semánticamente la configuración 
    - Valida que exista un único registro TXT de SPF (RFC 7208 prohíbe múltiples registros).
    - Valida semánticamente la inclusión de Google Workspace (`include:_spf.google.com`).
    - Tolera inclusiones de otros proveedores legítimos sin generar falsos positivos.
-2. **DKIM (`_domainkey.respon.do`):**
+2. **DKIM (`_domainkey.respon-do.com`):**
    - Selector dinámico y configurable mediante variable de entorno `DKIM_SELECTOR` (default: `google`).
    - Verifica la presencia del tag `v=DKIM1; k=rsa; p=...`.
-3. **DMARC (`_dmarc.respon.do`):**
+3. **DMARC (`_dmarc.respon-do.com`):**
    - Comprueba la existencia del registro `v=DMARC1`.
    - Evalúa la política: `p=none` (alerta de monitoreo, recomendada solo para calentamiento inicial) vs `p=quarantine` o `p=reject` (estado óptimo).
 4. **MX:**
@@ -332,7 +332,7 @@ Inmediatamente antes de disparar un email, se evalúan 7 condiciones atómicas:
 4. Campaña vinculada se encuentra `activa === true`.
 5. El remitente (`OutboundSender`) tiene salud `healthy` y no está pausado.
 6. Límites diarios no excedidos (`new_leads_today < new_leads_daily_limit` y `sent_today < total_messages_daily_limit`).
-7. Límite diario del dominio `respon.do` no excedido (`sent_today < domain_daily_limit`).
+7. Límite diario del dominio `respon-do.com` no excedido (`sent_today < domain_daily_limit`).
 
 ### 14.2 Concurrencia y Recuperación de Fallos
 - **Adquisición Atómica de Lock:** Cada mensaje se bloquea en base de datos con `locked_at = now()`, `locked_by = workerId` y `lock_expires_at = now() + 5m`.
@@ -379,9 +379,9 @@ La interfaz de usuario en `respondo-hq/app/outbound/` provee control total sin d
 Para pasar el sistema de modo simulación a producción real, se debe ejecutar la siguiente secuencia ordenada:
 
 ### Fase 1: Pre-Requisitos de Infraestructura (Externos)
-1. Completar la configuración DNS en Cloudflare/Registrar para `respon.do` (SPF, DKIM, DMARC, MX).
-2. Crear los 2 buzones en Google Workspace (`contacto@respon.do` y `crecimiento@respon.do`).
-3. Autorizar las credenciales OAuth2 de cada buzón en Google Cloud Console.
+1. Mantener sin duplicados los registros DNS ya verificados para `respon-do.com` (SPF, DKIM, DMARC y MX de Google).
+2. Confirmar que `marcelo@respon-do.com` existe y definir las direcciones reales de los otros dos buzones en Google Workspace.
+3. Autorizar las credenciales OAuth2 individuales de cada buzón confirmado en Google Cloud Console.
 
 ### Fase 2: Verificación de Salud
 1. Consultar el endpoint `/api/outbound/health` o revisar el Dashboard HQ.

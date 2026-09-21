@@ -92,7 +92,7 @@ test("RAMP-UP GOVERNANCE 2: Solo una aprobación humana explícita permite la tr
       await promoverEtapaWarmupHumano({
         store,
         senderId: sender.id,
-        approvedBy: "marcelo@respon.do",
+        approvedBy: "marcelo@respon-do.com",
         newStage: 2,
         reason: "",
       });
@@ -105,7 +105,7 @@ test("RAMP-UP GOVERNANCE 2: Solo una aprobación humana explícita permite la tr
   const registro = await promoverEtapaWarmupHumano({
     store,
     senderId: sender.id,
-    approvedBy: "marcelo@respon.do",
+    approvedBy: "marcelo@respon-do.com",
     newStage: 2,
     reason: "Días 1-3 completados con 0 rebotes y 1 respuesta positiva",
     notes: "Avanzando a Stage 2 según cronograma seguro",
@@ -113,7 +113,7 @@ test("RAMP-UP GOVERNANCE 2: Solo una aprobación humana explícita permite la tr
 
   assert.equal(registro.previous_stage, 1);
   assert.equal(registro.new_stage, 2);
-  assert.equal(registro.approved_by, "marcelo@respon.do");
+  assert.equal(registro.approved_by, "marcelo@respon-do.com");
   assert.equal(registro.limites_aplicados.newLeadsLimit, 2);
   assert.equal(registro.limites_aplicados.totalMessagesLimit, 3);
 
@@ -127,7 +127,7 @@ test("RAMP-UP GOVERNANCE 2: Solo una aprobación humana explícita permite la tr
   const eventos = await store.listEvents({ tipo: "review_approved" });
   assert.equal(eventos.length, 1);
   assert.equal((eventos[0].metadata as any).subtipo, "rampup_stage_promoted");
-  assert.equal((eventos[0].metadata as any).approved_by, "marcelo@respon.do");
+  assert.equal((eventos[0].metadata as any).approved_by, "marcelo@respon-do.com");
 });
 
 test("RAMP-UP GOVERNANCE 3: Sender en estado 'paused' NO puede ser promovido aunque un humano lo intente", async () => {
@@ -148,7 +148,7 @@ test("RAMP-UP GOVERNANCE 3: Sender en estado 'paused' NO puede ser promovido aun
       await promoverEtapaWarmupHumano({
         store,
         senderId: sender.id,
-        approvedBy: "marcelo@respon.do",
+        approvedBy: "marcelo@respon-do.com",
         newStage: 2,
         reason: "Intentando forzar aumento de volumen",
       });
@@ -181,7 +181,7 @@ test("RAMP-UP GOVERNANCE 4: Sender en warning o critical rechaza la promoción d
       await promoverEtapaWarmupHumano({
         store,
         senderId: sender.id,
-        approvedBy: "marcelo@respon.do",
+        approvedBy: "marcelo@respon-do.com",
         newStage: 3,
         reason: "Intentar subir a Stage 3",
       });
@@ -200,7 +200,7 @@ test("RAMP-UP GOVERNANCE 4: Sender en warning o critical rechaza la promoción d
       await promoverEtapaWarmupHumano({
         store,
         senderId: sender.id,
-        approvedBy: "marcelo@respon.do",
+        approvedBy: "marcelo@respon-do.com",
         newStage: 3,
         reason: "Intentar subir a Stage 3",
       });
@@ -230,7 +230,7 @@ test("RAMP-UP GOVERNANCE 5: Subir capacidad por sobre Stage 5 requiere aprobaci�
       await promoverEtapaWarmupHumano({
         store,
         senderId: sender.id,
-        approvedBy: "marcelo@respon.do",
+        approvedBy: "marcelo@respon-do.com",
         newStage: 6,
         reason: "Queremos más volumen comercial",
         reinforcedApproval: false,
@@ -244,7 +244,7 @@ test("RAMP-UP GOVERNANCE 5: Subir capacidad por sobre Stage 5 requiere aprobaci�
   const registroReforzado = await promoverEtapaWarmupHumano({
     store,
     senderId: sender.id,
-    approvedBy: "marcelo@respon.do",
+    approvedBy: "marcelo@respon-do.com",
     newStage: 6,
     reason: "Aprobación técnica de Marcelo tras 6 semanas de volumen estable y reputación impecable",
     notes: "Superando tope V1 de forma controlada a 20 msgs/día",

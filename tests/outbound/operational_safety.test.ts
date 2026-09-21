@@ -34,7 +34,7 @@ test("REPLIES: el mismo gmail_message_id solo produce efectos una vez", async ()
     verificacion_detalle: null, secuencia_pausada: false, secuencia_pausada_motivo: null, hold_hasta: null,
   });
   const message = {
-    id: "gmail-unique-1", threadId: "thread-1", from: "Ana <ana@acme.cl>", to: "ventas@respon.do",
+    id: "gmail-unique-1", threadId: "thread-1", from: "Ana <ana@acme.cl>", to: "sender@respon-do.test",
     subject: "Re: Hola", date: new Date().toISOString(), snippet: "no", headers: {},
   };
   assert.equal((await procesarMensajeEntrante(message, store)).procesado, true);
@@ -52,4 +52,18 @@ test("SQL 045: pausa seeds, habilita RLS e idempotencia durable", () => {
   assert.match(sql, /outbound_replies_gmail_message_id_uidx/i);
   assert.match(sql, /active = false/i);
   assert.match(sql, /'simulated'/i);
+});
+
+test("SQL 046: corrige el dominio hacia adelante sin inventar dos inboxes", () => {
+  const sql = fs.readFileSync(
+    path.join(process.cwd(), "supabase/migrations/046_outbound_domain_correction.sql"),
+    "utf8",
+  );
+  assert.match(sql, /respon-do\.com/i);
+  assert.match(sql, /marcelo@respon-do\.com/i);
+  assert.match(sql, /delete from public\.outbound_senders/i);
+  assert.match(sql, /contacto@respon\.do/i);
+  assert.match(sql, /crecimiento@respon\.do/i);
+  assert.doesNotMatch(sql, /contacto@respon-do\.com/i);
+  assert.doesNotMatch(sql, /crecimiento@respon-do\.com/i);
 });

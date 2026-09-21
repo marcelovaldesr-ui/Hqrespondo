@@ -11,7 +11,7 @@
  * 5. Dos conexiones PostgreSQL REALES compitiendo concurrentemente (Row-level MVCC lock)
  * 6. Recuperación de ítems huérfanos por crash (lock expiration)
  * 7. Daily ledger con timezone nativo 'America/Santiago' y timestamptz
- * 8. Límite agregado del dominio respon.do entre múltiples senders con JOIN
+ * 8. Límite agregado del dominio respon-do.com entre múltiples senders con JOIN
  * 9. Persistencia de approved_copy_hash (SHA-256)
  * 10. Invalidación automática de aprobación ante edición de copy
  * 11. Cancelación masiva y atómica de secuencias ante reply
@@ -70,16 +70,36 @@ test.before(async () => {
   console.log(`[REAL POSTGRESQL] Conectado: ${versionRes.rows[0].version}`);
   console.log(`[REAL POSTGRESQL] Timezone activo: ${versionRes.rows[0].tz}`);
 
-  // Aplicar migraciones DDL 041 y 042
+  // Aplicar la cadena productiva completa, incluida la corrección forward-only.
   const sql041 = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/041_outbound_engine.sql"), "utf8");
   const sql042 = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/042_outbound_hardening.sql"), "utf8");
+  const sql045 = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/045_outbound_operational_safety.sql"), "utf8");
+  const sql046 = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/046_outbound_domain_correction.sql"), "utf8");
 
   await pool.query(sql041);
   await pool.query(sql042);
+  await pool.query(`
+    do $$ begin
+      if not exists (select 1 from pg_roles where rolname = 'anon') then create role anon; end if;
+      if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated; end if;
+      if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role; end if;
+    end $$;
+  `);
+  await pool.query(sql045);
+  await pool.query(sql046);
 
   // Semilla para pruebas
-  const domRes = await pool.query("SELECT id FROM outbound_domains WHERE domain = 'respon.do'");
+  const domRes = await pool.query("SELECT id FROM outbound_domains WHERE domain = 'respon-do.com'");
   const domainId = domRes.rows[0].id;
+
+  await pool.query(`
+    INSERT INTO outbound_senders (
+      name, email, domain_id, type, active, cold_outreach_enabled,
+      new_leads_daily_limit, total_messages_daily_limit, warmup_stage
+    ) VALUES
+      ('Test Sender A', 'sender-a@respon-do.test', $1, 'outbound', true, true, 5, 15, 1),
+      ('Test Sender B', 'sender-b@respon-do.test', $1, 'outbound', true, true, 5, 15, 1)
+  `, [domainId]);
 
   const srcRes = await pool.query(`
     INSERT INTO outbound_lead_sources (tipo_origen, nombre, referencia, justificacion)
@@ -95,7 +115,7 @@ test.before(async () => {
   `);
   const companyId = compRes.rows[0].id;
 
-  const sendersRes = await pool.query("SELECT id, email FROM outbound_senders ORDER BY email");
+  const sendersRes = await pool.query("SELECT id, email FROM outbound_senders WHERE email LIKE '%@respon-do.test' ORDER BY email");
   const senderAId = sendersRes.rows[0].id;
   const senderBId = sendersRes.rows[1].id;
 
@@ -370,7 +390,7 @@ test("REAL POSTGRESQL 7: daily ledger con timezone America/Santiago y timestampt
   assert.ok(parseInt(ledgerRes.rows[0].new_leads, 10) >= 1, "Debe contar los nuevos leads de hoy");
 });
 
-test("REAL POSTGRESQL 8: domain limits (agregación del dominio respon.do entre senders)", async () => {
+test("REAL POSTGRESQL 8: domain limits (agregación del dominio respon-do.com entre senders)", async () => {
   const cRes = await pool.query(`
     INSERT INTO outbound_contacts (company_id, source_id, nombre, email, email_normalizado)
     VALUES ($1, $2, 'Domain Lead', 'dom_lead@acme.cl', 'dom_lead@acme.cl')
@@ -421,12 +441,12 @@ test("REAL POSTGRESQL 9: approved_copy_hash (persistencia y validación criptogr
       campaign_id, contact_id, company_id, step_number, subject, body_text,
       estado, scheduled_for, idempotency_key, approved_by, approved_at, approved_copy_hash
     )
-    VALUES ($1, $2, $3, 1, $4, $5, 'approved', NOW(), $6, 'marcelo@respon.do', NOW(), $7)
+    VALUES ($1, $2, $3, 1, $4, $5, 'approved', NOW(), $6, 'marcelo@respon-do.com', NOW(), $7)
     RETURNING id, approved_copy_hash, approved_by;
   `, [ctx.campaignId, contactId, ctx.companyId, subject, body, `hash_test_${Date.now()}`, hash]);
 
   assert.equal(outboxRes.rows[0].approved_copy_hash, hash);
-  assert.equal(outboxRes.rows[0].approved_by, "marcelo@respon.do");
+  assert.equal(outboxRes.rows[0].approved_by, "marcelo@respon-do.com");
   assert.equal(hash.length, 64, "Hash SHA-256 debe ser de 64 caracteres en PostgreSQL");
 });
 
@@ -447,7 +467,7 @@ test("REAL POSTGRESQL 10: edición post-aprobación invalida la aprobación en P
       campaign_id, contact_id, company_id, step_number, subject, body_text,
       estado, scheduled_for, idempotency_key, approved_by, approved_at, approved_copy_hash
     )
-    VALUES ($1, $2, $3, 1, $4, $5, 'approved', NOW(), $6, 'marcelo@respon.do', NOW(), $7)
+    VALUES ($1, $2, $3, 1, $4, $5, 'approved', NOW(), $6, 'marcelo@respon-do.com', NOW(), $7)
     RETURNING id;
   `, [ctx.campaignId, contactId, ctx.companyId, subjectOriginal, bodyOriginal, `hash_edit_${Date.now()}`, hashOriginal]);
   const outboxId = outboxRes.rows[0].id;

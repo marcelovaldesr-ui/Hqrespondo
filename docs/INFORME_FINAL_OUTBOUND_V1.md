@@ -1,21 +1,21 @@
 # INFORME FINAL DE IMPLEMENTACIÓN, QA Y VERIFICACIÓN: OUTBOUND V1 (RESPONDO)
 
-> **Documento Oficial de Entrega de Ingeniería, Seguridad, Entregabilidad y Gobernanza**  
-> **Fecha de verificación más reciente:** 21 de Septiembre de 2026  
-> **Dominio Corporativo:** `respon.do`  
-> **Estado Operativo del Sistema:** `OUTBOUND_ENABLED=false` | `DRY_RUN=true` | `REVIEW_MODE=true`  
-> **Resultado de Pruebas:** 144 de 144 aprobadas en la suite del repositorio (120 unitarias + 12 PG-Mem + 12 PostgreSQL real), más `tsc` y build de Next.js  
+> **Documento Oficial de Entrega de Ingeniería, Seguridad, Entregabilidad y Gobernanza**
+> **Fecha de verificación más reciente:** 21 de Septiembre de 2026
+> **Dominio Corporativo:** `respon-do.com`
+> **Estado Operativo del Sistema:** `OUTBOUND_ENABLED=false` | `DRY_RUN=true` | `REVIEW_MODE=true`
+> **Resultado de Pruebas:** 145 de 145 aprobadas en la suite del repositorio (121 unitarias + 12 PG-Mem + 12 PostgreSQL real), más `tsc` y build de Next.js
 > **Emails Reales Emitidos:** 0 (Compuertas de seguridad 100% cerradas)
 
 > [!WARNING]
-> **Estado operacional verificado:** código desplegable, infraestructura bloqueada. En producción no existen todavía las tablas Outbound 041/042/045; `respon.do` responde NXDOMAIN; no se confirmaron tres buzones reales ni sus OAuth individuales; y faltan las variables de Pub/Sub y los switches Outbound en Vercel. Los correos de las migraciones 041 son seeds históricos, no prueba de que existan buzones. No ejecutar canario ni activar envíos hasta completar el checklist de Owner.
+> **Estado operacional verificado:** código desplegable e infraestructura parcial. El DNS público de `respon-do.com` publica NS, MX de Google, un SPF, DKIM `google` y DMARC `p=none`. En producción todavía faltan las tablas Outbound 041/042/045/046, la confirmación de los tres buzones y sus OAuth individuales, y las variables de Pub/Sub y los switches Outbound en Vercel. No ejecutar canario ni activar envíos hasta completar el checklist de Owner.
 
 ## Cierre operacional verificado — 21-09-2026
 
 - **HECHO:** store de producción en Supabase; endpoints de máquina separados del Basic Auth de HQ; acciones humanas auditadas con `x-hq-user`; OIDC fail-closed; procesamiento Pub/Sub por IDs de History; idempotencia durable de respuestas; dry-run sin métricas ni follow-ups; panel dinámico por buzón; migración 045 con RLS y seeds pausados.
-- **FALTA:** aplicar 041, 042 y 045; restaurar/registrar DNS público; confirmar o crear las tres casillas; autorizar OAuth individual; crear topic/subscription Pub/Sub; configurar variables de Vercel; importar y activar workflows n8n; ejecutar canario interno.
-- **OWNER ACTION:** ejecutar primero `supabase/outbound_preflight_readonly.sql`; aplicar 041 → 042 → 045; confirmar las direcciones reales y cargar sus refresh tokens; publicar MX/SPF/DKIM/DMARC; configurar `PUBSUB_TOPIC_NAME`, `PUBSUB_AUDIENCE` y `PUBSUB_SERVICE_ACCOUNT_EMAIL`; mantener `OUTBOUND_ENABLED=false`, `DRY_RUN=true`, `REVIEW_MODE=true` hasta el canario interno aprobado.
-- **BLOCKER:** DNS público de `respon.do` en NXDOMAIN y esquema Outbound ausente en Supabase. Sin resolver ambos, OAuth, Gmail Watch, Pub/Sub y canario no son verificables.
+- **FALTA:** aplicar 041, 042, 045 y 046; confirmar que `marcelo@respon-do.com` existe y definir las otras dos direcciones reales; autorizar OAuth individual; crear topic/subscription Pub/Sub; configurar variables de Vercel; importar y activar workflows n8n; ejecutar canario interno.
+- **OWNER ACTION:** ejecutar primero `supabase/outbound_preflight_readonly.sql`; aplicar 041 → 042 → 045 → 046; confirmar las tres direcciones reales y cargar sus refresh tokens; configurar `PUBSUB_TOPIC_NAME`, `PUBSUB_AUDIENCE` y `PUBSUB_SERVICE_ACCOUNT_EMAIL`; mantener `OUTBOUND_ENABLED=false`, `DRY_RUN=true`, `REVIEW_MODE=true` hasta el canario interno aprobado.
+- **BLOCKER:** el DNS ya está operativo. Bloquean el canario el esquema Outbound ausente en Supabase, dos inboxes sin definir, la existencia del inbox del fundador sin confirmar y OAuth/Pub/Sub sin configurar.
 
 ---
 
@@ -24,7 +24,7 @@
 1. [SECCIÓN A: Matriz Completa de Endurecimiento, Seguridad y Gobernanza](#sección-a-matriz-completa-de-endurecimiento-seguridad-y-gobernanza)
 2. [SECCIÓN B: Arquitectura Final del Sistema](#sección-b-arquitectura-final-del-sistema)
 3. [SECCIÓN C: Inventario de Código, Migraciones y Workflows](#sección-c-inventario-de-código-migraciones-y-workflows)
-4. [SECCIÓN D: Migraciones de Base de Datos (041 y 042)](#sección-d-migraciones-de-base-de-datos-041-y-042)
+4. [SECCIÓN D: Migraciones de Base de Datos (041, 042, 045 y 046)](#sección-d-migraciones-de-base-de-datos-041-042-045-y-046)
 5. [SECCIÓN E: Suite de 8 Workflows en n8n](#sección-e-suite-de-8-workflows-en-n8n)
 6. [SECCIÓN F: Resultados Reales de Tests Automatizados (3 Capas: Unit, PG-Mem y Real PostgreSQL)](#sección-f-resultados-reales-de-tests-automatizados-3-capas-unit-pg-mem-y-real-postgresql)
 7. [SECCIÓN G: Traza Completa del Scheduler y Simulación con 10 Leads](#sección-g-traza-completa-del-scheduler-y-simulación-con-10-leads)
@@ -44,8 +44,8 @@ Durante el desarrollo y las sucesivas pasadas de hardening, verificación y audi
 | **1** | **Race Condition en Respuestas:** Polling cada 10m no evitaba que un follow-up saliera si el prospecto respondía segundos antes del despacho. | Integración híbrida: **Google Cloud Pub/Sub + Gmail Watch** (notificación en tiempo real) + **Live Fresh Check pre-envío** (`verificarFrescuraHiloEnGmail`) ejecutado milisegundos antes del despacho real. Si hay respuesta, se cancela la cola en el acto. | `lib/outbound/gmail.ts`<br>`lib/outbound/guardrails.ts`<br>`app/api/outbound/pubsub/route.ts` |
 | **2** | **Renovación de Gmail Watch (Vence a los 7 días):** Riesgo de desconexión de notificaciones push al expirar el watch de Google. | Sistema de renovación preventiva diaria (`renovarWatchGmailParaBuzon`), persistencia de `expiration` y `last_watch_renewal_at` en `outbound_mailbox_watches`, alertas de salud (<48h warning, <24h critical), endpoint `/api/outbound/watch/renew` y cron n8n a las 04:00 CLT. | `lib/outbound/gmail.ts`<br>`app/api/outbound/watch/renew/route.ts`<br>`n8n/outbound/workflow_h_watch_renewal.json` |
 | **3** | **Webhooks sin Autenticación Fuerte:** Webhooks vulnerables a spoofing o ataques de replay. | Validación estricta de tokens **Google Cloud OIDC JWT** emitidos por la Service Account de Google, verificando emisor (`accounts.google.com`), audiencia (`PUBSUB_AUDIENCE`), service account (`PUBSUB_SERVICE_ACCOUNT_EMAIL`), `email_verified=true`, expiración y firma contra certificados públicos de Google (`/oauth2/v3/certs`). | `lib/outbound/auth.ts`<br>`app/api/outbound/pubsub/route.ts` |
-| **4** | **Instrucciones MX Desactualizadas:** Uso del esquema legacy de 5 registros ASPMX. | Estandarización en el estándar moderno de Google Workspace: `Host: @`, `Prioridad: 1`, `Valor: smtp.google.com`. Soporte defensivo para registros legacy `aspmx.l.google.com` en `evaluarMx`. | `lib/outbound/dnsHealth.ts` |
-| **5** | **Política DMARC Inicial Peligrosa:** Publicar `p=quarantine` o `p=reject` directamente podía generar falsos positivos y pérdida de correos. | Prescripción obligatoria de `p=none` para la fase de staging / primera semana de ramp-up (`v=DMARC1; p=none; rua=mailto:dmarc-reports@respon.do; adkim=r; aspf=r`), monitoreando reportes agregados antes de endurecer a `p=quarantine`. | `lib/outbound/dnsHealth.ts` |
+| **4** | **Instrucciones MX Desactualizadas:** Uso del esquema legacy de 5 registros ASPMX. | Soporte para el MX único de Google Workspace (`smtp.google.com`) y para registros legacy `aspmx.l.google.com` en `evaluarMx`. La prioridad publicada actualmente es 10 y no requiere duplicar el registro. | `lib/outbound/dnsHealth.ts` |
+| **5** | **Política DMARC Inicial Peligrosa:** Publicar `p=quarantine` o `p=reject` directamente podía generar falsos positivos y pérdida de correos. | Prescripción obligatoria de `p=none` para la fase de staging / primera semana de ramp-up (`v=DMARC1; p=none; rua=mailto:dmarc-reports@respon-do.com; adkim=r; aspf=r`), monitoreando reportes agregados antes de endurecer a `p=quarantine`. | `lib/outbound/dnsHealth.ts` |
 | **6** | **Inconsistencia en Delays de Secuencia:** El scheduler sumaba días acumulados a fechas relativas, distorsionando la cadencia. | Implementación de `calcularDelayRelativoPaso`: Paso 1->2 (+4d calendario), Paso 2->3 (+7d calendario, D11-D4), Paso 3->4 (+10d calendario, D21-D11). Ajuste automático al lunes hábil a las 09:00 CLT ante caída en fin de semana. | `lib/outbound/scheduler.ts`<br>`lib/outbound/dispatcher.ts` |
 | **7** | **Identidades Ficticias Inventadas:** Nombres como "Felipe Muñoz" o "Sofía Lagos" inventados en el código base. | Eliminación total de identidades inventadas. Uso de buzones descriptivos (`"Buzón Outbound 1"`, `"Buzón Outbound 2"`) y configurables mediante `OUTBOUND_SENDER_1_EMAIL` y `OUTBOUND_SENDER_2_EMAIL`. Marcelo permanece como `founder` con `cold_outreach_enabled = false` por defecto (buzón del fundador, NO bot de spam). | `lib/outbound/senders.ts` |
 | **8** | **Auto-Incremento Peligroso de Ramp-Up:** Riesgo de que rutinas automáticas aumenten volumen sin supervisión. | **Prohibición estricta de auto-incremento.** El sistema solo emite alertas/recomendaciones o pausa preventivamente. Pasar de Stage N a N+1 requiere acción humana explícita con `approved_by`, `reason` y registro inmutable (`promoverEtapaWarmupHumano`). Subir sobre Stage 5 exige aprobación humana reforzada. | `lib/outbound/senders.ts`<br>`tests/outbound/rampup_governance.test.ts` |
@@ -141,13 +141,13 @@ flowchart TD
 
 ---
 
-## SECCIÓN D: Migraciones de Base de Datos (041 y 042)
+## SECCIÓN D: Migraciones de Base de Datos (041, 042, 045 y 046)
 
 Ejecutables en el editor SQL de Supabase de manera idempotente:
 
-### 1. [`041_outbound_engine.sql`](file:///c:/Users/marce/Claude/Projects/ChatBot%20Ventas/respondo-hq/supabase/migrations/041_outbound_engine.sql)
+### 1. `041_outbound_engine.sql`
 Define las tablas maestras del motor:
-- `outbound_domains`: Registro de dominios corporativos (`respon.do`), límites y estado DNS.
+- `outbound_domains`: Registro de dominios corporativos (`respon-do.com`), límites y estado DNS.
 - `outbound_senders`: Casillas de envío, tipo (`founder` / `outbound`), cuotas y `cold_outreach_enabled`.
 - `outbound_lead_sources`: Procedencia de prospectos y base legal (Ley 21.719).
 - `outbound_companies`: Empresas con `matching_key` no destructivo.
@@ -177,6 +177,12 @@ Endurecimiento de seguridad y gobernanza:
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
   );
   ```
+
+### 3. `045_outbound_operational_safety.sql`
+Activa RLS, restringe acceso a `service_role`, completa los estados de outbox e inhabilita los seeds históricos antes de cualquier operación real.
+
+### 4. `046_outbound_domain_correction.sql`
+Corrige el dominio histórico hacia `respon-do.com`, deja al fundador pausado hasta verificar su inbox y elimina solo los dos placeholders sin referencias. Si detecta uso operativo de esos placeholders, aborta toda la transacción para exigir revisión manual.
 
 ---
 
@@ -245,7 +251,7 @@ ESTADO DE AUDITORÍA:                 100% PASS (CERO REGRESIONES)
   5. `REAL POSTGRESQL 5: dos conexiones reales compitiendo concurrentemente (Race Condition)`: Dos clientes PostgreSQL compiten simultáneamente con `Promise.all()`. El motor MVCC de PostgreSQL otorga la fila a exactamente un worker (1 fila) y rechaza al otro (0 filas). (PASS)
   6. `REAL POSTGRESQL 6: lock expiration / crash recovery`: Ítems huérfanos con `lock_expires_at <= NOW()` son recuperados por un worker vivo. (PASS)
   7. `REAL POSTGRESQL 7: daily ledger con timezone America/Santiago y timestamptz`: Computa envíos reales truncando desde la medianoche de Santiago con `date_trunc('day', NOW() AT TIME ZONE 'America/Santiago')`. (PASS)
-  8. `REAL POSTGRESQL 8: domain limits (agregación del dominio respon.do entre senders)`: JOIN entre `outbound_outbox` y `outbound_senders` totaliza el volumen real de todo el dominio. (PASS)
+  8. `REAL POSTGRESQL 8: domain limits (agregación del dominio respon-do.com entre senders)`: JOIN entre `outbound_outbox` y `outbound_senders` totaliza el volumen real de todo el dominio. (PASS)
   9. `REAL POSTGRESQL 9: approved_copy_hash`: Persistencia de hash SHA-256 de 64 caracteres en base de datos. (PASS)
   10. `REAL POSTGRESQL 10: edición post-aprobación invalida la aprobación en PostgreSQL`: Cualquier alteración de asunto o cuerpo degrada a `pending_review`. (PASS)
   11. `REAL POSTGRESQL 11: reply cancellation`: Sentencia atómica `UPDATE` cancela los 3 pasos programados en una sola transacción. (PASS)
@@ -277,7 +283,7 @@ La secuencia base `SECUENCIA_DEFAULT` define los siguientes pasos:
 | **9** | Grupo Isan | Rodrigo Infante | `contacto@grupoisan.cl` | Mar 15-09 09:36 | **Lun 21-09 09:20** | **Lun 28-09 09:20** | **Jue 08-10 09:20** | Encolado Dry Run |
 | **10** | Inmob. San Joaquín | — | — | *Bloqueado* | — | — | — | Research < 50 |
 
-*Nota explicativa del rolling:*  
+*Nota explicativa del rolling:*
 - Martes 15-09 + 4 días calendario = Sábado 19-09. El motor detecta día inhábil y rueda a **Lunes 21-09 a las 09:00 CLT (+ 20 min jitter)**.
 - Lunes 21-09 + 7 días calendario = **Lunes 28-09 a las 09:00 CLT (+ 20 min jitter)**.
 - Lunes 28-09 + 10 días calendario = **Jueves 08-10 a las 09:00 CLT (+ 20 min jitter)**.
@@ -290,16 +296,16 @@ La secuencia base `SECUENCIA_DEFAULT` define los siguientes pasos:
 En [`lib/outbound/senders.ts`](file:///c:/Users/marce/Claude/Projects/ChatBot%20Ventas/respondo-hq/lib/outbound/senders.ts#L43):
 - **Marcelo Valdés (`founder`):**
   - Nombre: `Marcelo Valdés` (o `process.env.OUTBOUND_FOUNDER_NAME`).
-  - Email: `marcelo@respon.do` (o `process.env.OUTBOUND_FOUNDER_EMAIL`).
+  - Email: `marcelo@respon-do.com` (o `process.env.OUTBOUND_FOUNDER_EMAIL`).
   - **`cold_outreach_enabled = false` (por defecto y por regla estricta):** Buzón personal de reputación del fundador; excluido de campañas frías masivas, reservado únicamente para campañas WARM o envíos directos autorizados.
 - **Buzón Outbound 1 (`outbound`):**
   - Nombre por defecto: `"Buzón Outbound 1"` (configurable vía `OUTBOUND_SENDER_1_NAME`).
-  - Email por defecto: `outbound1@respon.do` (configurable vía `OUTBOUND_SENDER_1_EMAIL`).
-  - `cold_outreach_enabled = true`.
+  - Email: sin valor por defecto; el Owner debe definir `OUTBOUND_SENDER_1_EMAIL` con un buzón real verificado.
+  - Permanece inactivo hasta confirmar identidad, OAuth y Gmail Watch.
 - **Buzón Outbound 2 (`outbound`):**
   - Nombre por defecto: `"Buzón Outbound 2"` (configurable vía `OUTBOUND_SENDER_2_NAME`).
-  - Email por defecto: `outbound2@respon.do` (configurable vía `OUTBOUND_SENDER_2_EMAIL`).
-  - `cold_outreach_enabled = true`.
+  - Email: sin valor por defecto; el Owner debe definir `OUTBOUND_SENDER_2_EMAIL` con un buzón real verificado.
+  - Permanece inactivo hasta confirmar identidad, OAuth y Gmail Watch.
 
 ### 2. Tabla de Etapas de Calentamiento Conservador
 
@@ -336,28 +342,15 @@ En [`lib/outbound/senders.ts`](file:///c:/Users/marce/Claude/Projects/ChatBot%20
 > [!NOTE]
 > Estas son las únicas acciones externas que requieren intervención manual en registradores y consolas de terceros.
 
-### 1. Configuración de Registros DNS en el Proveedor de `respon.do`
+### 1. Registros DNS verificados para `respon-do.com`
 ```text
-[ ] SPF (Registro TXT en raíz):
-    Host:  @ (o respon.do)
-    Tipo:  TXT
-    Valor: v=spf1 include:_spf.google.com ~all
+[x] NS: sandra.ns.cloudflare.com y vick.ns.cloudflare.com
+[x] SPF: v=spf1 include:_spf.google.com ~all (un solo registro SPF)
+[x] DKIM: selector google con clave RSA publicada
+[x] DMARC: v=DMARC1; p=none; rua=mailto:dmarc@respon-do.com; fo=1
+[x] MX: smtp.google.com, prioridad 10
 
-[ ] DKIM (Registro TXT para Google Workspace):
-    Host:  google._domainkey.respon.do
-    Tipo:  TXT
-    Valor: (Obtener clave de 2048 bits desde Google Admin -> Apps -> Google Workspace -> Gmail -> Authenticate email)
-
-[ ] DMARC (Registro TXT en _dmarc - Staging Inicial):
-    Host:  _dmarc.respon.do
-    Tipo:  TXT
-    Valor: v=DMARC1; p=none; rua=mailto:dmarc-reports@respon.do; adkim=r; aspf=r
-
-[ ] MX (Estándar Moderno de Google Workspace - 1 Registro):
-    Host:      @ (o respon.do)
-    Tipo:      MX
-    Prioridad: 1
-    Valor:     smtp.google.com
+No agregar registros duplicados ni reemplazar los existentes durante esta corrección.
 ```
 
 ### 2. Google Cloud Console & OAuth2
@@ -368,9 +361,9 @@ En [`lib/outbound/senders.ts`](file:///c:/Users/marce/Claude/Projects/ChatBot%20
     - https://www.googleapis.com/auth/gmail.readonly
 [ ] Crear Credenciales OAuth 2.0 Client ID (Web Application).
 [ ] Generar los Refresh Tokens individuales por buzón:
-    - GMAIL_REFRESH_TOKEN_MARCELO   (marcelo@respon.do - founder, WARM only)
-    - GMAIL_REFRESH_TOKEN_OUTBOUND1 (outbound1@respon.do - SDR Outbound 1)
-    - GMAIL_REFRESH_TOKEN_OUTBOUND2 (outbound2@respon.do - SDR Outbound 2)
+    - GMAIL_REFRESH_TOKEN_MARCELO   (marcelo@respon-do.com - founder, WARM only)
+    - GMAIL_REFRESH_TOKEN_OUTBOUND1 (dirección pendiente de confirmación)
+    - GMAIL_REFRESH_TOKEN_OUTBOUND2 (dirección pendiente de confirmación)
 ```
 
 ### 3. Google Cloud Pub/Sub
@@ -380,9 +373,9 @@ En [`lib/outbound/senders.ts`](file:///c:/Users/marce/Claude/Projects/ChatBot%20
     serviceAccount:gmail-api-push@system.gserviceaccount.com -> Roles/Pub/Sub Publisher
 [ ] Crear Service Account de Invocación (ej. pubsub-invoker@respondo.iam.gserviceaccount.com).
 [ ] Crear Suscripción Push hacia:
-    URL:           https://<app.respon.do>/api/outbound/pubsub
+    URL:           https://<app.respon-do.com>/api/outbound/pubsub
     Autenticación: Habilitar autenticación OIDC con la Service Account creada.
-    Audience:      https://<app.respon.do>/api/outbound/pubsub
+    Audience:      https://<app.respon-do.com>/api/outbound/pubsub
 ```
 
 ### 4. Supabase (Base de Datos de Producción)
@@ -390,6 +383,8 @@ En [`lib/outbound/senders.ts`](file:///c:/Users/marce/Claude/Projects/ChatBot%20
 [ ] Ejecutar en el SQL Editor de Supabase:
     - supabase/migrations/041_outbound_engine.sql
     - supabase/migrations/042_outbound_hardening.sql
+    - supabase/migrations/045_outbound_operational_safety.sql
+    - supabase/migrations/046_outbound_domain_correction.sql
 ```
 
 ### 5. Instancia de n8n
@@ -438,12 +433,12 @@ RUNBOOK: CANARIO TÉCNICO EN 3 BUZONES INTERNOS (PROTOCOLO OBLIGATORIO)
    [ ] 2. ENCABEZADOS DE AUTENTICACIÓN (RAW HEADERS):
           Abrir "Mostrar original" / "Ver código fuente" en los 3 clientes de correo:
           - SPF:   PASS (con include:_spf.google.com)
-          - DKIM:  PASS (con d=respon.do y selector configurado)
+          - DKIM:  PASS (con d=respon-do.com y selector configurado)
           - DMARC: PASS (con p=none)
 
    [ ] 3. THREADING RFC 2822:
           Verificar presencia de cabeceras RFC 2822 estándar:
-          - Message-ID formateado (<...@respon.do>)
+          - Message-ID formateado (<...@respon-do.com>)
           - In-Reply-To y References presentes y consistentes en respuestas
 
    [ ] 4. RESPUESTA REAL DESDE BUZÓN DE PRUEBA:

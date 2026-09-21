@@ -83,7 +83,7 @@ export type TipoBounce =
   | "policy_rejection"
   | "unknown";
 
-/** Entidad Dominio Corporativo (ej. respon.do) */
+/** Entidad Dominio Corporativo (respon-do.com) */
 export interface OutboundDomain {
   id: string;
   domain: string;

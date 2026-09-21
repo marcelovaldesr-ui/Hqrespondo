@@ -12,6 +12,7 @@ import { SECUENCIA_DEFAULT, calcularFechaProgramada } from "./scheduler";
 import { despacharColaOutbound } from "./dispatcher";
 import { chequearSaludDnsDominio } from "./dnsHealth";
 import { LocalEmailVerifier } from "./verification";
+import { OUTBOUND_DOMAIN } from "./config";
 import type { Company, Contact, LeadSource, Campaign, OutboxItem } from "./types";
 
 export interface LeadEntrada {
@@ -207,8 +208,8 @@ export async function ejecutarExperimento1() {
   process.env.DRY_RUN = "true";
 
   // 1. Verificación DNS inicial
-  console.log("1. AUDITORÍA DE SALUD DNS (respon.do):");
-  const dnsReport = await chequearSaludDnsDominio({ dominio: "respon.do", dkimSelector: "google" });
+  console.log(`1. AUDITORÍA DE SALUD DNS (${OUTBOUND_DOMAIN}):`);
+  const dnsReport = await chequearSaludDnsDominio({ dominio: OUTBOUND_DOMAIN, dkimSelector: "google" });
   console.log(`   - SPF:   ${dnsReport.spf.estado.toUpperCase()} (${dnsReport.spf.registroEncontrado ?? "Sin registro"}) - ${dnsReport.spf.mensaje}`);
   console.log(`   - DKIM:  ${dnsReport.dkim.estado.toUpperCase()} (Selector: google, Registro: ${dnsReport.dkim.registroEncontrado ?? "No encontrado"}) - ${dnsReport.dkim.mensaje}`);
   console.log(`   - DMARC: ${dnsReport.dmarc.estado.toUpperCase()} (Registro: ${dnsReport.dmarc.registroEncontrado ?? "No encontrado"}) - ${dnsReport.dmarc.mensaje}`);
@@ -474,7 +475,7 @@ export async function ejecutarExperimento1() {
     console.log(`-------------------------------------------------------------------------------`);
     console.log(`LEAD #${r.lead.orden}: ${r.lead.empresa} (${r.lead.rubro})`);
     console.log(`DESTINATARIO: ${r.lead.contacto} <${r.lead.email}> | ESTADO MX: ${r.verifRes.estado.toUpperCase()}`);
-    console.log(`BUZÓN ASIGNADO: Marcelo Valdés <marcelo@respon.do> (Tipo Campaña: warm)`);
+    console.log(`BUZÓN ASIGNADO: Marcelo Valdés <marcelo@${OUTBOUND_DOMAIN}> (Tipo Campaña: warm)`);
     console.log(`FECHA TOQUE 1: ${r.scheduledFor.toLocaleString("es-CL", { timeZone: "America/Santiago" })} CLT`);
     console.log(`[PASO 1] Asunto: ${r.copys.paso1.asunto}`);
     console.log(`Cuerpo:\n${r.copys.paso1.cuerpo}\n`);

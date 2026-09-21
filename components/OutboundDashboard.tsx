@@ -20,6 +20,7 @@ interface OutboundDashboardProps {
       outboundEnabled: boolean;
       dryRun: boolean;
     };
+    domainName: string;
     dominio: OutboundDomain | null;
     senders: OutboundSender[];
     companies: Company[];
@@ -202,13 +203,13 @@ export default function OutboundDashboard({ initialData }: OutboundDashboardProp
         </div>
       )}
 
-      {/* Tarjetas de Salud del Dominio respon.do y Senders */}
+      {/* Tarjetas de Salud del dominio y senders */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Dominio respon.do */}
+        {/* Dominio corporativo */}
         <div className="rounded-xl border border-line bg-surface-2 p-4">
           <div className="flex items-center justify-between text-ink-dim">
             <span className="font-mono text-[11px] uppercase tracking-wider">Dominio</span>
-            <span className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-[10px] text-brand">respon.do</span>
+            <span className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-[10px] text-brand">{initialData.domainName}</span>
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="font-mono text-2xl font-bold text-ink">
@@ -679,7 +680,7 @@ export default function OutboundDashboard({ initialData }: OutboundDashboardProp
       {tab === "senders" && (
         <div className="space-y-6">
           <div className="rounded-xl border border-line bg-surface-1 p-5">
-            <h3 className="font-display text-base font-semibold text-ink">Diagnóstico DNS respon.do</h3>
+            <h3 className="font-display text-base font-semibold text-ink">Diagnóstico DNS {initialData.domainName}</h3>
             <p className="mt-1 text-xs text-ink-dim">
               Evaluación en vivo de los 4 pilares de autenticación. Requisito de entregabilidad estricto.
             </p>
