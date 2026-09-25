@@ -28,6 +28,9 @@ import type { NextRequest } from "next/server";
  * (que NO manda Basic Auth — sin esta excepción el agente muere en 401
  * silencioso) y todas validan su propio secreto adentro (lib/prospeccion/auth).
  *
+ * Las rutas /api/growth-os-sync/* quedan fuera: las llama tools/hq_sync.py (Growth OS) y validan
+ * GROWTH_OS_SYNC_TOKEN adentro (lib/growthOs/store.ts → syncAuthorized).
+ *
  * Las rutas /api/cola/* quedan fuera por lo mismo: las llama GitHub Actions con
  * curl, que tampoco manda Basic Auth, y validan el mismo secreto adentro
  * (PROS_CRON_SECRET, vía lib/prospeccion/auth). Sin esta línea el worker de la
@@ -63,6 +66,7 @@ export function middleware(req: NextRequest) {
     pathname.startsWith("/api/hooks") ||
     pathname.startsWith("/api/prospeccion") ||
     pathname.startsWith("/api/cola") ||
+    pathname.startsWith("/api/growth-os-sync") ||
     outboundMachineEndpoints.some((endpoint) => pathname === endpoint)
   )
     return NextResponse.next();

@@ -25,7 +25,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/prospeccion", label: "Prospección", icon: "target", hint: "Buscar y calificar Places" },
       { href: "/foco", label: "Leads Foco", icon: "foco", hint: "Decisores en empresas medianas" },
       { href: "/clientes", label: "Clientes & Bots", icon: "bot", hint: "Cuentas y salud de bots" },
-      { href: "/growth", label: "Growth Studio", icon: "spark", hint: "Contenido e ideas de adquisición" },
+      { href: "/growth-os", label: "Growth OS", icon: "spark", hint: "Respondo + Impresora: contenido, aprobaciones, First 12" },
     ],
   },
   {
